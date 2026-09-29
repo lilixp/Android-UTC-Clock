@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -118,8 +119,13 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
         // Cu „două puncte care clipesc”, ele se văd doar în prima jumătate a fiecărei secunde
         val afisare = Afisare(setari.secunde, puncteAprinse = !setari.clipire || stare.acum.toEpochMilli() % 1000 < 500)
         val arata: (String) -> Unit = { explicatie = it }
-        val ceasUtc = @Composable { m: Modifier -> Ceas("UTC", utc, tema.utc, tema, texte, afisare, m, copiazaUtc) }
-        val ceasLocal = @Composable { m: Modifier -> Ceas("LOCAL", local, tema.local, tema, texte, afisare, m) }
+        // `limitat`: ora ia doar înălțimea rămasă liberă (pe orizontală, unde înălțimea e puțină)
+        val ceasUtc = @Composable { m: Modifier, limitat: Boolean ->
+            Ceas("UTC", utc, tema.utc, tema, texte, afisare, m, limitat, copiazaUtc)
+        }
+        val ceasLocal = @Composable { m: Modifier, limitat: Boolean ->
+            Ceas("LOCAL", local, tema.local, tema, texte, afisare, m, limitat)
+        }
         val rezumat = texteRezumat(stare, setari, texte)
 
         when (setari.aranjare) {
@@ -127,57 +133,70 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
                 // Fiecare parte în cardul ei, cu colțuri rotunjite
                 Spacer(Modifier.height(6.dp))
                 if (peisaj) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Card(tema, Modifier.weight(1f)) { ceasUtc(Modifier.fillMaxWidth()) }
-                        Card(tema, Modifier.weight(1f)) { ceasLocal(Modifier.fillMaxWidth()) }
+                    // Pe orizontală: ceasurile iau tot ce rămâne deasupra cardului cu informații
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Card(tema, Modifier.weight(1f).fillMaxHeight()) { ceasUtc(Modifier.fillMaxSize(), true) }
+                        Card(tema, Modifier.weight(1f).fillMaxHeight()) { ceasLocal(Modifier.fillMaxSize(), true) }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Card(tema) {
+                        if (!rezumat.gol) {
+                            Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Informatii(stare, setari, tema, texte, local, arata)
                     }
                 } else {
-                    Card(tema) { ceasUtc(Modifier.fillMaxWidth()) }
+                    Card(tema) { ceasUtc(Modifier.fillMaxWidth(), false) }
                     Spacer(Modifier.height(12.dp))
-                    Card(tema) { ceasLocal(Modifier.fillMaxWidth()) }
+                    Card(tema) { ceasLocal(Modifier.fillMaxWidth(), false) }
+                    Spacer(Modifier.weight(1f))
+                    if (!rezumat.gol) {
+                        Card(tema) { Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.fillMaxWidth(), arata) }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    Card(tema) { Informatii(stare, setari, tema, texte, local, arata) }
                 }
-                Spacer(Modifier.weight(1f))
-                if (!rezumat.gol) {
-                    Card(tema) { Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.fillMaxWidth(), arata) }
-                    Spacer(Modifier.height(12.dp))
-                }
-                Card(tema) { Informatii(stare, setari, tema, texte, local, arata) }
             }
 
             Aranjari.PANOU -> {
-                // Ca ecranul unui transceiver: ora într-un panou încadrat, ora locală pe un rând dedesubt
+                // Ca ecranul unui transceiver: ora într-un panou încadrat, ora locală pe un rând dedesubt.
+                // Pe orizontală, panoul ia tot ce rămâne deasupra informațiilor.
                 if (!peisaj) Spacer(Modifier.weight(1f))
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(tema.suprafata)
+                Column(Modifier.fillMaxWidth().then(if (peisaj) Modifier.weight(1f) else Modifier)
+                    .clip(RoundedCornerShape(8.dp)).background(tema.suprafata)
                     .border(1.5.dp, tema.info, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
                     CompositionLocalProvider(LocalFundal provides tema.suprafata) {
-                        ceasUtc(Modifier.fillMaxWidth())
+                        if (peisaj) ceasUtc(Modifier.fillMaxWidth().weight(1f), true)
+                        else ceasUtc(Modifier.fillMaxWidth(), false)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("LOCAL", color = tema.local.secundar, fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
                             Spacer(Modifier.weight(1f))
                             Afisaj(local.format(if (afisare.secunde) ORA else ORA_SCURTA), tema.local, tema, afisare,
-                                Modifier.fillMaxWidth(if (peisaj) 0.35f else 0.55f))
+                                Modifier.fillMaxWidth(if (peisaj) 0.22f else 0.55f))
                         }
                     }
                 }
-                Spacer(Modifier.weight(1f))
+                val pauza = if (peisaj) Modifier.height(8.dp) else Modifier.weight(1f)
+                Spacer(pauza)
                 Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
-                Spacer(Modifier.weight(1f))
+                Spacer(pauza)
                 Informatii(stare, setari, tema, texte, local, arata)
             }
 
             else -> {
                 if (peisaj) {
                     Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                        ceasUtc(Modifier.weight(1f))
-                        ceasLocal(Modifier.weight(1f))
+                        ceasUtc(Modifier.weight(1f), false)
+                        ceasLocal(Modifier.weight(1f), false)
                     }
                 } else {
                     // Pe vertical, ceasurile stau la mijloc între indicativ și informațiile de jos
                     Spacer(Modifier.weight(0.7f))
-                    ceasUtc(Modifier.fillMaxWidth())
+                    ceasUtc(Modifier.fillMaxWidth(), false)
                     Spacer(Modifier.height(24.dp))
-                    ceasLocal(Modifier.fillMaxWidth(0.8f).align(Alignment.CenterHorizontally))
+                    ceasLocal(Modifier.fillMaxWidth(0.8f).align(Alignment.CenterHorizontally), false)
                 }
 
                 // În spațiul liber de sub ceasuri: cât mai e până la greyline și vremea
@@ -219,14 +238,14 @@ private fun Card(tema: Tema, modifier: Modifier = Modifier, continut: @Composabl
 @Composable
 private fun Ceas(
     eticheta: String, moment: ZonedDateTime, culori: Tema.Culori, tema: Tema, texte: Texte, afisare: Afisare,
-    modifier: Modifier, laAtingere: (() -> Unit)? = null,
+    modifier: Modifier, limitat: Boolean, laAtingere: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Text(eticheta, color = culori.secundar, fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
         val atingere = if (laAtingere != null) Modifier.clickable(onClick = laAtingere) else Modifier
         Afisaj(moment.format(if (afisare.secunde) ORA else ORA_SCURTA), culori, tema, afisare,
-            Modifier.fillMaxWidth().then(atingere))
+            Modifier.fillMaxWidth().then(if (limitat) Modifier.weight(1f) else Modifier).then(atingere))
         Text(texte.data(moment), color = culori.secundar, fontFamily = FontFamily.Monospace, fontSize = 15.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally))
     }
@@ -248,7 +267,12 @@ private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisa
             tema.cuSegmente -> if (afisare.secunde) 5.9f else 3.8f
             else -> if (afisare.secunde) 4.5f else 2.9f
         }
-        val marime = with(LocalDensity.current) { (maxWidth.toPx() / raport).toSp() }
+        // Cât încape pe lățime; când înălțimea e limitată (pe orizontală), și cât încape pe înălțime
+        // (un rând de cifre are cam 1,1 din mărimea fontului pe verticală; 1,15 lasă o mică margine)
+        val marime = with(LocalDensity.current) {
+            val dupaInaltime = if (constraints.hasBoundedHeight) maxHeight.toPx() / 1.15f else Float.MAX_VALUE
+            minOf(maxWidth.toPx() / raport, dupaInaltime).toSp()
+        }
         val stil = TextStyle(fontFamily = tema.font, fontWeight = tema.grosime, fontSize = marime,
             textAlign = TextAlign.Center, fontFeatureSettings = "tnum")
         val toateSegmentele = if (afisare.secunde) "88:88:88" else "88:88"
