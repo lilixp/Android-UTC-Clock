@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -266,11 +268,30 @@ private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisa
     }
 }
 
-/** Indicativul, în același font ca informațiile de jos (SFI, K, A), doar mai mare. */
+/**
+ * Indicativul în fontul cu 14 segmente al temei. Cifra 1 aprinde doar segmentele din dreapta, deci ar
+ * lăsa un gol în stânga („ER 1PL”); de aceea e trasă spre stânga, lângă litera dinainte.
+ */
 @Composable
 private fun Indicativ(indicativ: String, tema: Tema) {
-    Text(indicativ, color = tema.utc.aprins, fontFamily = tema.fontIndicativ, fontWeight = FontWeight.Bold,
-        fontSize = 24.sp, maxLines = 1)
+    val marime = 24.sp
+    val stil = TextStyle(fontFamily = tema.fontIndicativ, fontWeight = FontWeight.SemiBold, fontSize = marime,
+        color = tema.utc.aprins)
+    if (!tema.cuSegmente) {
+        Text(indicativ, style = stil, maxLines = 1)
+        return
+    }
+    val em = with(LocalDensity.current) { marime.toPx() }
+    Row {
+        for (caracter in indicativ) {
+            val mutare = if (caracter != '1') Modifier else Modifier.layout { masurabil, limite ->
+                val p = masurabil.measure(limite)
+                // Mută 1 cu 0,42 din mărimea fontului spre stânga și lasă 0,08 spațiu după el
+                layout(p.width - (0.34f * em).roundToInt(), p.height) { p.place(-(0.42f * em).roundToInt(), 0) }
+            }
+            Text(caracter.toString(), style = stil, maxLines = 1, modifier = mutare)
+        }
+    }
 }
 
 /**
