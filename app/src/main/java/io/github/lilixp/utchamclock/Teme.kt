@@ -28,13 +28,20 @@ data class Tema(
 
     /** Culoarea elementelor stinse (bare); la temele fără segmente, un amestec slab cu fundalul. */
     val stinsa get() = utc.stins ?: lerp(fundal, utc.aprins, 0.2f)
+
+    /** Fundalul cardurilor și al panoului: puțin mai deschis decât fundalul temei. */
+    val suprafata get() = if (luminoasa) lerp(fundal, Color.White, 0.4f) else lerp(fundal, utc.aprins, 0.08f)
 }
 
 object Teme {
     const val VFD_VERDE = "vfd_verde"
     const val FT891 = "ft891"
     const val MINIMAL = "minimal"
-    val TOATE = listOf(VFD_VERDE, FT891, MINIMAL)
+    const val LCD_REFLEXIV = "lcd_reflexiv"
+    const val VFD_ALBASTRU = "vfd_albastru"
+    const val LCD_PORTOCALIU = "lcd_portocaliu"
+    const val ZI_LUMINOASA = "zi_luminoasa"
+    val TOATE = listOf(VFD_VERDE, FT891, MINIMAL, LCD_REFLEXIV, VFD_ALBASTRU, LCD_PORTOCALIU, ZI_LUMINOASA)
 
     private val dseg7 = FontFamily(Font(R.font.dseg7_classic_bold))
     private val dseg14 = FontFamily(Font(R.font.dseg14_classic_bold))
@@ -67,6 +74,42 @@ object Teme {
             niveluri = listOf(c(0x4ade80), c(0xfacc15), c(0xf87171)),
             font = FontFamily.SansSerif, grosime = FontWeight.Light,
             fontIndicativ = FontFamily.SansSerif, luminoasa = false,
+        ),
+        // Ecran LCD fără iluminare, ca la un ceas Casio: cifre închise pe gri-verzui
+        LCD_REFLEXIV to Tema(
+            fundal = c(0xa9b89a),
+            utc = Tema.Culori(c(0x1c2418), c(0x98a78a), c(0x3d4a36)),
+            local = Tema.Culori(c(0x1c2418), c(0x98a78a), c(0x3d4a36)),
+            info = c(0x3d4a36), evidentiat = c(0x7a2a10),
+            niveluri = listOf(c(0x1c3a18), c(0x6a4a00), c(0x8a2010)),
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+        ),
+        // Afișaj VFD albastru, ca la stațiile Icom
+        VFD_ALBASTRU to Tema(
+            fundal = c(0x04121a),
+            utc = Tema.Culori(c(0x4de8ff), c(0x0c2a33), c(0x2a8fa0)),
+            local = Tema.Culori(c(0xb9f6ff), c(0x0c2a33), c(0x5fb8c8)),
+            info = c(0x3fa7b8), evidentiat = c(0xf5c542),
+            niveluri = listOf(c(0x4de8ff), c(0xf5c542), c(0xff6b6b)),
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = false,
+        ),
+        // LCD cu iluminare portocalie, ca la stațiile Kenwood
+        LCD_PORTOCALIU to Tema(
+            fundal = c(0xff9a1f),
+            utc = Tema.Culori(c(0x2a1400), c(0xf28c15), c(0x5a2e00)),
+            local = Tema.Culori(c(0x2a1400), c(0xf28c15), c(0x5a2e00)),
+            info = c(0x5a2e00), evidentiat = c(0x8a1a00),
+            niveluri = listOf(c(0x2a1400), c(0x6a3a00), c(0xa01000)),
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+        ),
+        // Fundal alb, contrast mare, pentru afară în soare
+        ZI_LUMINOASA to Tema(
+            fundal = c(0xf7f7f2),
+            utc = Tema.Culori(c(0x1a1a1a), c(0xe6e6de), c(0x555555)),
+            local = Tema.Culori(c(0x0b5fa5), c(0xe6e6de), c(0x3a78b0)),
+            info = c(0x555555), evidentiat = c(0xc05a00),
+            niveluri = listOf(c(0x1f8a3a), c(0xc07a00), c(0xc0302a)),
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
         ),
     )
 

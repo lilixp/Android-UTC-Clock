@@ -80,6 +80,12 @@ fun EcranSetari(setari: Setari, texte: Texte, laSchimbare: (Setari) -> Unit, laI
         }) { Text(texte.salveaza) }
 
         HorizontalDivider()
+        Text(texte.aranjare, style = MaterialTheme.typography.titleMedium)
+        Aranjari.TOATE.forEach { id ->
+            Optiune(texte.numeAranjari.getValue(id), setari.aranjare == id) { laSchimbare(setari.copy(aranjare = id)) }
+        }
+
+        HorizontalDivider()
         Text(texte.tema, style = MaterialTheme.typography.titleMedium)
         Teme.TOATE.forEach { id ->
             Optiune(texte.numeTeme.getValue(id), setari.tema == id) { laSchimbare(setari.copy(tema = id)) }

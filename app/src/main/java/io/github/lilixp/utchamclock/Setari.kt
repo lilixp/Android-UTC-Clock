@@ -7,6 +7,7 @@ data class Setari(
     val indicativ: String = "",
     val locator: String = "",
     val tema: String = Teme.VFD_VERDE,
+    val aranjare: String = Aranjari.CLASIC, // cum se așază ceasurile: clasic, carduri sau panou
     val modNoapte: Boolean = false,
     val limba: String = "auto", // „auto” = ca telefonul, „ro” sau „en”
     val secunde: Boolean = true,
@@ -25,6 +26,7 @@ data class Setari(
                 indicativ = p.getString("indicativ", i.indicativ)!!,
                 locator = p.getString("locator", i.locator)!!,
                 tema = p.getString("tema", i.tema)!!.takeIf { it in Teme.TOATE } ?: i.tema,
+                aranjare = p.getString("aranjare", i.aranjare)!!.takeIf { it in Aranjari.TOATE } ?: i.aranjare,
                 modNoapte = p.getBoolean("mod_noapte", i.modNoapte),
                 limba = p.getString("limba", i.limba)!!,
                 secunde = p.getBoolean("secunde", i.secunde),
@@ -40,6 +42,7 @@ data class Setari(
                 .putString("indicativ", s.indicativ)
                 .putString("locator", s.locator)
                 .putString("tema", s.tema)
+                .putString("aranjare", s.aranjare)
                 .putBoolean("mod_noapte", s.modNoapte)
                 .putString("limba", s.limba)
                 .putBoolean("secunde", s.secunde)

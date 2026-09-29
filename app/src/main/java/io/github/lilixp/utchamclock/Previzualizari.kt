@@ -18,8 +18,9 @@ private val EXEMPLU = StareCeas(
 )
 
 @Composable
-private fun Ceas(tema: String, noapte: Boolean = false) {
-    val setari = Setari(indicativ = "ER1PL", locator = "KN46dw", tema = tema, modNoapte = noapte, limba = "ro")
+private fun Ceas(tema: String, noapte: Boolean = false, aranjare: String = Aranjari.CLASIC) {
+    val setari = Setari(indicativ = "ER1PL", locator = "KN46dw", tema = tema, aranjare = aranjare,
+        modNoapte = noapte, limba = "ro")
     val t = Teme.activa(setari)
     TemaAplicatie(t) { EcranCeas(EXEMPLU, setari, t, Texte.RO, laSetari = {}) }
 }
@@ -35,6 +36,30 @@ private const val ORIZONTAL = "spec:width=411dp,height=891dp,orientation=landsca
 
 @Preview(name = "Minimal modern", device = VERTICAL, showSystemUi = true)
 @Composable private fun Minimal() = Ceas(Teme.MINIMAL)
+
+@Preview(name = "LCD reflexiv", device = VERTICAL, showSystemUi = true)
+@Composable private fun LcdReflexiv() = Ceas(Teme.LCD_REFLEXIV)
+
+@Preview(name = "VFD albastru", device = VERTICAL, showSystemUi = true)
+@Composable private fun VfdAlbastru() = Ceas(Teme.VFD_ALBASTRU)
+
+@Preview(name = "LCD portocaliu", device = VERTICAL, showSystemUi = true)
+@Composable private fun LcdPortocaliu() = Ceas(Teme.LCD_PORTOCALIU)
+
+@Preview(name = "Zi luminoasă", device = VERTICAL, showSystemUi = true)
+@Composable private fun ZiLuminoasa() = Ceas(Teme.ZI_LUMINOASA)
+
+@Preview(name = "Carduri – FT-891", device = VERTICAL, showSystemUi = true)
+@Composable private fun Carduri() = Ceas(Teme.FT891, aranjare = Aranjari.CARDURI)
+
+@Preview(name = "Panou – VFD albastru", device = VERTICAL, showSystemUi = true)
+@Composable private fun Panou() = Ceas(Teme.VFD_ALBASTRU, aranjare = Aranjari.PANOU)
+
+@Preview(name = "Orizontal – Carduri", device = ORIZONTAL, showSystemUi = true)
+@Composable private fun OrizontalCarduri() = Ceas(Teme.VFD_VERDE, aranjare = Aranjari.CARDURI)
+
+@Preview(name = "Orizontal – Panou", device = ORIZONTAL, showSystemUi = true)
+@Composable private fun OrizontalPanou() = Ceas(Teme.LCD_PORTOCALIU, aranjare = Aranjari.PANOU)
 
 @Preview(name = "Mod noapte", device = VERTICAL, showSystemUi = true)
 @Composable private fun Noapte() = Ceas(Teme.VFD_VERDE, noapte = true)
