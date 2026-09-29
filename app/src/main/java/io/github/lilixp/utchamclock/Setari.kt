@@ -1,6 +1,7 @@
 package io.github.lilixp.utchamclock
 
 import android.content.Context
+import androidx.core.content.edit
 
 /** Setările aplicației; se salvează imediat ce se schimbă și se păstrează după repornire. */
 data class Setari(
@@ -38,19 +39,19 @@ data class Setari(
         }
 
         fun salveaza(context: Context, s: Setari) {
-            context.getSharedPreferences(FISIER, Context.MODE_PRIVATE).edit()
-                .putString("indicativ", s.indicativ)
-                .putString("locator", s.locator)
-                .putString("tema", s.tema)
-                .putString("aranjare", s.aranjare)
-                .putBoolean("mod_noapte", s.modNoapte)
-                .putString("limba", s.limba)
-                .putBoolean("secunde", s.secunde)
-                .putBoolean("clipire", s.clipire)
-                .putBoolean("ecran_aprins", s.ecranAprins)
-                .putBoolean("noapte_automata", s.noapteAutomata)
-                .putBoolean("vremea", s.vremea)
-                .apply()
+            context.getSharedPreferences(FISIER, Context.MODE_PRIVATE).edit {
+                putString("indicativ", s.indicativ)
+                putString("locator", s.locator)
+                putString("tema", s.tema)
+                putString("aranjare", s.aranjare)
+                putBoolean("mod_noapte", s.modNoapte)
+                putString("limba", s.limba)
+                putBoolean("secunde", s.secunde)
+                putBoolean("clipire", s.clipire)
+                putBoolean("ecran_aprins", s.ecranAprins)
+                putBoolean("noapte_automata", s.noapteAutomata)
+                putBoolean("vremea", s.vremea)
+            }
         }
     }
 }

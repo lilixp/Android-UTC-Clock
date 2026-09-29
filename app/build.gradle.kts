@@ -22,7 +22,7 @@ android {
     buildTypes {
         release {
             optimization {
-                enable = false
+                enable = true // R8: aplicație mai mică și mai rapidă (cod nefolosit scos, restul optimizat)
             }
         }
     }

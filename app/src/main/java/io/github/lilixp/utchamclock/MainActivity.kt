@@ -51,11 +51,12 @@ private fun Aplicatie() {
     val texte = Texte.pentru(setari.limba)
     val ciclu = LocalLifecycleOwner.current.lifecycle
 
-    // Ceasul: se actualizează la începutul fiecărei secunde (la jumătate de secundă când punctele
-    // clipesc), doar cât aplicația e pe ecran
+    // Ceasul se actualizează doar cât aplicația e pe ecran și doar cât e nevoie: la jumătate de secundă
+    // când punctele clipesc, la fiecare secundă cu secunde afișate, altfel doar la schimbarea minutului
+    // (ecranul se redesenează de 60 de ori mai rar, deci mai puțină baterie)
     var acum by remember { mutableStateOf(Instant.now()) }
-    LaunchedEffect(setari.clipire) {
-        val pas = if (setari.clipire) 500 else 1000
+    LaunchedEffect(setari.clipire, setari.secunde) {
+        val pas = if (setari.clipire) 500 else if (setari.secunde) 1000 else 60_000
         ciclu.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 acum = Instant.now()
@@ -79,6 +80,7 @@ private fun Aplicatie() {
     // Pornește din nou (cu descărcare imediată) și când se schimbă locatorul, pentru vremea noului QTH
     LaunchedEffect(setari.locator) {
         ultimaDescarcare = 0L
+        meteo = null // vremea de la vechiul QTH nu mai e valabilă
         ciclu.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 if (System.currentTimeMillis() - ultimaDescarcare >= Retea.PAUZA_MINIMA_MS) {

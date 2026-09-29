@@ -26,13 +26,17 @@ object Calcule {
     fun nivelA(v: Int) = if (v < 10) 0 else if (v < 30) 1 else 2
     fun nivelDt(v: Double) = abs(v).let { if (it < 0.5) 0 else if (it < 1) 1 else 2 } // FT8 cere sub 1 s
 
+    // Pregătite o singură dată: locatorul se verifică de câteva ori la fiecare secundă
+    private val FORMA_INDICATIV = Regex("[A-Z0-9/]{3,12}")
+    private val FORMA_LOCATOR = Regex("[A-R]{2}[0-9]{2}([A-X]{2})?")
+
     /** Litere, cifre și /, cu cel puțin o literă și o cifră (ex. YO3ABC, ER1XYZ/P). */
     fun indicativValid(text: String): Boolean {
         val t = text.uppercase()
-        return Regex("[A-Z0-9/]{3,12}").matches(t) && t.any { it.isDigit() } && t.any { it in 'A'..'Z' }
+        return FORMA_INDICATIV.matches(t) && t.any { it.isDigit() } && t.any { it in 'A'..'Z' }
     }
 
-    fun locatorValid(text: String) = Regex("[A-R]{2}[0-9]{2}([A-X]{2})?").matches(text.uppercase())
+    fun locatorValid(text: String) = FORMA_LOCATOR.matches(text.uppercase())
 
     /** Convenția: primele patru caractere mari, ultimele două mici (ex. KN46dw). */
     fun normalizeazaLocator(text: String) = text.take(4).uppercase() + text.drop(4).lowercase()

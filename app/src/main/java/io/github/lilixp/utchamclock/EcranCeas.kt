@@ -120,8 +120,7 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
         val arata: (String) -> Unit = { explicatie = it }
         val ceasUtc = @Composable { m: Modifier -> Ceas("UTC", utc, tema.utc, tema, texte, afisare, m, copiazaUtc) }
         val ceasLocal = @Composable { m: Modifier -> Ceas("LOCAL", local, tema.local, tema, texte, afisare, m) }
-        val areRezumat = Calcule.urmatorulGreyline(stare.acum, setari.locator, ZoneId.systemDefault()) != null ||
-            (stare.meteo != null && setari.vremea && Calcule.locatorValid(setari.locator))
+        val rezumat = texteRezumat(stare, setari, texte)
 
         when (setari.aranjare) {
             Aranjari.CARDURI -> {
@@ -138,8 +137,8 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
                     Card(tema) { ceasLocal(Modifier.fillMaxWidth()) }
                 }
                 Spacer(Modifier.weight(1f))
-                if (areRezumat) {
-                    Card(tema) { Rezumat(stare, setari, tema, texte, peisaj, Modifier.fillMaxWidth(), arata) }
+                if (!rezumat.gol) {
+                    Card(tema) { Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.fillMaxWidth(), arata) }
                     Spacer(Modifier.height(12.dp))
                 }
                 Card(tema) { Informatii(stare, setari, tema, texte, local, arata) }
@@ -162,7 +161,7 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                Rezumat(stare, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
+                Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
                 Spacer(Modifier.weight(1f))
                 Informatii(stare, setari, tema, texte, local, arata)
             }
@@ -183,7 +182,7 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
 
                 // În spațiul liber de sub ceasuri: cât mai e până la greyline și vremea
                 Spacer(Modifier.weight(1f))
-                Rezumat(stare, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
+                Rezumat(rezumat, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally), arata)
                 Spacer(Modifier.weight(1f))
                 Informatii(stare, setari, tema, texte, local, arata)
             }
@@ -209,8 +208,8 @@ object Aranjari {
 
 /** Un card cu colțuri rotunjite, puțin mai deschis (sau mai închis) decât fundalul. */
 @Composable
-private fun Card(tema: Tema, modifier: Modifier = Modifier.fillMaxWidth(), continut: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(tema.suprafata)
+private fun Card(tema: Tema, modifier: Modifier = Modifier, continut: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tema.suprafata)
         .padding(horizontal = 10.dp, vertical = 10.dp)) {
         CompositionLocalProvider(LocalFundal provides tema.suprafata) { continut() }
     }
@@ -294,15 +293,12 @@ private fun Indicativ(indicativ: String, tema: Tema) {
     }
 }
 
-/**
- * Cât mai e până la următorul greyline (sau cât mai durează cel de acum) și vremea la QTH,
- * unul sub altul; pe orizontală, pe un singur rând.
- */
-@Composable
-private fun Rezumat(
-    stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, peisaj: Boolean, modifier: Modifier,
-    arata: (String) -> Unit,
-) {
+/** Textele de sub ceasuri; null = rândul lipsește (fără locator, vremea oprită sau încă nedescărcată). */
+private data class TexteRezumat(val greyline: String?, val inGreyline: Boolean, val vreme: String?) {
+    val gol get() = greyline == null && vreme == null
+}
+
+private fun texteRezumat(stare: StareCeas, setari: Setari, texte: Texte): TexteRezumat {
     val greyline = Calcule.urmatorulGreyline(stare.acum, setari.locator, ZoneId.systemDefault())
     val inGreyline = greyline != null && !stare.acum.isBefore(greyline.inceput)
     val textGreyline = greyline?.let {
@@ -316,14 +312,25 @@ private fun Rezumat(
         listOfNotNull("${Math.round(m.temperatura)}°C", Calcule.grupVreme(m.cod)?.let { texte.vreme[it] },
             "${Math.round(m.vant)} km/⁠h").joinToString(" · ") // vântul nu se rupe pe două rânduri
     }
+    return TexteRezumat(textGreyline, inGreyline, textVreme)
+}
 
+/**
+ * Cât mai e până la următorul greyline (sau cât mai durează cel de acum) și vremea la QTH,
+ * unul sub altul; pe orizontală, pe un singur rând.
+ */
+@Composable
+private fun Rezumat(
+    rezumat: TexteRezumat, setari: Setari, tema: Tema, texte: Texte, peisaj: Boolean, modifier: Modifier,
+    arata: (String) -> Unit,
+) {
     @Composable
     fun Randuri() {
-        textGreyline?.let {
-            Text(it, style = TEXT_REZUMAT, color = if (inGreyline) tema.evidentiat else tema.info,
+        rezumat.greyline?.let {
+            Text(it, style = TEXT_REZUMAT, color = if (rezumat.inGreyline) tema.evidentiat else tema.info,
                 modifier = Modifier.clickable { arata(texte.greyline) })
         }
-        textVreme?.let {
+        rezumat.vreme?.let {
             Text(it, style = TEXT_REZUMAT, color = tema.info,
                 modifier = Modifier.clickable { arata(texte.explicatieVreme.format(setari.locator)) })
         }
