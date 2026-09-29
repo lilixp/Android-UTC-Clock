@@ -44,6 +44,15 @@ class ReteaSiTexteTest {
         assertEquals(3.33 to 12, Retea.parseazaK("""[{"Kp":3.330000e+000,"a_running":1.2e+001}]"""))
     }
 
+    @Test fun vremeaOpenMeteo() {
+        // Răspuns real pentru KN46dw; "current_units" are aceleași chei, dar cu text
+        val json = """{"latitude":46.9375,"longitude":28.3125,"current_units":{"time":"iso8601",
+            "interval":"seconds","temperature_2m":"°C","weather_code":"wmo code","wind_speed_10m":"km/h"},
+            "current":{"time":"2026-09-29T07:45","interval":900,"temperature_2m":17.1,"weather_code":1,
+            "wind_speed_10m":15.9}}"""
+        assertEquals(Meteo(17.1, 1, 15.9), Retea.parseazaMeteo(json))
+    }
+
     @Test fun nivelurileBenzilorPreferaN0nbh() {
         assertNull(Retea.nivelurileBenzilor(true, null, DateSolare()))
         val solar = DateSolare(96, 1.0, 4)

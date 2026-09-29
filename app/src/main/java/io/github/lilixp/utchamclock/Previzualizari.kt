@@ -14,6 +14,7 @@ private val EXEMPLU = StareCeas(
     solar = DateSolare(sfi = 96, k = 1.67, a = 6),
     benzi = Benzi(zi = listOf(1, 0, 1, 2), noapte = listOf(0, 0, 1, 2)),
     eroareCeas = 0.01,
+    meteo = Meteo(temperatura = 17.1, cod = 1, vant = 15.9),
 )
 
 @Composable

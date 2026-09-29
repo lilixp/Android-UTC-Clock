@@ -54,6 +54,13 @@ data class Texte(
     val ceasInUrma: String,
     val ceasEroare: String, // %1$s = secunde, %2$s = înainte/în urmă
     val greyline: String,
+    val greylineAcum: String, // %s = cât mai durează
+    val greylineRasarit: String, // %s = cât mai e până începe
+    val greylineApus: String,
+    val vremea: String,
+    val vremeaDescriere: String,
+    val vreme: List<String>, // după Calcule.grupVreme
+    val explicatieVreme: String, // %s = locatorul
     val ok: String,
 ) {
     fun data(moment: ZonedDateTime) = "${moment.dayOfMonth} ${luni[moment.monthValue - 1]} ${moment.year}"
@@ -103,6 +110,7 @@ data class Texte(
                 "Font DSEG de Keshikan (licență SIL OFL)\n" +
                 "Indici solari: NOAA Space Weather Prediction Center\n" +
                 "Condiții pe benzi: Paul Herrman, N0NBH – hamqsl.com\n" +
+                "Vremea: Open-Meteo.com (CC BY 4.0)\n" +
                 "Ora exactă: pool.ntp.org",
 
             qthLipsa = "QTH: setează locatorul",
@@ -130,6 +138,14 @@ data class Texte(
                 "(Setări → Dată și oră → automat).",
             greyline = "Greyline: 30 de minute în jurul răsăritului și apusului, când DX-ul pe benzile " +
                 "joase merge adesea neobișnuit de bine.",
+            greylineAcum = "Greyline acum, încă %s",
+            greylineRasarit = "Greyline la răsărit în %s",
+            greylineApus = "Greyline la apus în %s",
+            vremea = "Vremea la QTH",
+            vremeaDescriere = "Temperatura, cerul și vântul acum, după locator",
+            vreme = listOf("senin", "parțial noros", "înnorat", "ceață", "burniță", "ploaie", "ploaie înghețată",
+                "ninsoare", "averse", "averse de ninsoare", "furtună"),
+            explicatieVreme = "Vremea de acum la QTH %s, de la Open-Meteo.com. Se actualizează la fiecare 30 de minute.",
             ok = "OK",
         )
 
@@ -173,6 +189,7 @@ data class Texte(
                 "DSEG font by Keshikan (SIL OFL license)\n" +
                 "Solar indices: NOAA Space Weather Prediction Center\n" +
                 "Band conditions: Paul Herrman, N0NBH – hamqsl.com\n" +
+                "Weather: Open-Meteo.com (CC BY 4.0)\n" +
                 "Exact time: pool.ntp.org",
 
             qthLipsa = "QTH: set your locator",
@@ -200,6 +217,14 @@ data class Texte(
                 "(Settings → Date and time → automatic).",
             greyline = "Greyline: 30 minutes around sunrise and sunset, when low-band DX is often " +
                 "unusually good.",
+            greylineAcum = "Greyline now, %s left",
+            greylineRasarit = "Sunrise greyline in %s",
+            greylineApus = "Sunset greyline in %s",
+            vremea = "Weather at QTH",
+            vremeaDescriere = "Current temperature, sky and wind, from your locator",
+            vreme = listOf("clear", "partly cloudy", "overcast", "fog", "drizzle", "rain", "freezing rain",
+                "snow", "showers", "snow showers", "thunderstorm"),
+            explicatieVreme = "Current weather at QTH %s, from Open-Meteo.com. Updated every 30 minutes.",
             ok = "OK",
         )
 

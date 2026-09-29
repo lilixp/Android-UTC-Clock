@@ -8,9 +8,13 @@ import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
 import java.nio.ByteBuffer
+import java.util.Locale
 
 /** Indicii solari; valorile rămân și când descărcarea eșuează, doar se marchează ca vechi. */
 data class DateSolare(val sfi: Int? = null, val k: Double? = null, val a: Int? = null, val eroare: Boolean = false)
+
+/** Vremea de acum la QTH: temperatura (°C), codul WMO și vântul (km/h). */
+data class Meteo(val temperatura: Double, val cod: Int, val vant: Double)
 
 /** Condițiile pe benzi (0 = bun, 1 = mediu, 2 = slab) pentru fiecare grup din Calcule.BENZI. */
 data class Benzi(val zi: List<Int>, val noapte: List<Int>)
@@ -24,6 +28,9 @@ object Retea {
     private const val URL_K = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
     // Condițiile pe benzi calculate de Paul Herrman, N0NBH (aceleași grupuri ca în Calcule.BENZI)
     private const val URL_BENZI = "https://www.hamqsl.com/solarxml.php"
+    // Vremea de la Open-Meteo (gratuit, fără cont), pentru coordonatele locatorului
+    private const val URL_METEO = "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f" +
+        "&current=temperature_2m,weather_code,wind_speed_10m"
     private const val SERVER_NTP = "pool.ntp.org"
     const val DIFERENTA_EPOCA_NTP = 2208988800L // NTP numără secundele de la 1 ianuarie 1900
     const val INTERVAL_MS = 30 * 60 * 1000L // cât de des se reîmprospătează datele
@@ -70,6 +77,22 @@ object Retea {
         }
         if (null in zi || null in noapte) return null
         return Benzi(zi.map { it!! }, noapte.map { it!! })
+    }
+
+    /** Vremea din secțiunea "current" (înaintea ei, "current_units" are aceleași chei, dar cu text). */
+    fun parseazaMeteo(json: String): Meteo {
+        val acum = json.substring(json.indexOf("\"current\""))
+        fun valoare(cheie: String) = Regex("\"$cheie\"\\s*:\\s*$NUMAR").find(acum)!!.groupValues[1].toDouble()
+        return Meteo(valoare("temperature_2m"), valoare("weather_code").toInt(), valoare("wind_speed_10m"))
+    }
+
+    suspend fun descarcaMeteo(locator: String): Meteo? = withContext(Dispatchers.IO) {
+        try {
+            val (lat, lon) = Calcule.locatorInCoordonate(locator)
+            parseazaMeteo(cerere(URL_METEO.format(Locale.US, lat, lon)))
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun descarcaSolar(anterior: DateSolare): DateSolare = withContext(Dispatchers.IO) {

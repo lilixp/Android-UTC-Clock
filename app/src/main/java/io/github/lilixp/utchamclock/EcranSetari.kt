@@ -90,6 +90,7 @@ fun EcranSetari(setari: Setari, texte: Texte, laSchimbare: (Setari) -> Unit, laI
         Text(texte.afisare, style = MaterialTheme.typography.titleMedium)
         Comutator(texte.secunde, null, setari.secunde) { laSchimbare(setari.copy(secunde = it)) }
         Comutator(texte.clipire, texte.clipireDescriere, setari.clipire) { laSchimbare(setari.copy(clipire = it)) }
+        Comutator(texte.vremea, texte.vremeaDescriere, setari.vremea) { laSchimbare(setari.copy(vremea = it)) }
 
         HorizontalDivider()
         Text(texte.ceasStatie, style = MaterialTheme.typography.titleMedium)

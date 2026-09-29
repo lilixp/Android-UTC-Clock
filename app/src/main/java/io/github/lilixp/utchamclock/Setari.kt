@@ -13,6 +13,7 @@ data class Setari(
     val clipire: Boolean = false, // două puncte care clipesc între ore și minute
     val ecranAprins: Boolean = false, // ceas de stație: ecranul nu se stinge cât e deschisă aplicația
     val noapteAutomata: Boolean = false, // ceas de stație: mod noapte între apus și răsărit la QTH
+    val vremea: Boolean = true, // vremea de acum la QTH, pe ecranul ceasului
 ) {
     companion object {
         private const val FISIER = "setari"
@@ -30,6 +31,7 @@ data class Setari(
                 clipire = p.getBoolean("clipire", i.clipire),
                 ecranAprins = p.getBoolean("ecran_aprins", i.ecranAprins),
                 noapteAutomata = p.getBoolean("noapte_automata", i.noapteAutomata),
+                vremea = p.getBoolean("vremea", i.vremea),
             )
         }
 
@@ -44,6 +46,7 @@ data class Setari(
                 .putBoolean("clipire", s.clipire)
                 .putBoolean("ecran_aprins", s.ecranAprins)
                 .putBoolean("noapte_automata", s.noapteAutomata)
+                .putBoolean("vremea", s.vremea)
                 .apply()
         }
     }

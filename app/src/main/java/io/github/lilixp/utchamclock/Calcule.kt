@@ -98,6 +98,43 @@ object Calcule {
         return eZi(acum, soare?.first, soare?.second, zona)
     }
 
+    /** Fereastra greyline (30 de minute înainte și după răsărit sau apus). */
+    data class Greyline(val inceput: Instant, val sfarsit: Instant, val laRasarit: Boolean)
+
+    /** Greyline-ul în curs sau următorul la QTH; null fără locator valid sau în zilele polare. */
+    fun urmatorulGreyline(acum: Instant, locator: String, zona: ZoneId): Greyline? {
+        if (!locatorValid(locator)) return null
+        val (lat, lon) = locatorInCoordonate(locator)
+        val azi = acum.atZone(zona).toLocalDate()
+        // Și ziua de ieri: aproape de miezul nopții, apusul de ieri poate fi încă în curs
+        for (zi in listOf(azi.minusDays(1), azi, azi.plusDays(1), azi.plusDays(2))) {
+            val (rasarit, apus) = rasaritApus(zi, lat, lon) ?: continue
+            for ((moment, laRasarit) in listOf(rasarit to true, apus to false)) {
+                if (acum.isBefore(moment + GREYLINE)) return Greyline(moment - GREYLINE, moment + GREYLINE, laRasarit)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Grupul vremii după codul WMO de la Open-Meteo: 0 senin, 1 parțial noros, 2 înnorat, 3 ceață,
+     * 4 burniță, 5 ploaie, 6 ploaie înghețată, 7 ninsoare, 8 averse, 9 averse de ninsoare, 10 furtună.
+     */
+    fun grupVreme(cod: Int): Int? = when (cod) {
+        0 -> 0
+        1, 2 -> 1
+        3 -> 2
+        45, 48 -> 3
+        51, 53, 55 -> 4
+        61, 63, 65 -> 5
+        56, 57, 66, 67 -> 6
+        71, 73, 75, 77 -> 7
+        80, 81, 82 -> 8
+        85, 86 -> 9
+        95, 96, 99 -> 10
+        else -> null
+    }
+
     /**
      * Estimare simplă a propagării pe HF (0 = bun, 1 = mediu, 2 = slab) pentru fiecare grup din BENZI.
      * Ziua, benzile înalte depind de fluxul solar, iar cele joase sunt atenuate de stratul D;

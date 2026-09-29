@@ -80,6 +80,28 @@ class CalculeTest {
         assertFalse(Calcule.eZiLaQth(Instant.parse("2026-09-28T19:00:00Z"), "KZ99", ZoneOffset.UTC))
     }
 
+    @Test fun urmatorulGreyline() {
+        // KN34 (București), 28 septembrie: răsărit ~04:10, apus ~16:02 UTC
+        val dimineata = Calcule.urmatorulGreyline(Instant.parse("2026-09-28T02:00:00Z"), "KN34bk", ZoneOffset.UTC)!!
+        assertTrue(dimineata.laRasarit)
+        aproape("2026-09-28T03:40:00Z", dimineata.inceput)
+        val amiaza = Calcule.urmatorulGreyline(Instant.parse("2026-09-28T12:00:00Z"), "KN34bk", ZoneOffset.UTC)!!
+        assertFalse(amiaza.laRasarit)
+        aproape("2026-09-28T16:32:00Z", amiaza.sfarsit)
+        // În timpul greyline-ului se întoarce cel în curs; după apus, răsăritul de mâine
+        val acum = Instant.parse("2026-09-28T16:10:00Z")
+        assertTrue(Calcule.urmatorulGreyline(acum, "KN34bk", ZoneOffset.UTC)!!.inceput.isBefore(acum))
+        val seara = Calcule.urmatorulGreyline(Instant.parse("2026-09-28T20:00:00Z"), "KN34bk", ZoneOffset.UTC)!!
+        assertTrue(seara.laRasarit)
+        aproape("2026-09-29T03:41:00Z", seara.inceput)
+        assertNull(Calcule.urmatorulGreyline(acum, "", ZoneOffset.UTC))
+    }
+
+    @Test fun grupuriVreme() {
+        assertEquals(listOf(0, 1, 2, 3, 5, 6, 10), listOf(0, 2, 3, 45, 63, 66, 95).map { Calcule.grupVreme(it) })
+        assertNull(Calcule.grupVreme(42))
+    }
+
     @Test fun benzi() {
         assertEquals(listOf(1, 0, 1, 2), Calcule.conditiiBenzi(96, 1.0, zi = true))
         assertEquals(listOf(0, 1, 2, 2), Calcule.conditiiBenzi(96, 1.0, zi = false))

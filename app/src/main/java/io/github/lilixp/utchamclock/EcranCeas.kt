@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -61,6 +62,7 @@ data class StareCeas(
     val solar: DateSolare,
     val benzi: Benzi?,
     val eroareCeas: Double?,
+    val meteo: Meteo? = null,
 )
 
 private val ORA = DateTimeFormatter.ofPattern("HH:mm:ss")
@@ -68,6 +70,7 @@ private val ORA_SCURTA = DateTimeFormatter.ofPattern("HH:mm")
 private val PENTRU_LOG = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 private val TEXT_INFO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 15.sp)
 private val TEXT_BENZI = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp) // patru benzi pe un rând
+private val TEXT_REZUMAT = TEXT_BENZI.copy(textAlign = TextAlign.Center)
 
 @Composable
 fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSetari: () -> Unit) {
@@ -112,6 +115,9 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
                 Modifier.fillMaxWidth(0.8f).align(Alignment.CenterHorizontally))
         }
 
+        // În spațiul liber de sub ceasuri: cât mai e până la greyline și vremea
+        Spacer(Modifier.weight(1f))
+        Rezumat(stare, setari, tema, texte, peisaj, Modifier.align(Alignment.CenterHorizontally)) { explicatie = it }
         Spacer(Modifier.weight(1f))
         Informatii(stare, setari, tema, texte, local) { explicatie = it }
     }
@@ -183,6 +189,51 @@ private fun Indicativ(indicativ: String, tema: Tema) {
         tema.utc.stins?.let { Text("~".repeat(indicativ.length), style = stil, color = it, maxLines = 1) }
         Text(indicativ, style = stil, color = tema.utc.aprins, maxLines = 1)
     }
+}
+
+/**
+ * Cât mai e până la următorul greyline (sau cât mai durează cel de acum) și vremea la QTH,
+ * unul sub altul; pe orizontală, pe un singur rând.
+ */
+@Composable
+private fun Rezumat(
+    stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, peisaj: Boolean, modifier: Modifier,
+    arata: (String) -> Unit,
+) {
+    val greyline = Calcule.urmatorulGreyline(stare.acum, setari.locator, ZoneId.systemDefault())
+    val inGreyline = greyline != null && !stare.acum.isBefore(greyline.inceput)
+    val textGreyline = greyline?.let {
+        when {
+            inGreyline -> texte.greylineAcum.format(durata(stare.acum, it.sfarsit))
+            it.laRasarit -> texte.greylineRasarit.format(durata(stare.acum, it.inceput))
+            else -> texte.greylineApus.format(durata(stare.acum, it.inceput))
+        }
+    }
+    val textVreme = stare.meteo?.takeIf { setari.vremea && Calcule.locatorValid(setari.locator) }?.let { m ->
+        listOfNotNull("${Math.round(m.temperatura)}°C", Calcule.grupVreme(m.cod)?.let { texte.vreme[it] },
+            "${Math.round(m.vant)} km/⁠h").joinToString(" · ") // vântul nu se rupe pe două rânduri
+    }
+
+    @Composable
+    fun Randuri() {
+        textGreyline?.let {
+            Text(it, style = TEXT_REZUMAT, color = if (inGreyline) tema.evidentiat else tema.info,
+                modifier = Modifier.clickable { arata(texte.greyline) })
+        }
+        textVreme?.let {
+            Text(it, style = TEXT_REZUMAT, color = tema.info,
+                modifier = Modifier.clickable { arata(texte.explicatieVreme.format(setari.locator)) })
+        }
+    }
+    if (peisaj) Row(modifier, horizontalArrangement = Arrangement.spacedBy(28.dp)) { Randuri() }
+    else Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)) { Randuri() }
+}
+
+/** Timpul rămas, rotunjit în sus la minut: „25 min” sau „5h 40m” (scurt, ca să încapă pe un rând). */
+private fun durata(de: Instant, pana: Instant): String {
+    val minute = (Duration.between(de, pana).seconds + 59) / 60
+    return if (minute < 60) "$minute min" else "${minute / 60}h ${minute % 60}m"
 }
 
 /** Soarele, ora exactă, indicii solari, QTH-ul și condițiile pe benzi. */

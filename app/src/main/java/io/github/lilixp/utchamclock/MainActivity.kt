@@ -74,8 +74,11 @@ private fun Aplicatie() {
     var solar by remember { mutableStateOf(DateSolare()) }
     var benzi by remember { mutableStateOf<Benzi?>(null) }
     var eroareCeas by remember { mutableStateOf<Double?>(null) }
+    var meteo by remember { mutableStateOf<Meteo?>(null) }
     var ultimaDescarcare by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) {
+    // Pornește din nou (cu descărcare imediată) și când se schimbă locatorul, pentru vremea noului QTH
+    LaunchedEffect(setari.locator) {
+        ultimaDescarcare = 0L
         ciclu.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 if (System.currentTimeMillis() - ultimaDescarcare >= Retea.PAUZA_MINIMA_MS) {
@@ -83,6 +86,11 @@ private fun Aplicatie() {
                         launch { solar = Retea.descarcaSolar(solar) }
                         launch { benzi = Retea.descarcaBenzi() }
                         launch { eroareCeas = Retea.masoaraEroareCeas() }
+                        // Fără conexiune rămâne vremea de la ultima descărcare
+                        launch {
+                            meteo = if (!Calcule.locatorValid(setari.locator)) null
+                            else Retea.descarcaMeteo(setari.locator) ?: meteo
+                        }
                     }
                     ultimaDescarcare = System.currentTimeMillis()
                 }
@@ -116,7 +124,7 @@ private fun Aplicatie() {
                     laSchimbare = { setari = it; Setari.salveaza(context, it) },
                     laInapoi = { laSetari = false })
             } else {
-                EcranCeas(StareCeas(acum, solar, benzi, eroareCeas), setari, tema, texte,
+                EcranCeas(StareCeas(acum, solar, benzi, eroareCeas, meteo), setari, tema, texte,
                     laSetari = { laSetari = true })
             }
         }
