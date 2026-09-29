@@ -27,3 +27,9 @@ trebuie adus și pe Android. Se fac doar când cere Lilian.
 
 Pe Windows, în plus (fără echivalent pe Android): sincronizarea ceasului Windows la clic pe
 „Nesincronizat” (pe telefon, ora se potrivește automat din rețea).
+
+## Hotărâte doar pentru Android
+
+| # | Ce | Cum |
+|---|----|-----|
+| 10 | Fără verificarea orei (29.09.2026) | Se scoate de tot: „Sincronizat”/„Nesincronizat”, măsurarea Δt și cererea la pool.ntp.org. Android potrivește singur ora din rețea, iar o aplicație nu are voie să o schimbe. Pe Windows rămâne. |
