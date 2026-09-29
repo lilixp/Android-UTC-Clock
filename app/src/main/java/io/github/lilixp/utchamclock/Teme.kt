@@ -39,12 +39,10 @@ object Teme {
     const val MINIMAL = "minimal"
     const val LCD_REFLEXIV = "lcd_reflexiv"
     const val VFD_ALBASTRU = "vfd_albastru"
-    const val LCD_PORTOCALIU = "lcd_portocaliu"
     const val ZI_LUMINOASA = "zi_luminoasa"
-    val TOATE = listOf(VFD_VERDE, FT891, MINIMAL, LCD_REFLEXIV, VFD_ALBASTRU, LCD_PORTOCALIU, ZI_LUMINOASA)
+    val TOATE = listOf(VFD_VERDE, FT891, MINIMAL, LCD_REFLEXIV, VFD_ALBASTRU, ZI_LUMINOASA)
 
     private val dseg7 = FontFamily(Font(R.font.dseg7_classic_bold))
-    private val dseg14 = FontFamily(Font(R.font.dseg14_classic_bold))
 
     private fun c(hex: Long) = Color(0xFF000000 or hex)
 
@@ -55,7 +53,7 @@ object Teme {
             local = Tema.Culori(c(0xffa000), c(0x2d2b12), c(0xa86a00)),
             info = c(0x6f8f7f), evidentiat = c(0xffd060),
             niveluri = listOf(c(0x00ff41), c(0xffd060), c(0xff5040)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = false,
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = FontFamily.Monospace, luminoasa = false,
         ),
         // Ecranul Yaesu FT-891: fond lavandă luminos, caractere bleumarin
         FT891 to Tema(
@@ -64,7 +62,7 @@ object Teme {
             local = Tema.Culori(c(0x1b2266), c(0xb8bdea), c(0x3c4488)),
             info = c(0x3c4488), evidentiat = c(0xa01848),
             niveluri = listOf(c(0x1b2266), c(0x6a3a9a), c(0xb01818)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = FontFamily.Monospace, luminoasa = true,
         ),
         MINIMAL to Tema(
             fundal = c(0x18181b),
@@ -82,7 +80,7 @@ object Teme {
             local = Tema.Culori(c(0x1c2418), c(0x98a78a), c(0x3d4a36)),
             info = c(0x3d4a36), evidentiat = c(0x7a2a10),
             niveluri = listOf(c(0x1c3a18), c(0x6a4a00), c(0x8a2010)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = FontFamily.Monospace, luminoasa = true,
         ),
         // Afișaj VFD albastru, ca la stațiile Icom
         VFD_ALBASTRU to Tema(
@@ -91,16 +89,7 @@ object Teme {
             local = Tema.Culori(c(0xb9f6ff), c(0x0c2a33), c(0x5fb8c8)),
             info = c(0x3fa7b8), evidentiat = c(0xf5c542),
             niveluri = listOf(c(0x4de8ff), c(0xf5c542), c(0xff6b6b)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = false,
-        ),
-        // LCD cu iluminare portocalie, ca la stațiile Kenwood
-        LCD_PORTOCALIU to Tema(
-            fundal = c(0xff9a1f),
-            utc = Tema.Culori(c(0x2a1400), c(0xf28c15), c(0x5a2e00)),
-            local = Tema.Culori(c(0x2a1400), c(0xf28c15), c(0x5a2e00)),
-            info = c(0x5a2e00), evidentiat = c(0x8a1a00),
-            niveluri = listOf(c(0x2a1400), c(0x6a3a00), c(0xa01000)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = FontFamily.Monospace, luminoasa = false,
         ),
         // Fundal alb, contrast mare, pentru afară în soare
         ZI_LUMINOASA to Tema(
@@ -109,7 +98,7 @@ object Teme {
             local = Tema.Culori(c(0x0b5fa5), c(0xe6e6de), c(0x3a78b0)),
             info = c(0x555555), evidentiat = c(0xc05a00),
             niveluri = listOf(c(0x1f8a3a), c(0xc07a00), c(0xc0302a)),
-            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
+            font = dseg7, grosime = FontWeight.Bold, fontIndicativ = FontFamily.Monospace, luminoasa = true,
         ),
     )
 

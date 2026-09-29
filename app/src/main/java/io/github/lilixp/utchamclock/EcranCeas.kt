@@ -266,15 +266,11 @@ private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisa
     }
 }
 
-/** Indicativul în fontul temei; la fontul cu 14 segmente, cu segmentele stinse în spate. */
+/** Indicativul, în același font ca informațiile de jos (SFI, K, A), doar mai mare. */
 @Composable
 private fun Indicativ(indicativ: String, tema: Tema) {
-    val stil = TextStyle(fontFamily = tema.fontIndicativ, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
-    Box {
-        if (tema.cuSegmente) Text("~".repeat(indicativ.length), style = stil,
-            color = lerp(tema.fundal, tema.utc.aprins, ESTOMPARE), maxLines = 1)
-        Text(indicativ, style = stil, color = tema.utc.aprins, maxLines = 1)
-    }
+    Text(indicativ, color = tema.utc.aprins, fontFamily = tema.fontIndicativ, fontWeight = FontWeight.Bold,
+        fontSize = 24.sp, maxLines = 1)
 }
 
 /**

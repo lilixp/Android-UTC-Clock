@@ -78,7 +78,7 @@ data class Texte(
             niveluri = listOf("Bun", "Mediu", "Slab"),
             numeTeme = mapOf(Teme.VFD_VERDE to "VFD verde", Teme.FT891 to "Transceiver FT-891",
                 Teme.MINIMAL to "Minimal modern", Teme.LCD_REFLEXIV to "LCD reflexiv", Teme.VFD_ALBASTRU to "VFD albastru",
-                Teme.LCD_PORTOCALIU to "LCD portocaliu", Teme.ZI_LUMINOASA to "Zi luminoasă"),
+                Teme.ZI_LUMINOASA to "Zi luminoasă"),
             numeAranjari = mapOf(Aranjari.CLASIC to "Clasic", Aranjari.CARDURI to "Carduri",
                 Aranjari.PANOU to "Panou transceiver"),
 
@@ -161,7 +161,7 @@ data class Texte(
             niveluri = listOf("Good", "Fair", "Poor"),
             numeTeme = mapOf(Teme.VFD_VERDE to "Green VFD", Teme.FT891 to "Transceiver FT-891",
                 Teme.MINIMAL to "Modern minimal", Teme.LCD_REFLEXIV to "Reflective LCD", Teme.VFD_ALBASTRU to "Blue VFD",
-                Teme.LCD_PORTOCALIU to "Orange LCD", Teme.ZI_LUMINOASA to "Daylight"),
+                Teme.ZI_LUMINOASA to "Daylight"),
             numeAranjari = mapOf(Aranjari.CLASIC to "Classic", Aranjari.CARDURI to "Cards",
                 Aranjari.PANOU to "Transceiver panel"),
 
