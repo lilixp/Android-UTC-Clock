@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Iconița aplicației: glob cu acele ceasului, ca la versiunea de Windows.
+     Totul stă în cercul central de 66 dp, zona care rămâne vizibilă la orice formă de iconiță. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Meridianul și ecuatorul -->
+    <path
+        android:pathData="M42,54 a12,26 0 1,0 24,0 a12,26 0 1,0 -24,0"
+        android:strokeColor="#0A7A2A"
+        android:strokeWidth="2.4" />
+    <path
+        android:pathData="M28,54 L80,54"
+        android:strokeColor="#0A7A2A"
+        android:strokeWidth="2.4" />
+    <!-- Globul -->
+    <path
+        android:pathData="M28,54 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0"
+        android:strokeColor="#00FF41"
+        android:strokeWidth="3" />
+    <!-- Acele ceasului -->
+    <path
+        android:pathData="M54,54 L54,36 M54,54 L67,60"
+        android:strokeColor="#FFA000"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.2" />
+    <path
+        android:fillColor="#FFA000"
+        android:pathData="M50.5,54 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+</vector>

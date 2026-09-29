@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fond închis de la pornire, până desenează aplicația (fără sclipire albă) -->
+    <style name="Theme.UTCHamClock" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fundal</item>
+    </style>
+</resources>
