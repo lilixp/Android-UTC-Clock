@@ -16,7 +16,7 @@ data class Tema(
     val local: Culori,
     val info: Color,
     val evidentiat: Color,
-    val niveluri: List<Color>, // bun, mediu, slab
+    val niveluri: List<Color>, // bun, mediu, slab: mereu verde, galben, roșu, în nuanța temei
     val font: FontFamily,
     val grosime: FontWeight,
     val fontIndicativ: FontFamily,
@@ -62,7 +62,7 @@ object Teme {
             utc = Tema.Culori(c(0x1b2266), c(0xb8bdea), c(0x3c4488)),
             local = Tema.Culori(c(0x1b2266), c(0xb8bdea), c(0x3c4488)),
             info = c(0x3c4488), evidentiat = c(0xa01848),
-            niveluri = listOf(c(0x1b2266), c(0x6a3a9a), c(0xb01818)),
+            niveluri = listOf(c(0x2e8b57), c(0xe0b000), c(0xc0302a)),
             font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
         ),
         MINIMAL to Tema(
@@ -80,7 +80,7 @@ object Teme {
             utc = Tema.Culori(c(0x1c2418), c(0x98a78a), c(0x3d4a36)),
             local = Tema.Culori(c(0x1c2418), c(0x98a78a), c(0x3d4a36)),
             info = c(0x3d4a36), evidentiat = c(0x7a2a10),
-            niveluri = listOf(c(0x1c3a18), c(0x6a4a00), c(0x8a2010)),
+            niveluri = listOf(c(0x2f7d32), c(0xc9a000), c(0xb3261e)),
             font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
         ),
         // Afișaj VFD albastru, ca la stațiile Icom
@@ -89,7 +89,7 @@ object Teme {
             utc = Tema.Culori(c(0x4de8ff), c(0x0c2a33), c(0x2a8fa0)),
             local = Tema.Culori(c(0xb9f6ff), c(0x0c2a33), c(0x5fb8c8)),
             info = c(0x3fa7b8), evidentiat = c(0xf5c542),
-            niveluri = listOf(c(0x4de8ff), c(0xf5c542), c(0xff6b6b)),
+            niveluri = listOf(c(0x3ee6a8), c(0xf5c542), c(0xff6b6b)),
             font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = false,
         ),
         // Fundal alb, contrast mare, pentru afară în soare
@@ -98,7 +98,7 @@ object Teme {
             utc = Tema.Culori(c(0x1a1a1a), c(0xe6e6de), c(0x555555)),
             local = Tema.Culori(c(0x0b5fa5), c(0xe6e6de), c(0x3a78b0)),
             info = c(0x555555), evidentiat = c(0xc05a00),
-            niveluri = listOf(c(0x1f8a3a), c(0xc07a00), c(0xc0302a)),
+            niveluri = listOf(c(0x1f8a3a), c(0xe0a800), c(0xc0302a)),
             font = dseg7, grosime = FontWeight.Bold, fontIndicativ = dseg14, luminoasa = true,
         ),
     )

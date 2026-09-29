@@ -43,6 +43,7 @@ data class Texte(
 
     val qthLipsa: String,
     val sincronizat: String,
+    val nesincronizat: String,
     val copiat: String,
     val atingePentruExplicatii: String,
     val faraDate: String,
@@ -121,6 +122,7 @@ data class Texte(
 
             qthLipsa = "QTH: setează locatorul",
             sincronizat = "Sincronizat",
+            nesincronizat = "Nesincronizat",
             copiat = "Copiat: %s",
             atingePentruExplicatii = "Atinge ora UTC ca s-o copiezi; atinge o valoare pentru explicații.",
             faraDate = "Date indisponibile momentan",
@@ -204,6 +206,7 @@ data class Texte(
 
             qthLipsa = "QTH: set your locator",
             sincronizat = "Synced",
+            nesincronizat = "Not synced",
             copiat = "Copied: %s",
             atingePentruExplicatii = "Tap the UTC time to copy it; tap a value for an explanation.",
             faraDate = "Data not available yet",

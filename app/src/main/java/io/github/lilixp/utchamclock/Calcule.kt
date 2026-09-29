@@ -24,6 +24,7 @@ object Calcule {
     fun nivelSfi(v: Int) = if (v >= 120) 0 else if (v >= 90) 1 else 2
     fun nivelK(v: Double) = if (v < 3) 0 else if (v < 5) 1 else 2
     fun nivelA(v: Int) = if (v < 10) 0 else if (v < 30) 1 else 2
+    const val PRAG_SINCRONIZAT = 0.5 // secunde: sub atât, ceasul telefonului e „Sincronizat”
     fun nivelDt(v: Double) = abs(v).let { if (it < 0.5) 0 else if (it < 1) 1 else 2 } // FT8 cere sub 1 s
 
     // Pregătite o singură dată: locatorul se verifică de câteva ori la fiecare secundă

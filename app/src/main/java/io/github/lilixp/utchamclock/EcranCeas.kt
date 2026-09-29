@@ -398,8 +398,9 @@ private fun Informatii(
             val dt = stare.eroareCeas
             val (textDt, culoareDt) = when {
                 dt == null -> "Δt --" to tema.info
-                kotlin.math.abs(dt) < 0.05 -> texte.sincronizat to tema.niveluri[0] // s-ar afișa 0.0 s
-                else -> "Δt %+.1fs".format(Locale.US, dt) to tema.niveluri[Calcule.nivelDt(dt)]
+                // Sub 0,5 s ceasul e bun pentru orice, inclusiv FT8/FT4; cât greșește exact se vede la atingere
+                kotlin.math.abs(dt) < Calcule.PRAG_SINCRONIZAT -> texte.sincronizat to tema.niveluri[0]
+                else -> texte.nesincronizat to tema.niveluri[2]
             }
             Text(textDt, style = TEXT_INFO, color = culoareDt, modifier = Modifier.clickable { arata(texte.explicatieCeas(dt)) })
         }
