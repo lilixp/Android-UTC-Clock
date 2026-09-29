@@ -27,6 +27,7 @@ object Retea {
     private const val SERVER_NTP = "pool.ntp.org"
     const val DIFERENTA_EPOCA_NTP = 2208988800L // NTP numără secundele de la 1 ianuarie 1900
     const val INTERVAL_MS = 30 * 60 * 1000L // cât de des se reîmprospătează datele
+    const val PAUZA_MINIMA_MS = 5 * 60 * 1000L // la revenirea în aplicație, nu mai des de atât
 
     private val NIVEL_N0NBH = mapOf("Good" to 0, "Fair" to 1, "Poor" to 2)
 

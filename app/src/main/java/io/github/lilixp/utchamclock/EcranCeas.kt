@@ -39,7 +39,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -92,17 +95,21 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
             }
         }
 
+        // Cu „două puncte care clipesc”, ele se văd doar în prima jumătate a fiecărei secunde
+        val afisare = Afisare(setari.secunde, puncteAprinse = !setari.clipire || stare.acum.toEpochMilli() % 1000 < 500)
+
         if (peisaj) {
             Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                Ceas("UTC", utc, tema.utc, tema, texte, Modifier.weight(1f), copiazaUtc)
-                Ceas("LOCAL", local, tema.local, tema, texte, Modifier.weight(1f))
+                Ceas("UTC", utc, tema.utc, tema, texte, afisare, Modifier.weight(1f), copiazaUtc)
+                Ceas("LOCAL", local, tema.local, tema, texte, afisare, Modifier.weight(1f))
             }
         } else {
             // Pe vertical, ceasurile stau la mijloc între indicativ și informațiile de jos
             Spacer(Modifier.weight(0.7f))
-            Ceas("UTC", utc, tema.utc, tema, texte, Modifier.fillMaxWidth(), copiazaUtc)
+            Ceas("UTC", utc, tema.utc, tema, texte, afisare, Modifier.fillMaxWidth(), copiazaUtc)
             Spacer(Modifier.height(24.dp))
-            Ceas("LOCAL", local, tema.local, tema, texte, Modifier.fillMaxWidth(0.8f).align(Alignment.CenterHorizontally))
+            Ceas("LOCAL", local, tema.local, tema, texte, afisare,
+                Modifier.fillMaxWidth(0.8f).align(Alignment.CenterHorizontally))
         }
 
         Spacer(Modifier.weight(1f))
@@ -121,33 +128,50 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
 /** Eticheta, ora mare și data, unele sub altele. */
 @Composable
 private fun Ceas(
-    eticheta: String, moment: ZonedDateTime, culori: Tema.Culori, tema: Tema, texte: Texte,
+    eticheta: String, moment: ZonedDateTime, culori: Tema.Culori, tema: Tema, texte: Texte, afisare: Afisare,
     modifier: Modifier, laAtingere: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Text(eticheta, color = culori.secundar, fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
         val atingere = if (laAtingere != null) Modifier.clickable(onClick = laAtingere) else Modifier
-        Afisaj(moment.format(ORA), culori, tema, Modifier.fillMaxWidth().then(atingere))
+        Afisaj(moment.format(if (afisare.secunde) ORA else ORA_SCURTA), culori, tema, afisare,
+            Modifier.fillMaxWidth().then(atingere))
         Text(texte.data(moment), color = culori.secundar, fontFamily = FontFamily.Monospace, fontSize = 15.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally))
     }
 }
+
+/** Cum se afișează ora: cu sau fără secunde și dacă cele două puncte sunt aprinse în acest moment. */
+data class Afisare(val secunde: Boolean, val puncteAprinse: Boolean)
 
 /**
  * Ora afișată cât de mare încape pe lățime. La fonturile cu segmente, segmentele stinse
  * („88:88:88”) se desenează slab în spate, ca la un afișaj LED adevărat.
  */
 @Composable
-private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, modifier: Modifier) {
+private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisare, modifier: Modifier) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        // Lățimea textului „88:88:88” e de ~5,6 ori mărimea fontului DSEG și de ~4,3 ori la fonturile obișnuite
-        val raport = if (tema.cuSegmente) 5.9f else 4.5f
+        // Lățimea textului „88:88:88” e de ~5,6 ori mărimea fontului DSEG și de ~4,3 ori la fonturile
+        // obișnuite; fără secunde („88:88”), de ~3,6 și ~2,5 ori, deci cifrele pot fi mai mari
+        val raport = when {
+            tema.cuSegmente -> if (afisare.secunde) 5.9f else 3.8f
+            else -> if (afisare.secunde) 4.5f else 2.9f
+        }
         val marime = with(LocalDensity.current) { (maxWidth.toPx() / raport).toSp() }
         val stil = TextStyle(fontFamily = tema.font, fontWeight = tema.grosime, fontSize = marime,
             textAlign = TextAlign.Center, fontFeatureSettings = "tnum")
-        culori.stins?.let { Text("88:88:88", style = stil, color = it, maxLines = 1, softWrap = false) }
-        Text(text, style = stil, color = culori.aprins, maxLines = 1, softWrap = false)
+        val toateSegmentele = if (afisare.secunde) "88:88:88" else "88:88"
+        culori.stins?.let { Text(toateSegmentele, style = stil, color = it, maxLines = 1, softWrap = false) }
+        // Punctele stinse iau culoarea segmentelor stinse (sau devin invizibile la temele fără segmente)
+        val oraAfisata = buildAnnotatedString {
+            for (caracter in text) {
+                if (caracter == ':' && !afisare.puncteAprinse) {
+                    withStyle(SpanStyle(color = culori.stins ?: Color.Transparent)) { append(caracter) }
+                } else append(caracter)
+            }
+        }
+        Text(oraAfisata, style = stil, color = culori.aprins, maxLines = 1, softWrap = false)
     }
 }
 

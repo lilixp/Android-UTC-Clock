@@ -89,6 +89,15 @@ object Calcule {
         return acum.atZone(zona).hour in 6..17
     }
 
+    /** Zi sau noapte acum la QTH-ul dat prin locator (fără locator valid: între 6 și 18 ora locală). */
+    fun eZiLaQth(acum: Instant, locator: String, zona: ZoneId): Boolean {
+        val soare = locator.takeIf { locatorValid(it) }?.let {
+            val (lat, lon) = locatorInCoordonate(it)
+            rasaritApus(acum.atZone(zona).toLocalDate(), lat, lon)
+        }
+        return eZi(acum, soare?.first, soare?.second, zona)
+    }
+
     /**
      * Estimare simplă a propagării pe HF (0 = bun, 1 = mediu, 2 = slab) pentru fiecare grup din BENZI.
      * Ziua, benzile înalte depind de fluxul solar, iar cele joase sunt atenuate de stratul D;

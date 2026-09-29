@@ -71,6 +71,15 @@ class CalculeTest {
         assertFalse(Calcule.eZi(Instant.parse("2026-09-28T20:00:00Z"), rasarit, apus, ZoneOffset.UTC))
     }
 
+    @Test fun noapteAutomataLaQth() {
+        // KN34 (București), 28 septembrie: soarele răsare ~04:10 și apune ~16:02 UTC
+        assertTrue(Calcule.eZiLaQth(Instant.parse("2026-09-28T12:00:00Z"), "KN34bk", ZoneOffset.UTC))
+        assertFalse(Calcule.eZiLaQth(Instant.parse("2026-09-28T20:00:00Z"), "KN34bk", ZoneOffset.UTC))
+        // Fără locator valid: ziua e între 6 și 18 ora locală
+        assertTrue(Calcule.eZiLaQth(Instant.parse("2026-09-28T07:00:00Z"), "", ZoneOffset.UTC))
+        assertFalse(Calcule.eZiLaQth(Instant.parse("2026-09-28T19:00:00Z"), "KZ99", ZoneOffset.UTC))
+    }
+
     @Test fun benzi() {
         assertEquals(listOf(1, 0, 1, 2), Calcule.conditiiBenzi(96, 1.0, zi = true))
         assertEquals(listOf(0, 1, 2, 2), Calcule.conditiiBenzi(96, 1.0, zi = false))

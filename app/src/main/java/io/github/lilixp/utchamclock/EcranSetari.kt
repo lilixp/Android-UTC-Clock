@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -83,12 +84,20 @@ fun EcranSetari(setari: Setari, texte: Texte, laSchimbare: (Setari) -> Unit, laI
         Teme.TOATE.forEach { id ->
             Optiune(texte.numeTeme.getValue(id), setari.tema == id) { laSchimbare(setari.copy(tema = id)) }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(texte.modNoapte)
-                Text(texte.modNoapteDescriere, style = MaterialTheme.typography.bodySmall)
-            }
-            Switch(checked = setari.modNoapte, onCheckedChange = { laSchimbare(setari.copy(modNoapte = it)) })
+        Comutator(texte.modNoapte, texte.modNoapteDescriere, setari.modNoapte) { laSchimbare(setari.copy(modNoapte = it)) }
+
+        HorizontalDivider()
+        Text(texte.afisare, style = MaterialTheme.typography.titleMedium)
+        Comutator(texte.secunde, null, setari.secunde) { laSchimbare(setari.copy(secunde = it)) }
+        Comutator(texte.clipire, texte.clipireDescriere, setari.clipire) { laSchimbare(setari.copy(clipire = it)) }
+
+        HorizontalDivider()
+        Text(texte.ceasStatie, style = MaterialTheme.typography.titleMedium)
+        Comutator(texte.ecranAprins, texte.ecranAprinsDescriere, setari.ecranAprins) {
+            laSchimbare(setari.copy(ecranAprins = it))
+        }
+        Comutator(texte.noapteAutomata, texte.noapteAutomataDescriere, setari.noapteAutomata) {
+            laSchimbare(setari.copy(noapteAutomata = it))
         }
 
         HorizontalDivider()
@@ -100,6 +109,21 @@ fun EcranSetari(setari: Setari, texte: Texte, laSchimbare: (Setari) -> Unit, laI
         HorizontalDivider()
         Text(texte.despre, style = MaterialTheme.typography.titleMedium)
         Text(texte.textDespre.format(BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** Un rând cu titlu, descriere opțională și comutator în dreapta; tot rândul se poate atinge. */
+@Composable
+private fun Comutator(titlu: String, descriere: String?, pornit: Boolean, laSchimbare: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = pornit, onValueChange = laSchimbare, role = Role.Switch),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(titlu)
+            descriere?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+        Switch(checked = pornit, onCheckedChange = null)
     }
 }
 

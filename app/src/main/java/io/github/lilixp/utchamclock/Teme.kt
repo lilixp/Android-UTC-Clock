@@ -77,8 +77,11 @@ object Teme {
             evidentiat = c(0xb01a10), niveluri = List(3) { c(0xb01a10) }, luminoasa = false)
     }
 
-    fun activa(setari: Setari): Tema {
-        val t = teme[setari.tema] ?: teme.getValue(VFD_VERDE)
-        return if (setari.modNoapte) noapte(t) else t
+    /** Tema aleasă, în varianta de noapte dacă `noapte` e adevărat (manual sau automat, după apus). */
+    fun activa(tema: String, noapte: Boolean): Tema {
+        val t = teme[tema] ?: teme.getValue(VFD_VERDE)
+        return if (noapte) noapte(t) else t
     }
+
+    fun activa(setari: Setari): Tema = activa(setari.tema, setari.modNoapte)
 }
