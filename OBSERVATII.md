@@ -33,3 +33,4 @@ Pe Windows, în plus (fără echivalent pe Android): sincronizarea ceasului Wind
 | # | Ce | Cum |
 |---|----|-----|
 | 10 | Fără verificarea orei (29.09.2026) | Se scoate de tot: „Sincronizat”/„Nesincronizat”, măsurarea Δt și cererea la pool.ntp.org. Android potrivește singur ora din rețea, iar o aplicație nu are voie să o schimbe. Pe Windows rămâne. |
+| 11 | Fără aranjarea Panou (29.09.2026) | Se scoate de tot (nu e estetică, hotărât la Windows): rămân Clasic și Carduri. Cine o avea aleasă trece pe Clasic. |
