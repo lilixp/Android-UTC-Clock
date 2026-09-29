@@ -38,6 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
@@ -76,6 +80,10 @@ private val PENTRU_LOG = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 private val TEXT_INFO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 15.sp)
 private val TEXT_BENZI = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp) // patru benzi pe un rând
 private val TEXT_REZUMAT = TEXT_BENZI.copy(textAlign = TextAlign.Center)
+// Segmentele stinse: doar 6% din culoarea cifrelor peste fundalul pe care stau (ecran, card sau panou),
+// ca să se vadă ușor, la fel pe orice temă
+private const val ESTOMPARE = 0.06f
+private val LocalFundal = compositionLocalOf { Color.Unspecified }
 
 @Composable
 fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSetari: () -> Unit) {
@@ -140,13 +148,15 @@ fun EcranCeas(stare: StareCeas, setari: Setari, tema: Tema, texte: Texte, laSeta
                 if (!peisaj) Spacer(Modifier.weight(1f))
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(tema.suprafata)
                     .border(1.5.dp, tema.info, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    ceasUtc(Modifier.fillMaxWidth())
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("LOCAL", color = tema.local.secundar, fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
-                        Spacer(Modifier.weight(1f))
-                        Afisaj(local.format(if (afisare.secunde) ORA else ORA_SCURTA), tema.local, tema, afisare,
-                            Modifier.fillMaxWidth(if (peisaj) 0.35f else 0.55f))
+                    CompositionLocalProvider(LocalFundal provides tema.suprafata) {
+                        ceasUtc(Modifier.fillMaxWidth())
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("LOCAL", color = tema.local.secundar, fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Afisaj(local.format(if (afisare.secunde) ORA else ORA_SCURTA), tema.local, tema, afisare,
+                                Modifier.fillMaxWidth(if (peisaj) 0.35f else 0.55f))
+                        }
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -199,7 +209,9 @@ object Aranjari {
 @Composable
 private fun Card(tema: Tema, modifier: Modifier = Modifier.fillMaxWidth(), continut: @Composable ColumnScope.() -> Unit) {
     Column(modifier.clip(RoundedCornerShape(16.dp)).background(tema.suprafata)
-        .padding(horizontal = 10.dp, vertical = 10.dp), content = continut)
+        .padding(horizontal = 10.dp, vertical = 10.dp)) {
+        CompositionLocalProvider(LocalFundal provides tema.suprafata) { continut() }
+    }
 }
 
 /** Eticheta, ora mare și data, unele sub altele. */
@@ -239,12 +251,14 @@ private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisa
         val stil = TextStyle(fontFamily = tema.font, fontWeight = tema.grosime, fontSize = marime,
             textAlign = TextAlign.Center, fontFeatureSettings = "tnum")
         val toateSegmentele = if (afisare.secunde) "88:88:88" else "88:88"
-        culori.stins?.let { Text(toateSegmentele, style = stil, color = it, maxLines = 1, softWrap = false) }
+        val fundal = LocalFundal.current.takeOrElse { tema.fundal }
+        val stins = culori.stins?.let { lerp(fundal, culori.aprins, ESTOMPARE) }
+        stins?.let { Text(toateSegmentele, style = stil, color = it, maxLines = 1, softWrap = false) }
         // Punctele stinse iau culoarea segmentelor stinse (sau devin invizibile la temele fără segmente)
         val oraAfisata = buildAnnotatedString {
             for (caracter in text) {
                 if (caracter == ':' && !afisare.puncteAprinse) {
-                    withStyle(SpanStyle(color = culori.stins ?: Color.Transparent)) { append(caracter) }
+                    withStyle(SpanStyle(color = stins ?: Color.Transparent)) { append(caracter) }
                 } else append(caracter)
             }
         }
@@ -257,7 +271,8 @@ private fun Afisaj(text: String, culori: Tema.Culori, tema: Tema, afisare: Afisa
 private fun Indicativ(indicativ: String, tema: Tema) {
     val stil = TextStyle(fontFamily = tema.fontIndicativ, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
     Box {
-        tema.utc.stins?.let { Text("~".repeat(indicativ.length), style = stil, color = it, maxLines = 1) }
+        if (tema.cuSegmente) Text("~".repeat(indicativ.length), style = stil,
+            color = lerp(tema.fundal, tema.utc.aprins, ESTOMPARE), maxLines = 1)
         Text(indicativ, style = stil, color = tema.utc.aprins, maxLines = 1)
     }
 }
