@@ -47,8 +47,20 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun themeIsStillSavedAndReloaded() {
-        restart().setThemeMode(ThemeMode.DARK)
-        assertEquals(ThemeMode.DARK, restart().themeMode.value)
+    fun everyThemeChoiceIsSavedAndReloaded() {
+        for (mode in listOf(ThemeMode.DARK, ThemeMode.LIGHT, ThemeMode.SYSTEM)) {
+            restart().setThemeMode(mode)
+            assertEquals(mode, restart().themeMode.value)
+        }
+    }
+
+    @Test
+    fun themeAndStationAreSavedIndependently() {
+        val first = restart()
+        first.setLocator("KN46dw")
+        first.setThemeMode(ThemeMode.DARK)
+        val again = restart()
+        assertEquals(ThemeMode.DARK, again.themeMode.value)
+        assertEquals(StationIdentity("ER1PL", "KN46dw"), again.station.value)
     }
 }

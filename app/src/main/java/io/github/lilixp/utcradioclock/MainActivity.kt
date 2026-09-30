@@ -61,19 +61,18 @@ class MainActivity : ComponentActivity() {
                 if (showSettings) {
                     val settings: SettingsViewModel = viewModel(factory = factory)
                     val station by settings.station.collectAsStateWithLifecycle()
+                    val themeMode by settings.themeMode.collectAsStateWithLifecycle()
                     BackHandler { showSettings = false }
                     SettingsScreen(
                         station = station,
+                        themeMode = themeMode,
                         onCallsignChange = settings::setCallsign,
                         onLocatorChange = settings::setLocator,
+                        onThemeModeChange = settings::setThemeMode,
                         onBack = { showSettings = false },
                     )
                 } else {
-                    DashboardScreen(
-                        state = state,
-                        onOpenSettings = { showSettings = true },
-                        onThemeModeChange = dashboard::setThemeMode,
-                    )
+                    DashboardScreen(state = state, onOpenSettings = { showSettings = true })
                 }
             }
         }

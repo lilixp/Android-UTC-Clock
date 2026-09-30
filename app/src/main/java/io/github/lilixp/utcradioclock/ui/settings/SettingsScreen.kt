@@ -1,5 +1,6 @@
 package io.github.lilixp.utcradioclock.ui.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -31,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.lilixp.utcradioclock.R
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
+import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 
 object SettingsTags {
@@ -39,15 +44,17 @@ object SettingsTags {
 }
 
 /**
- * Callsign and Maidenhead locator. Every change is cleaned and saved at once (the screen says so),
- * so there is nothing to lose when going back.
+ * Station (callsign and Maidenhead locator) and appearance (theme). Every change is saved at once
+ * (the screen says so), so there is nothing to lose when going back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     station: StationIdentity,
+    themeMode: ThemeMode,
     onCallsignChange: (String) -> Unit,
     onLocatorChange: (String) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -70,49 +77,41 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.section_station),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                    OutlinedTextField(
-                        value = station.callsign,
-                        onValueChange = onCallsignChange,
-                        label = { Text(stringResource(R.string.callsign)) },
-                        supportingText = {
-                            val max = StationIdentity.MAX_CALLSIGN_LENGTH
-                            Text(pluralStringResource(R.plurals.callsign_hint, max, max))
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                            autoCorrectEnabled = false,
-                            keyboardType = KeyboardType.Ascii,
-                            imeAction = ImeAction.Next,
-                        ),
-                        modifier = Modifier.fillMaxWidth().testTag(SettingsTags.CALLSIGN_FIELD),
-                    )
-                    OutlinedTextField(
-                        value = station.locator,
-                        onValueChange = onLocatorChange,
-                        label = { Text(stringResource(R.string.locator)) },
-                        supportingText = { Text(stringResource(R.string.locator_hint)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                            autoCorrectEnabled = false,
-                            keyboardType = KeyboardType.Ascii,
-                            imeAction = ImeAction.Done,
-                        ),
-                        modifier = Modifier.fillMaxWidth().testTag(SettingsTags.LOCATOR_FIELD),
-                    )
-                }
+            SettingsCard(R.string.section_station) {
+                OutlinedTextField(
+                    value = station.callsign,
+                    onValueChange = onCallsignChange,
+                    label = { Text(stringResource(R.string.callsign)) },
+                    supportingText = {
+                        val max = StationIdentity.MAX_CALLSIGN_LENGTH
+                        Text(pluralStringResource(R.plurals.callsign_hint, max, max))
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Next,
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag(SettingsTags.CALLSIGN_FIELD),
+                )
+                OutlinedTextField(
+                    value = station.locator,
+                    onValueChange = onLocatorChange,
+                    label = { Text(stringResource(R.string.locator)) },
+                    supportingText = { Text(stringResource(R.string.locator_hint)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Done,
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag(SettingsTags.LOCATOR_FIELD),
+                )
+            }
+            SettingsCard(R.string.section_appearance) {
+                ThemeSelector(themeMode, onThemeModeChange)
             }
             Text(
                 text = stringResource(R.string.settings_saved_automatically),
@@ -123,10 +122,52 @@ fun SettingsScreen(
     }
 }
 
+@Composable
+private fun SettingsCard(@StringRes title: Int, content: @Composable () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(title),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            content()
+        }
+    }
+}
+
+/** System / Light / Dark, the same control that used to be on the dashboard. */
+@Composable
+private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val options = listOf(
+        ThemeMode.SYSTEM to R.string.theme_system,
+        ThemeMode.LIGHT to R.string.theme_light,
+        ThemeMode.DARK to R.string.theme_dark,
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (mode, label) ->
+            SegmentedButton(
+                selected = mode == selected,
+                onClick = { onSelect(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                // No check mark: with the phone's large text it pushed "Întunecat" past the edge;
+                // the chosen option is still shown by its filled background
+                icon = {},
+            ) {
+                Text(stringResource(label))
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun SettingsPreview() {
     UTCRadioClockTheme(darkTheme = false) {
-        SettingsScreen(StationIdentity("ER1PL", "KN46dw"), {}, {}, {})
+        SettingsScreen(StationIdentity("ER1PL", "KN46dw"), ThemeMode.SYSTEM, {}, {}, {}, {})
     }
 }

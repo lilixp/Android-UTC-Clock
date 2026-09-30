@@ -16,9 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,7 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
-import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 
 /** Test tags for the parts the tests look for. */
@@ -50,11 +46,7 @@ private const val TABULAR_DIGITS = "tnum"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(
-    state: DashboardUiState,
-    onOpenSettings: () -> Unit = {},
-    onThemeModeChange: (ThemeMode) -> Unit,
-) {
+fun DashboardScreen(state: DashboardUiState, onOpenSettings: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -103,11 +95,6 @@ fun DashboardScreen(
             item {
                 InfoCard(R.string.section_propagation) {
                     Text(stringResource(R.string.propagation_later), style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            item {
-                InfoCard(R.string.section_appearance) {
-                    ThemeSelector(state.themeMode, onThemeModeChange)
                 }
             }
         }
@@ -223,26 +210,6 @@ private fun InfoLine(@StringRes format: Int, value: String?) {
         text = stringResource(format, value ?: stringResource(R.string.not_available)),
         style = MaterialTheme.typography.bodyLarge,
     )
-}
-
-@Composable
-private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
-    val options = listOf(
-        ThemeMode.SYSTEM to R.string.theme_system,
-        ThemeMode.LIGHT to R.string.theme_light,
-        ThemeMode.DARK to R.string.theme_dark,
-    )
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, (mode, label) ->
-            SegmentedButton(
-                selected = mode == selected,
-                onClick = { onSelect(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-            ) {
-                Text(stringResource(label))
-            }
-        }
-    }
 }
 
 private val PreviewState = DashboardUiState(

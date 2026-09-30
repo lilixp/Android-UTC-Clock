@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -60,6 +61,8 @@ class DashboardInstrumentedTest {
         val propagation = context.getString(R.string.propagation_later)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(propagation))
         compose.onNodeWithText(propagation).assertIsDisplayed()
+        // The theme choice lives in Settings now
+        compose.onNodeWithText(context.getString(R.string.section_appearance)).assertDoesNotExist()
     }
 }
 
@@ -89,6 +92,7 @@ class MainActivityTest {
         compose.onNodeWithContentDescription(context.getString(R.string.open_settings)).performClick()
         compose.onNodeWithTag(SettingsTags.CALLSIGN_FIELD).assertIsDisplayed()
         compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.section_appearance)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()
     }

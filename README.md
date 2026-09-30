@@ -13,14 +13,16 @@ Un dashboard cu:
 - ora **locală**, cu fusul orar și decalajul față de UTC (ex. `Europe/Chisinau · UTC+03:00`);
   data locală apare sub ea doar când diferă de cea UTC (după miezul nopții local);
 - carduri pentru **Soare**, **Locație** și **Propagare**, cu `—` până vin fazele următoare;
-- alegerea temei: **Sistem / Luminos / Întunecat** (se păstrează după repornire).
+- alegerea temei: **Sistem / Luminos / Întunecat** (se păstrează după repornire); acum e în
+  ecranul Setări, secțiunea **ASPECT**.
 
 ## Personalizare (după faza 1)
 
 - Numele afișat: **UTC Radio Clock** (package-ul și proiectul rămân `utcradioclock` / `UTCRadioClock`).
 - Ecranul **Setări** (iconița din dreapta sus): **indicativul** (implicit `ER1PL`; litere, cifre și
   `/`, cel mult 15 caractere) și **locatorul Maidenhead** (implicit gol; cel mult 8 litere și cifre,
-  scris ca `KN46dw`). Se salvează automat, la fiecare modificare, și rămân după repornire.
+  scris ca `KN46dw`), apoi secțiunea **ASPECT** cu tema. Totul se salvează automat, la fiecare
+  modificare, și rămâne după repornire.
 - Pe dashboard, indicativul și locatorul apar discret în dreapta datei; locatorul apare și la
   **QTH** în cardul Locație. Un câmp gol nu se afișează.
 
@@ -150,16 +152,17 @@ gradlew installDebug
 Teste:
 
 - `DashboardViewModelTest`: starea inițială, ticul la fiecare secundă, data locală după miezul
-  nopții, schimbarea temei, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
+  nopții, tema aleasă în Setări, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
 - `TimeFormatterTest`: formatul orelor, fusul orar cu ora de vară și de iarnă, valorile necunoscute;
 - `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
 - `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
-  locator, temă) și valorile implicite;
+  locator, fiecare dintre cele trei teme) și valorile implicite;
 - `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
-  iconița Setări, liniuțele, propagarea, selectorul de temă, fundalul luminos și întunecat;
-- `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, butonul Înapoi, tema întunecată;
-- `DashboardInstrumentedTest` (pe telefon): dashboard-ul, aplicația reală care pornește și
-  schimbă ora de la o secundă la alta, deschiderea și închiderea ecranului Setări.
+  iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
+- `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
+  STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
+- `DashboardInstrumentedTest` (pe telefon): dashboard-ul fără ASPECT, aplicația reală care pornește
+  și schimbă ora de la o secundă la alta, ecranul Setări cu ASPECT, deschis și închis.
 
 Robolectric imită Android 16 (API 36), cel mai nou pe care îl suportă complet
 (`app/src/test/resources/robolectric.properties`).

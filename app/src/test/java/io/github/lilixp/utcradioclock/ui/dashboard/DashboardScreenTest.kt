@@ -4,7 +4,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -14,9 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,14 +37,13 @@ class DashboardScreenTest {
         timeZone = "Europe/Chisinau · UTC+03:00",
     )
 
-    private var chosenTheme: ThemeMode? = null
     private var settingsOpened = false
     private var background = Color.Unspecified
 
     private fun show(s: DashboardUiState = state, dark: Boolean = false) = compose.setContent {
         UTCRadioClockTheme(darkTheme = dark) {
             background = MaterialTheme.colorScheme.background
-            DashboardScreen(s, onOpenSettings = { settingsOpened = true }) { chosenTheme = it }
+            DashboardScreen(s, onOpenSettings = { settingsOpened = true })
         }
     }
 
@@ -115,12 +111,15 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun themeSelectorShowsTheChoiceAndReportsClicks() {
-        show(state.copy(themeMode = ThemeMode.LIGHT))
-        scrollTo("Întunecat")
-        compose.onNodeWithText("Luminos").assertIsSelected()
-        compose.onNodeWithText("Întunecat").performClick()
-        assertEquals(ThemeMode.DARK, chosenTheme)
+    fun appearanceIsNoLongerOnTheDashboard() {
+        show()
+        // Propagation is now the last card: after it there is no ASPECT card and no theme buttons
+        scrollTo("PROPAGARE")
+        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("ASPECT").assertDoesNotExist()
+        compose.onNodeWithText("Sistem").assertDoesNotExist()
+        compose.onNodeWithText("Luminos").assertDoesNotExist()
+        compose.onNodeWithText("Întunecat").assertDoesNotExist()
     }
 
     @Test

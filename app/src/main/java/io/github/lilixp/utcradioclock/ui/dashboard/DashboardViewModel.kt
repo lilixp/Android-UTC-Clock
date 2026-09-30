@@ -38,8 +38,6 @@ class DashboardViewModel(
                 initialValue = toUiState(clock.current(), settings.themeMode.value, settings.station.value),
             )
 
-    fun setThemeMode(mode: ThemeMode) = settings.setThemeMode(mode)
-
     private fun toUiState(reading: ClockReading, themeMode: ThemeMode, station: StationIdentity): DashboardUiState {
         val (instant, zone) = reading
         val format = formatterFor(locale())

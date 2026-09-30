@@ -102,15 +102,16 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun themeModeChangeIsSavedAndShown() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun themeChosenInSettingsReachesTheDashboard() = runTest(mainDispatcher.dispatcher.scheduler) {
         val viewModel = createViewModel()
         subscribe(viewModel)
 
-        viewModel.setThemeMode(ThemeMode.DARK)
-        runCurrent()
-
-        assertEquals(ThemeMode.DARK, settings.themeMode.value)
-        assertEquals(ThemeMode.DARK, viewModel.uiState.value.themeMode)
+        // The theme is chosen in Settings; the dashboard state (which picks the app colors) follows it
+        for (mode in listOf(ThemeMode.DARK, ThemeMode.LIGHT, ThemeMode.SYSTEM)) {
+            settings.setThemeMode(mode)
+            runCurrent()
+            assertEquals(mode, viewModel.uiState.value.themeMode)
+        }
     }
 
     @Test
