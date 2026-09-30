@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="section_sun">SOARE</string>
+    <string name="sunrise">Răsărit: %1$s</string>
+    <string name="sunset">Apus: %1$s</string>
+    <string name="day_length">Durata zilei: %1$s</string>
+
+    <string name="section_location">LOCAȚIE</string>
+    <string name="latitude">Latitudine: %1$s</string>
+    <string name="longitude">Longitudine: %1$s</string>
+
+    <string name="section_propagation">PROPAGARE</string>
+    <string name="propagation_later">Funcția va fi disponibilă într-o fază ulterioară.</string>
+
+    <string name="section_appearance">ASPECT</string>
+    <string name="theme_system">Sistem</string>
+    <string name="theme_light">Luminos</string>
+    <string name="theme_dark">Întunecat</string>
+</resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">UTCRadioClock</string>
+
+    <string name="label_utc" translatable="false">UTC</string>
+    <string name="label_local" translatable="false">LOCAL</string>
+
+    <string name="section_sun">SUN</string>
+    <string name="sunrise">Sunrise: %1$s</string>
+    <string name="sunset">Sunset: %1$s</string>
+    <string name="day_length">Day length: %1$s</string>
+
+    <string name="section_location">LOCATION</string>
+    <string name="latitude">Latitude: %1$s</string>
+    <string name="longitude">Longitude: %1$s</string>
+    <string name="qth" translatable="false">QTH: %1$s</string>
+
+    <string name="section_propagation">PROPAGATION</string>
+    <string name="propagation_later">This feature will be available in a later phase.</string>
+
+    <string name="section_appearance">APPEARANCE</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <string name="not_available" translatable="false">—</string>
+</resources>
