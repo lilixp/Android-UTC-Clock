@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -22,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +41,8 @@ object DashboardTags {
     const val DATE = "utc_date"
     const val UTC_TIME = "utc_time"
     const val LOCAL_TIME = "local_time"
+    const val CALLSIGN = "callsign"
+    const val LOCATOR = "locator"
 }
 
 // Digits of equal width, so the time does not shift sideways as the seconds change
@@ -44,9 +50,22 @@ private const val TABULAR_DIGITS = "tnum"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(state: DashboardUiState, onThemeModeChange: (ThemeMode) -> Unit) {
+fun DashboardScreen(
+    state: DashboardUiState,
+    onOpenSettings: () -> Unit = {},
+    onThemeModeChange: (ThemeMode) -> Unit,
+) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.open_settings))
+                    }
+                },
+            )
+        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -54,12 +73,16 @@ fun DashboardScreen(state: DashboardUiState, onThemeModeChange: (ThemeMode) -> U
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text(
-                    text = state.utcDate,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.testTag(DashboardTags.DATE),
-                )
+                // The date on the left, the station (callsign and locator) discreetly on the right
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = state.utcDate,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).testTag(DashboardTags.DATE),
+                    )
+                    StationBadge(state.callsign, state.locator)
+                }
             }
             item { UtcCard(state) }
             item { LocalCard(state) }
@@ -87,6 +110,32 @@ fun DashboardScreen(state: DashboardUiState, onThemeModeChange: (ThemeMode) -> U
                     ThemeSelector(state.themeMode, onThemeModeChange)
                 }
             }
+        }
+    }
+}
+
+/** Callsign above locator, right-aligned; each is left out when empty. */
+@Composable
+private fun StationBadge(callsign: String?, locator: String?) {
+    Column(horizontalAlignment = Alignment.End) {
+        callsign?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                modifier = Modifier.testTag(DashboardTags.CALLSIGN),
+            )
+        }
+        locator?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.testTag(DashboardTags.LOCATOR),
+            )
         }
     }
 }
@@ -202,6 +251,8 @@ private val PreviewState = DashboardUiState(
     localTime = "18:42:31",
     localDate = null,
     timeZone = "Europe/Chisinau · UTC+03:00",
+    callsign = "ER1PL",
+    locator = "KN46dw",
 )
 
 @Preview(showBackground = true)

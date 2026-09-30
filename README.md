@@ -15,6 +15,15 @@ Un dashboard cu:
 - carduri pentru **Soare**, **Locație** și **Propagare**, cu `—` până vin fazele următoare;
 - alegerea temei: **Sistem / Luminos / Întunecat** (se păstrează după repornire).
 
+## Personalizare (după faza 1)
+
+- Numele afișat: **UTC Radio Clock** (package-ul și proiectul rămân `utcradioclock` / `UTCRadioClock`).
+- Ecranul **Setări** (iconița din dreapta sus): **indicativul** (implicit `ER1PL`; litere, cifre și
+  `/`, cel mult 15 caractere) și **locatorul Maidenhead** (implicit gol; cel mult 8 litere și cifre,
+  scris ca `KN46dw`). Se salvează automat, la fiecare modificare, și rămân după repornire.
+- Pe dashboard, indicativul și locatorul apar discret în dreapta datei; locatorul apare și la
+  **QTH** în cardul Locație. Un câmp gol nu se afișează.
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -50,14 +59,15 @@ UI (Compose)  →  ViewModel (StateFlow)  →  Repository  →  surse de date
 
 ```
 app/src/main/java/io/github/lilixp/utcradioclock/
-├── MainActivity.kt              ecranul, tema, bara de stare
+├── MainActivity.kt              ecranele (dashboard / setări), tema, bara de stare
 ├── AppContainer.kt              obiectele comune (injecție manuală, fără framework)
 ├── data/
 │   ├── time/                    TimeSource (ceasul telefonului), ClockRepository (un tic pe secundă)
-│   └── settings/                SettingsRepository (tema aleasă, în SharedPreferences)
-├── domain/model/                ClockReading, ThemeMode, SunInfo, StationLocation
+│   └── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
+├── domain/model/                ClockReading, ThemeMode, StationIdentity, SunInfo, StationLocation
 ├── ui/
 │   ├── dashboard/               DashboardScreen, DashboardViewModel, DashboardUiState
+│   ├── settings/                SettingsScreen, SettingsViewModel
 │   └── theme/                   culorile Material 3 (luminos și întunecat)
 └── util/                        TimeFormatter (texte pentru ore, date, fus orar)
 ```
@@ -67,8 +77,10 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   care are deja textele gata de afișat. Se oprește la 5 secunde după ce aplicația trece în fundal.
 - **SunInfo** și **StationLocation** sunt goale în faza 1; fazele următoare le vor completa
   din propriile lor repository-uri, fără să schimbe ecranul.
-- Nu există navigare, Hilt sau mai multe module: un singur ecran nu le cere încă.
-  Se adaugă când apar ecrane noi (setări, widget).
+- **Locatorul** ajunge pe ecran ca simplu text din DashboardViewModel; acum vine din Setări,
+  iar mai târziu ViewModel-ul îl poate lua din GPS fără ca ecranul să se schimbe.
+- Nu există bibliotecă de navigare, Hilt sau mai multe module: două ecrane nu le cer încă.
+  Se adaugă când apar mai multe ecrane (de ex. widget).
 
 ## Rulare
 
@@ -138,12 +150,16 @@ gradlew installDebug
 Teste:
 
 - `DashboardViewModelTest`: starea inițială, ticul la fiecare secundă, data locală după miezul
-  nopții, schimbarea temei, limba textelor (cu ceas virtual, fără așteptare reală);
+  nopții, schimbarea temei, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
 - `TimeFormatterTest`: formatul orelor, fusul orar cu ora de vară și de iarnă, valorile necunoscute;
-- `DashboardScreenTest` (Robolectric): titlul, data, cele două ceasuri, liniuțele, propagarea,
-  selectorul de temă;
-- `DashboardInstrumentedTest` (pe telefon): dashboard-ul și aplicația reală care pornește și
-  schimbă ora de la o secundă la alta.
+- `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
+- `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
+  locator, temă) și valorile implicite;
+- `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
+  iconița Setări, liniuțele, propagarea, selectorul de temă, fundalul luminos și întunecat;
+- `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, butonul Înapoi, tema întunecată;
+- `DashboardInstrumentedTest` (pe telefon): dashboard-ul, aplicația reală care pornește și
+  schimbă ora de la o secundă la alta, deschiderea și închiderea ecranului Setări.
 
 Robolectric imită Android 16 (API 36), cel mai nou pe care îl suportă complet
 (`app/src/test/resources/robolectric.properties`).

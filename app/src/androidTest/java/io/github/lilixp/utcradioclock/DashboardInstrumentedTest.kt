@@ -6,16 +6,19 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardUiState
+import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
-import androidx.compose.ui.semantics.SemanticsProperties
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
@@ -78,5 +81,15 @@ class MainActivityTest {
         Thread.sleep(2_000)
         compose.waitForIdle()
         assertNotEquals(first, utcText())
+    }
+
+    @Test
+    fun settingsOpenAndCloseFromTheTopBar() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithContentDescription(context.getString(R.string.open_settings)).performClick()
+        compose.onNodeWithTag(SettingsTags.CALLSIGN_FIELD).assertIsDisplayed()
+        compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).assertIsDisplayed()
+        compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+        compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()
     }
 }

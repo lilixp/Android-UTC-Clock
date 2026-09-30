@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
 import io.github.lilixp.utcradioclock.domain.model.ClockReading
+import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.StationLocation
 import io.github.lilixp.utcradioclock.domain.model.SunInfo
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
@@ -24,22 +25,22 @@ class DashboardViewModel(
 
     private var formatter = TimeFormatter(locale())
 
-    // Not known in phase 1; later phases will provide them from their own repositories
+    // Not known yet; later phases will provide them from their own repositories
     private val sun = SunInfo()
     private val location = StationLocation()
 
     val uiState: StateFlow<DashboardUiState> =
-        combine(clock.ticks(), settings.themeMode, ::toUiState)
+        combine(clock.ticks(), settings.themeMode, settings.station, ::toUiState)
             .stateIn(
                 scope = viewModelScope,
                 // Keeps ticking through a screen rotation, stops 5 s after the app goes to the background
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = toUiState(clock.current(), settings.themeMode.value),
+                initialValue = toUiState(clock.current(), settings.themeMode.value, settings.station.value),
             )
 
     fun setThemeMode(mode: ThemeMode) = settings.setThemeMode(mode)
 
-    private fun toUiState(reading: ClockReading, themeMode: ThemeMode): DashboardUiState {
+    private fun toUiState(reading: ClockReading, themeMode: ThemeMode, station: StationIdentity): DashboardUiState {
         val (instant, zone) = reading
         val format = formatterFor(locale())
         val utcDate = format.utcDate(instant)
@@ -50,12 +51,15 @@ class DashboardViewModel(
             localTime = format.localTime(instant, zone),
             localDate = localDate.takeIf { it != utcDate },
             timeZone = format.timeZone(instant, zone),
+            callsign = station.callsign.ifEmpty { null },
             sunrise = format.eventTime(sun.sunrise, zone),
             sunset = format.eventTime(sun.sunset, zone),
             dayLength = format.duration(sun.dayLength),
             latitude = location.latitude?.let { "%.4f°".format(Locale.ROOT, it) },
             longitude = location.longitude?.let { "%.4f°".format(Locale.ROOT, it) },
-            locator = location.locator,
+            // Entered in Settings for now; a locator computed from GPS can be chosen here later,
+            // the screen only ever receives the text
+            locator = station.locator.ifEmpty { null },
             themeMode = themeMode,
         )
     }

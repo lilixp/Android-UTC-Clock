@@ -48,9 +48,27 @@ class DashboardViewModelTest {
         assertNull(state.dayLength)
         assertNull(state.latitude)
         assertNull(state.longitude)
-        assertNull(state.locator)
+        assertEquals("ER1PL", state.callsign) // default callsign
+        assertNull(state.locator) // no locator until it is entered
         assertFalse(state.propagationAvailable)
         assertEquals(ThemeMode.SYSTEM, state.themeMode)
+    }
+
+    @Test
+    fun stationFromSettingsIsShownAndFollowsChanges() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+
+        settings.setCallsign("yo3abc")
+        settings.setLocator("kn46dw")
+        runCurrent()
+        assertEquals("YO3ABC", viewModel.uiState.value.callsign)
+        assertEquals("KN46dw", viewModel.uiState.value.locator)
+
+        settings.setCallsign("")
+        runCurrent()
+        assertNull(viewModel.uiState.value.callsign) // an empty callsign is not shown
+        assertEquals("15:42:31", viewModel.uiState.value.utcTime) // the clock is unaffected
     }
 
     @Test

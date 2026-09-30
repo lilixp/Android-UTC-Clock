@@ -13,11 +13,14 @@ data class DashboardUiState(
     /** Only when the local date differs from the UTC date (e.g. just after local midnight). */
     val localDate: String?,
     val timeZone: String,
+    /** From Settings; null when empty. */
+    val callsign: String? = null,
     val sunrise: String? = null,
     val sunset: String? = null,
     val dayLength: String? = null,
     val latitude: String? = null,
     val longitude: String? = null,
+    /** Maidenhead locator from Settings; null when empty. */
     val locator: String? = null,
     val propagationAvailable: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,

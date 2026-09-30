@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock.testing
 
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.time.TimeSource
+import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,10 +32,24 @@ class FakeTimeSource(
     override fun zone(): ZoneId = zone
 }
 
-class FakeSettingsRepository(initial: ThemeMode = ThemeMode.SYSTEM) : SettingsRepository {
+/** Settings in memory, with the same cleaning of callsign and locator as the real repository. */
+class FakeSettingsRepository(
+    initial: ThemeMode = ThemeMode.SYSTEM,
+    station: StationIdentity = StationIdentity(),
+) : SettingsRepository {
     override val themeMode = MutableStateFlow(initial)
+    override val station = MutableStateFlow(station)
+
     override fun setThemeMode(mode: ThemeMode) {
         themeMode.value = mode
+    }
+
+    override fun setCallsign(callsign: String) {
+        station.value = station.value.copy(callsign = StationIdentity.normalizeCallsign(callsign))
+    }
+
+    override fun setLocator(locator: String) {
+        station.value = station.value.copy(locator = StationIdentity.normalizeLocator(locator))
     }
 }
 

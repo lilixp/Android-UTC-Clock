@@ -4,11 +4,15 @@ import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -16,6 +20,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
+import io.github.lilixp.utcradioclock.ui.settings.SettingsScreen
+import io.github.lilixp.utcradioclock.ui.settings.SettingsViewModel
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 import java.util.Locale
 
@@ -29,10 +35,13 @@ class MainActivity : ComponentActivity() {
             initializer {
                 DashboardViewModel(container.clockRepository, container.settingsRepository) { Locale.getDefault() }
             }
+            initializer { SettingsViewModel(container.settingsRepository) }
         }
         setContent {
-            val viewModel: DashboardViewModel = viewModel(factory = factory)
-            val state by viewModel.uiState.collectAsStateWithLifecycle()
+            val dashboard: DashboardViewModel = viewModel(factory = factory)
+            val state by dashboard.uiState.collectAsStateWithLifecycle()
+            // Two screens only, so a flag is enough; a navigation library can come with more screens
+            var showSettings by rememberSaveable { mutableStateOf(false) }
             val darkTheme = when (state.themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -49,7 +58,23 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             UTCRadioClockTheme(darkTheme = darkTheme) {
-                DashboardScreen(state = state, onThemeModeChange = viewModel::setThemeMode)
+                if (showSettings) {
+                    val settings: SettingsViewModel = viewModel(factory = factory)
+                    val station by settings.station.collectAsStateWithLifecycle()
+                    BackHandler { showSettings = false }
+                    SettingsScreen(
+                        station = station,
+                        onCallsignChange = settings::setCallsign,
+                        onLocatorChange = settings::setLocator,
+                        onBack = { showSettings = false },
+                    )
+                } else {
+                    DashboardScreen(
+                        state = state,
+                        onOpenSettings = { showSettings = true },
+                        onThemeModeChange = dashboard::setThemeMode,
+                    )
+                }
             }
         }
     }

@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="open_settings">Setări</string>
+    <string name="back">Înapoi</string>
+    <string name="settings_title">Setări</string>
+    <string name="section_station">STAȚIE</string>
+    <string name="callsign">Indicativ</string>
+    <plurals name="callsign_hint">
+        <item quantity="one">Litere, cifre și /, cel mult %1$d caracter</item>
+        <item quantity="few">Litere, cifre și /, cel mult %1$d caractere</item>
+        <item quantity="other">Litere, cifre și /, cel mult %1$d de caractere</item>
+    </plurals>
+    <string name="locator">Locator Maidenhead</string>
+    <string name="locator_hint">De exemplu KN46dw: 4, 6 sau 8 caractere</string>
+    <string name="settings_saved_automatically">Modificările se salvează automat.</string>
 
     <string name="section_sun">SOARE</string>
     <string name="sunrise">Răsărit: %1$s</string>
