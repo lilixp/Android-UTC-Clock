@@ -1,7 +1,6 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
-import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.testing.FakeSettingsRepository
 import io.github.lilixp.utcradioclock.testing.FakeTimeSource
 import io.github.lilixp.utcradioclock.testing.MainDispatcherRule
@@ -12,7 +11,6 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -50,8 +48,6 @@ class DashboardViewModelTest {
         assertNull(state.longitude)
         assertEquals("ER1PL", state.callsign) // default callsign
         assertNull(state.locator) // no locator until it is entered
-        assertFalse(state.propagationAvailable)
-        assertEquals(ThemeMode.SYSTEM, state.themeMode)
     }
 
     @Test
@@ -99,19 +95,6 @@ class DashboardViewModelTest {
         assertEquals("00:00:00", state.localTime)
         assertEquals("30 septembrie 2026", state.utcDate)
         assertEquals("1 octombrie 2026", state.localDate)
-    }
-
-    @Test
-    fun themeChosenInSettingsReachesTheDashboard() = runTest(mainDispatcher.dispatcher.scheduler) {
-        val viewModel = createViewModel()
-        subscribe(viewModel)
-
-        // The theme is chosen in Settings; the dashboard state (which picks the app colors) follows it
-        for (mode in listOf(ThemeMode.DARK, ThemeMode.LIGHT, ThemeMode.SYSTEM)) {
-            settings.setThemeMode(mode)
-            runCurrent()
-            assertEquals(mode, viewModel.uiState.value.themeMode)
-        }
     }
 
     @Test

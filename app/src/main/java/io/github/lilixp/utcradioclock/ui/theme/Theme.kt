@@ -5,6 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 
 // A fixed palette (no wallpaper-based dynamic color): the clock looks the same on every phone.
 // Deep teal like a transceiver panel, with amber section labels, readable in daylight and at night.
@@ -49,6 +50,13 @@ private val DarkColors = darkColorScheme(
     outlineVariant = Color(0xFF3F484A),
     onSurfaceVariant = Color(0xFFBFC8CA),
 )
+
+/** Whether the app is dark for the chosen [ThemeMode]; SYSTEM follows the phone ([systemIsDark]). */
+fun ThemeMode.isDark(systemIsDark: Boolean): Boolean = when (this) {
+    ThemeMode.SYSTEM -> systemIsDark
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+}
 
 @Composable
 fun UTCRadioClockTheme(darkTheme: Boolean, content: @Composable () -> Unit) {

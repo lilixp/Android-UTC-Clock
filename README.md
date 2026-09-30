@@ -75,8 +75,13 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 ```
 
 - **ClockRepository** dă ora o dată pe secundă, aliniat la începutul secundei.
-- **DashboardViewModel** combină ora cu setările într-un singur `StateFlow<DashboardUiState>`,
-  care are deja textele gata de afișat. Se oprește la 5 secunde după ce aplicația trece în fundal.
+- **DashboardViewModel** combină ora cu indicativul și locatorul într-un singur
+  `StateFlow<DashboardUiState>`, care are deja textele gata de afișat. Ceasul merge doar cât
+  dashboard-ul e pe ecran (se oprește la 5 secunde după ce aplicația trece în fundal sau se deschid Setările).
+- **Tema** e o setare a întregii aplicații: MainActivity o ia din **SettingsViewModel**
+  (`ThemeMode.isDark` alege luminos sau întunecat), iar dashboard-ul nu se ocupă de ea.
+- **SettingsViewModel** doar citește și salvează prin **SettingsRepository**; curățarea valorilor
+  (indicativ, locator) e în **StationIdentity**, iar SharedPreferences doar în repository.
 - **SunInfo** și **StationLocation** sunt goale în faza 1; fazele următoare le vor completa
   din propriile lor repository-uri, fără să schimbe ecranul.
 - **Locatorul** ajunge pe ecran ca simplu text din DashboardViewModel; acum vine din Setări,
@@ -149,10 +154,14 @@ gradlew installDebug
 | `gradlew lint` | Android lint: `app/build/reports/lint-results-debug.html` |
 | `gradlew build` | tot ce e mai sus, fără testele de pe telefon |
 
-Teste:
+Teste pe PC (`gradlew testDebugUnitTest`, fără telefon):
 
 - `DashboardViewModelTest`: starea inițială, ticul la fiecare secundă, data locală după miezul
-  nopții, tema aleasă în Setări, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
+  nopții, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
+- `ThemeTest`: Sistem urmează telefonul, Luminos și Întunecat nu;
+- `MainActivityTest` (Robolectric, aplicația reală): pornirea cu valorile implicite, Dashboard →
+  Setări → Dashboard cu săgeata și cu butonul Înapoi al telefonului, tema întunecată și luminoasă
+  aplicată întregii aplicații și păstrată când activitatea e recreată (ca la rotire);
 - `TimeFormatterTest`: formatul orelor, fusul orar cu ora de vară și de iarnă, valorile necunoscute;
 - `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
 - `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
@@ -161,8 +170,13 @@ Teste:
   iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
 - `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
   STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
-- `DashboardInstrumentedTest` (pe telefon): dashboard-ul fără ASPECT, aplicația reală care pornește
-  și schimbă ora de la o secundă la alta, ecranul Setări cu ASPECT, deschis și închis.
+
+Teste care au nevoie de telefon sau emulator (`gradlew connectedDebugAndroidTest`), în
+`DashboardInstrumentedTest.kt`:
+
+- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT;
+- `AppInstrumentedTest`: aplicația reală care pornește și schimbă ora de la o secundă la alta,
+  ecranul Setări cu ASPECT, deschis și închis.
 
 Robolectric imită Android 16 (API 36), cel mai nou pe care îl suportă complet
 (`app/src/test/resources/robolectric.properties`).

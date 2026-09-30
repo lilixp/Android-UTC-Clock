@@ -1,7 +1,5 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
-import io.github.lilixp.utcradioclock.domain.model.ThemeMode
-
 /**
  * Everything the dashboard shows, already as text. A null value means "not known yet" and is shown
  * as a dash; sun, location and propagation are filled in by later phases.
@@ -22,6 +20,4 @@ data class DashboardUiState(
     val longitude: String? = null,
     /** Maidenhead locator from Settings; null when empty. */
     val locator: String? = null,
-    val propagationAvailable: Boolean = false,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )

@@ -66,9 +66,9 @@ class DashboardInstrumentedTest {
     }
 }
 
-/** The real app starts and ticks: the UTC time is on screen and changes within two seconds. */
+/** The real app on the phone: it starts and ticks, and Settings opens and closes. */
 @RunWith(AndroidJUnit4::class)
-class MainActivityTest {
+class AppInstrumentedTest {
 
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()

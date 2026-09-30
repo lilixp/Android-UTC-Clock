@@ -8,7 +8,6 @@ import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.StationLocation
 import io.github.lilixp.utcradioclock.domain.model.SunInfo
-import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.util.TimeFormatter
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,15 +29,15 @@ class DashboardViewModel(
     private val location = StationLocation()
 
     val uiState: StateFlow<DashboardUiState> =
-        combine(clock.ticks(), settings.themeMode, settings.station, ::toUiState)
+        combine(clock.ticks(), settings.station, ::toUiState)
             .stateIn(
                 scope = viewModelScope,
-                // Keeps ticking through a screen rotation, stops 5 s after the app goes to the background
+                // Keeps ticking through a screen rotation, stops 5 s after the dashboard is no longer shown
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = toUiState(clock.current(), settings.themeMode.value, settings.station.value),
+                initialValue = toUiState(clock.current(), settings.station.value),
             )
 
-    private fun toUiState(reading: ClockReading, themeMode: ThemeMode, station: StationIdentity): DashboardUiState {
+    private fun toUiState(reading: ClockReading, station: StationIdentity): DashboardUiState {
         val (instant, zone) = reading
         val format = formatterFor(locale())
         val utcDate = format.utcDate(instant)
@@ -58,7 +57,6 @@ class DashboardViewModel(
             // Entered in Settings for now; a locator computed from GPS can be chosen here later,
             // the screen only ever receives the text
             locator = station.locator.ifEmpty { null },
-            themeMode = themeMode,
         )
     }
 
