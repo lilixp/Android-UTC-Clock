@@ -5,14 +5,30 @@ locația (locator Maidenhead), activitatea solară și geomagnetică și condiț
 
 Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e pe branch-ul `main`).
 
-## Faza 1 (acum)
+## Stare (30 septembrie 2026)
+
+| Faza | Ce | Commit |
+|------|----|--------|
+| 1 | Proiectul, dashboard-ul, tema Sistem / Luminos / Întunecat | `e41fd47` |
+| – | Numele „UTC Radio Clock”, indicativ și locator în Setări | `03ebc26` |
+| – | Tema mutată în Setări (secțiunea ASPECT) | `c675c4c` |
+| – | Audit și curățenie | `6f0293f` |
+| 2 | UTC și ora locală (`TimeProvider`, `java.time.Clock`) | `98c0d8a` |
+| 3 | Soarele: răsărit, apus, amiază solară, durata zilei, crepuscul civil | `6a6aa1e` |
+
+Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
+Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
+înainte de commit; push-ul pe GitHub îl face Lilian din Android Studio.
+
+## Faza 1
 
 Un dashboard cu:
 
 - data (UTC) și ora **UTC**, cel mai vizibil element;
 - ora **locală**, cu fusul orar și decalajul față de UTC (ex. `Europe/Chisinau · UTC+03:00`);
   data locală apare sub ea doar când diferă de cea UTC (după miezul nopții local);
-- carduri pentru **Soare**, **Locație** și **Propagare**, cu `—` până vin fazele următoare;
+- carduri pentru **Soare**, **Locație** și **Propagare** (Soarele funcționează din faza 3;
+  Locație și Propagare au încă `—` sau un mesaj până vin fazele lor);
 - alegerea temei: **Sistem / Luminos / Întunecat** (se păstrează după repornire); acum e în
   ecranul Setări, secțiunea **ASPECT**.
 

@@ -1,0 +1,59 @@
+# Observații – UTC Radio Clock (versiunea 2.0)
+
+Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fazelor e în
+[README.md](README.md). Actualizat: 30 septembrie 2026, după faza 3 (`6a6aa1e`).
+
+## Reguli de lucru
+
+- O fază = un singur commit, cu mesajul cerut de Lilian. Fără push: îl face Lilian din Android Studio.
+- Înainte de commit, pe PC: build Debug, build Release, toate testele, lint („No issues found”).
+- După fiecare fază: raport, apoi oprire; faza următoare începe doar la cererea lui Lilian.
+- Pe telefon (S24+, Wi-Fi debugging): instalare peste versiunea existentă (`adb install -r`), ca să
+  rămână setările; testele instrumentate **șterg setările** (dezinstalează aplicația), deci se
+  rulează doar când e nevoie și setările se salvează înainte și se pun la loc după.
+
+## Decizii luate
+
+| Data | Decizie |
+|------|---------|
+| 30.09.2026 | Setările rămân în **SharedPreferences** (fără DataStore), prin `SettingsRepository`. |
+| 30.09.2026 | Ecran **Setări** separat (iconița din dreapta sus); navigare simplă cu un flag, fără bibliotecă, cât sunt doar două ecrane. |
+| 30.09.2026 | Tema (ASPECT) mutată din dashboard în Setări; e o setare a întregii aplicații, citită de MainActivity din `SettingsViewModel`. |
+| 30.09.2026 | Butoanele de temă fără bifă: cu textul mare al telefonului, bifa tăia „Întunecat”. |
+| 30.09.2026 | Indicativ: litere, cifre și `/`, cel mult 15 caractere, implicit ER1PL. Locator: cel mult 8 litere și cifre, scris ca `KN46dw`, implicit gol. Se salvează automat. |
+| 30.09.2026 | Ceasul: o singură sursă de timp, `TimeProvider` (`Clock.systemUTC()` + fusul telefonului, cerut la fiecare secundă); ticker aliniat la secundă, doar cât dashboard-ul e vizibil. |
+| 30.09.2026 | Soarele: poziția = centrul locatorului Maidenhead; algoritm NOAA offline; orele rotunjite la minut; recalculare doar la zi nouă, fus nou sau locator nou (verificate o dată pe minut). |
+| 30.09.2026 | Referințele pentru testele solare sunt momentele exacte calculate separat pe PC (bisecție pe formulele NOAA); biblioteca `astral` s-a dovedit mai puțin exactă (1¾ min la 65° N). |
+| 30.09.2026 | Robolectric imită API 36 (cel mai nou suportat) și are nevoie de `--add-opens` pe JDK-ul nou; e documentat în `app/build.gradle.kts`. |
+
+## De verificat (încă nevăzut pe telefon)
+
+- **Schimbarea fusului orar** al telefonului cu aplicația deschisă: acoperită de teste pe PC, dar
+  nu încercată pe telefon (e o setare a sistemului; o face Lilian, dacă vrea).
+- **Tema după o repornire completă** a aplicației (proces nou): verificată pe PC din două părți
+  (reîncărcarea setării + aplicarea la recrearea activității) și o dată pe telefon în faza ASPECT.
+- **Trecerea la ora de iarnă** pe 25 octombrie 2026 (04:00 → 03:00 la Chișinău): acoperită de
+  teste; de privit ceasul și cardul SOARE în ziua aceea.
+- **Miezul nopții local**: data locală sub ora LOCAL și recalcularea Soarelui pentru ziua nouă.
+
+## Propuneri mici (nefăcute, așteaptă decizia lui Lilian)
+
+- Cardul **LOCAȚIE** arată încă „Latitudine: —” și „Longitudine: —”, deși aplicația are poziția din
+  locator (KN46dw → 46,9375° N, 28,2917° E). Ar fi o modificare mică să le afișeze.
+- **Semnarea versiunii Release**: acum `app-release-unsigned.apk`; pentru distribuire (Google Play
+  sau APK dat altora) trebuie o cheie de semnare, păstrată în afara depozitului.
+
+## Ce urmează (fazele următoare, în ordinea din cerințele inițiale)
+
+1. **GPS / locație**: permisiunea de locație, poziția din GPS în `PositionRepository` (în locul
+   centrului locatorului sau alături de el), locatorul calculat automat din poziție, cardul LOCAȚIE
+   cu latitudine și longitudine. Ecranele nu trebuie refăcute.
+2. **Activitatea solară**: flux solar (SFI), indice solar — date online, cu cache și fără să blocheze
+   ecranul când nu e Internet.
+3. **Activitatea geomagnetică**: Kp, A-index.
+4. **Propagarea HF** pe benzi (cardul PROPAGARE).
+5. **Widget** pe ecranul principal.
+6. **Notificări**.
+
+Pentru fazele cu Internet va fi nevoie de: permisiunea `INTERNET`, un client HTTP (decizie de luat:
+`HttpURLConnection` din Android sau o bibliotecă), cache pentru date vechi și teste fără rețea.
