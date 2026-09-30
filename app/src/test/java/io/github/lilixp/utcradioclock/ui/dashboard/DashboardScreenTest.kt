@@ -85,12 +85,106 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun unknownValuesAreShownAsDashes() {
+    fun unknownLocationValuesAreShownAsDashes() {
         show()
-        for (text in listOf("Răsărit: —", "Apus: —", "Durata zilei: —", "Latitudine: —", "Longitudine: —", "QTH: —")) {
+        for (text in listOf("Latitudine: —", "Longitudine: —", "QTH: —")) {
             scrollTo(text)
             compose.onNodeWithText(text).assertIsDisplayed()
         }
+    }
+
+    // ---- The SUN card ----
+
+    private val sunKn46dw = SunUiState(
+        status = SunStatus.NORMAL,
+        sunrise = "07:04",
+        sunset = "18:49",
+        solarNoon = "12:57",
+        dayLength = "11h 44m",
+        civilDawn = "06:33",
+        civilDusk = "19:19",
+        locator = "KN46dw",
+    )
+
+    private fun assertSunLines(vararg lines: String) {
+        for (text in lines) {
+            scrollTo(text)
+            compose.onNodeWithText(text).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun sunCardWithData() {
+        show(state.copy(sun = sunKn46dw, locator = "KN46dw"))
+        assertSunLines(
+            "SOARE",
+            "Răsărit: 07:04",
+            "Apus: 18:49",
+            "Amiază solară: 12:57",
+            "Durata zilei: 11h 44m",
+            "Crepuscul civil: 06:33 – 19:19",
+        )
+        compose.onNodeWithText("Locația nu este disponibilă.").assertDoesNotExist()
+    }
+
+    @Test
+    fun sunCardWithoutLocator_noInventedTimes() {
+        show(state.copy(sun = SunUiState(SunStatus.NO_LOCATOR)))
+        assertSunLines("Locația nu este disponibilă.", "Introdu locatorul Maidenhead în Setări.")
+        compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Apus", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Amiază solară", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun sunCardWithInvalidLocator() {
+        show(state.copy(sun = SunUiState(SunStatus.INVALID_LOCATOR, locator = "KN4"), locator = "KN4"))
+        assertSunLines("Locația nu este disponibilă.", "Locatorul „KN4” nu este valid.")
+        compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun sunCardOnAPolarDay() {
+        val sun = SunUiState(SunStatus.MIDNIGHT_SUN, solarNoon = "13:02", dayLength = "24h 00m", locator = "JQ78")
+        show(state.copy(sun = sun))
+        assertSunLines("Soarele nu apune în această zi.", "Amiază solară: 13:02", "Durata zilei: 24h 00m")
+        compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Crepuscul", substring = true).assertDoesNotExist() // no twilight to show
+    }
+
+    @Test
+    fun sunCardOnAWhiteNight_twilightMissingIsADash() {
+        show(state.copy(sun = sunKn46dw.copy(civilDawn = null, civilDusk = null)))
+        assertSunLines("Răsărit: 07:04")
+        compose.onNodeWithText("Crepuscul", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun sunCardInEnglish() {
+        show(state.copy(sun = sunKn46dw))
+        assertSunLines(
+            "SUN",
+            "Sunrise: 07:04",
+            "Sunset: 18:49",
+            "Solar noon: 12:57",
+            "Day length: 11h 44m",
+            "Civil twilight: 06:33 – 19:19",
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun sunCardWithoutLocatorInEnglish() {
+        show(state.copy(sun = SunUiState(SunStatus.NO_LOCATOR)))
+        assertSunLines("Location not available.", "Enter your Maidenhead locator in Settings.")
+    }
+
+    @Test
+    fun sunCardInTheDarkTheme() {
+        show(state.copy(sun = sunKn46dw), dark = true)
+        assertSunLines("Răsărit: 07:04", "Durata zilei: 11h 44m")
+        assertTrue(background.luminance() < 0.1f)
     }
 
     @Test
@@ -102,10 +196,8 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun knownValuesReplaceTheDashes() {
-        show(state.copy(sunrise = "06:58", locator = "KN46dw"))
-        scrollTo("Răsărit: 06:58")
-        compose.onNodeWithText("Răsărit: 06:58").assertIsDisplayed()
+    fun locatorIsShownAtQth() {
+        show(state.copy(locator = "KN46dw"))
         scrollTo("QTH: KN46dw")
         compose.onNodeWithText("QTH: KN46dw").assertIsDisplayed()
     }

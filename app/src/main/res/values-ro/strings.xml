@@ -18,6 +18,13 @@
     <string name="sunrise">Răsărit: %1$s</string>
     <string name="sunset">Apus: %1$s</string>
     <string name="day_length">Durata zilei: %1$s</string>
+    <string name="solar_noon">Amiază solară: %1$s</string>
+    <string name="civil_twilight">Crepuscul civil: %1$s – %2$s</string>
+    <string name="sun_no_location">Locația nu este disponibilă.</string>
+    <string name="sun_enter_locator">Introdu locatorul Maidenhead în Setări.</string>
+    <string name="sun_invalid_locator">Locatorul „%1$s” nu este valid.</string>
+    <string name="sun_midnight_sun">Soarele nu apune în această zi.</string>
+    <string name="sun_polar_night">Soarele nu răsare în această zi.</string>
 
     <string name="section_location">LOCAȚIE</string>
     <string name="latitude">Latitudine: %1$s</string>

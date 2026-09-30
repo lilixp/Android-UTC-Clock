@@ -1,6 +1,9 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
+import io.github.lilixp.utcradioclock.data.location.PositionRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
+import io.github.lilixp.utcradioclock.domain.model.GeoPosition
+import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.testing.FakeSettingsRepository
 import io.github.lilixp.utcradioclock.testing.MainDispatcherRule
 import io.github.lilixp.utcradioclock.testing.START
@@ -20,6 +23,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 
@@ -34,12 +38,24 @@ class DashboardViewModelTest {
     private val zone = TestZone() // Europe/Chisinau unless a test changes it
     private lateinit var clock: VirtualClock
 
+    /** The real solar calculation, counting how often it runs and for which day, zone and position. */
+    private val solarCalls = mutableListOf<Triple<LocalDate, ZoneId, GeoPosition>>()
+    private val countingSolar = { date: LocalDate, zone: ZoneId, position: GeoPosition ->
+        solarCalls += Triple(date, zone, position)
+        SolarCalculator.calculate(date, zone, position)
+    }
+
     private fun TestScope.createViewModel(
         start: Instant = START,
         locale: Locale = Locale.forLanguageTag("ro"),
     ): DashboardViewModel {
         clock = VirtualClock(testScheduler, start)
-        return DashboardViewModel(ClockRepository(timeProvider(clock, zone)), settings) { locale }
+        return DashboardViewModel(
+            clock = ClockRepository(timeProvider(clock, zone)),
+            settings = settings,
+            positions = PositionRepository(settings),
+            solar = countingSolar,
+        ) { locale }
     }
 
     /** Collects uiState as the screen does, so the clock ticks. */
@@ -60,13 +76,113 @@ class DashboardViewModelTest {
         assertEquals("18:42:31", state.localTime) // Chișinău, summer time: UTC+3
         assertNull(state.localDate) // same day in UTC and locally
         assertEquals("Europe/Chisinau · UTC+03:00", state.timeZone)
-        assertNull(state.sunrise)
-        assertNull(state.sunset)
-        assertNull(state.dayLength)
+        assertEquals(SunUiState(SunStatus.NO_LOCATOR), state.sun) // no locator, so no position
         assertNull(state.latitude)
         assertNull(state.longitude)
         assertEquals("ER1PL", state.callsign) // default callsign
         assertNull(state.locator) // no locator until it is entered
+        assertTrue(solarCalls.isEmpty()) // nothing is calculated without a position
+    }
+
+    // ---- The SUN card ----
+
+    @Test
+    fun sunFromTheLocatorInSettings() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val sun = createViewModel().uiState.value.sun
+
+        // 30 September 2026 at the centre of KN46dw, in the phone's zone (Chișinău, UTC+3); exact values
+        // 07:03:59, 18:48:54, 12:56:51, 11:44:55, 06:33:41, 19:19:09, rounded to the minute
+        assertEquals(SunStatus.NORMAL, sun.status)
+        assertEquals("07:04", sun.sunrise)
+        assertEquals("18:49", sun.sunset)
+        assertEquals("12:57", sun.solarNoon)
+        assertEquals("11h 45m", sun.dayLength)
+        assertEquals("06:34", sun.civilDawn)
+        assertEquals("19:19", sun.civilDusk)
+        assertEquals(GeoPosition(46.9375, 28.291667).latitude, solarCalls.single().third.latitude, 1e-6)
+    }
+
+    @Test
+    fun otherLocatorOtherSun() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val chisinau = viewModel.uiState.value.sun
+
+        settings.setLocator("IO91wm") // London, while the phone stays in Chișinău time
+        runCurrent()
+        val london = viewModel.uiState.value.sun
+        assertEquals(SunStatus.NORMAL, london.status)
+        assertTrue(london.sunrise != chisinau.sunrise && london.sunset != chisinau.sunset)
+        assertEquals("08:59", london.sunrise) // 06:59 in London (UTC+1) = 08:59 in the phone's zone (UTC+3)
+    }
+
+    @Test
+    fun invalidLocator_noSunData() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN4") // saved by Settings (letters and digits) but not a Maidenhead locator
+        val sun = createViewModel().uiState.value.sun
+        assertEquals(SunUiState(SunStatus.INVALID_LOCATOR, locator = "KN4"), sun)
+        assertTrue(solarCalls.isEmpty())
+    }
+
+    @Test
+    fun locatorRemoved_sunDataGoes() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        settings.setLocator("")
+        runCurrent()
+        assertEquals(SunUiState(SunStatus.NO_LOCATOR), viewModel.uiState.value.sun)
+    }
+
+    @Test
+    fun sunIsNotRecalculatedEverySecond() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        settings.setCallsign("YO3ABC") // not a reason to recalculate either
+
+        advance(Duration.ofHours(2)) // 7200 clock ticks
+        assertEquals("17:42:31", viewModel.uiState.value.utcTime)
+        assertEquals(1, solarCalls.size)
+    }
+
+    @Test
+    fun sunIsRecalculatedForTheNewLocalDay() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel() // 18:42:31 local on 30 September
+        subscribe(viewModel)
+        val before = viewModel.uiState.value.sun
+
+        advance(Duration.ofHours(5).plusMinutes(18)) // 00:00:31 local on 1 October
+        assertEquals(listOf(LocalDate.parse("2026-09-30"), LocalDate.parse("2026-10-01")), solarCalls.map { it.first })
+        val after = viewModel.uiState.value.sun
+        assertTrue("the days are getting shorter", after.sunrise!! > before.sunrise!!)
+    }
+
+    @Test
+    fun sunIsRecalculatedForANewTimeZone_andShownInIt() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        assertEquals("07:04", viewModel.uiState.value.sun.sunrise)
+
+        zone.zone = ZoneId.of("UTC") // the user sets the phone to UTC: same place, times shown in UTC
+        advance(Duration.ofMinutes(1)) // the day and zone are looked at once a minute
+        assertEquals("04:04", viewModel.uiState.value.sun.sunrise)
+        assertEquals(2, solarCalls.size)
+        assertEquals(ZoneId.of("UTC"), solarCalls.last().second)
+    }
+
+    @Test
+    fun summerAndWinterTimeInTheSunTimes() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        // 21 December: winter time in Chișinău (UTC+2), local times still right
+        val sun = createViewModel(start = Instant.parse("2026-12-21T10:00:00Z")).uiState.value.sun
+        assertEquals("07:49", sun.sunrise) // exact 07:49:21
+        assertEquals("16:20", sun.sunset) // exact 16:20:22
+        assertEquals("8h 31m", sun.dayLength) // exact 8:31:01
     }
 
     @Test

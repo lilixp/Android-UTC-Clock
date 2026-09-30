@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertTextEquals
 import androidx.lifecycle.ViewModelProvider
 import io.github.lilixp.utcradioclock.testing.FixedTimeApplication
@@ -74,6 +75,24 @@ class MainActivityTest {
         // The ViewModel (and the one ticker it shares) survives: no second clock is started
         assertSame(before, dashboardViewModel())
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31")
+    }
+
+    @Test
+    fun sunCardFollowsTheLocatorEnteredInSettings() {
+        val list = compose.onNode(hasScrollAction())
+        list.performScrollToNode(hasText("Locația nu este disponibilă."))
+        compose.onNodeWithText("Locația nu este disponibilă.").assertIsDisplayed() // no locator yet
+
+        openSettings()
+        compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
+        compose.onNodeWithContentDescription("Înapoi").performClick()
+
+        // 30 September 2026, KN46dw, the phone's zone (Chișinău, UTC+3)
+        for (line in listOf("Răsărit: 07:04", "Apus: 18:49", "Amiază solară: 12:57", "Durata zilei: 11h 45m")) {
+            compose.onNode(hasScrollAction()).performScrollToNode(hasText(line))
+            compose.onNodeWithText(line).assertIsDisplayed()
+        }
+        compose.onNodeWithText("Locația nu este disponibilă.").assertDoesNotExist()
     }
 
     @Test

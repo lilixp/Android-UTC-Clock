@@ -55,9 +55,13 @@ class DashboardInstrumentedTest {
         }
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_TIME).assertTextEquals("18:42:31")
-        val sunrise = context.getString(R.string.sunrise, dash)
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(sunrise))
-        compose.onNodeWithText(sunrise).assertIsDisplayed()
+        // No locator in this state: the SUN card says so instead of showing times
+        val noLocation = context.getString(R.string.sun_no_location)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(noLocation))
+        compose.onNodeWithText(noLocation).assertIsDisplayed()
+        val latitude = context.getString(R.string.latitude, dash)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(latitude))
+        compose.onNodeWithText(latitude).assertIsDisplayed()
         val propagation = context.getString(R.string.propagation_later)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(propagation))
         compose.onNodeWithText(propagation).assertIsDisplayed()

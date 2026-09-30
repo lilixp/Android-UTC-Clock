@@ -33,7 +33,11 @@ class MainActivity : ComponentActivity() {
         val container = (application as RadioClockApplication).container
         val factory = viewModelFactory {
             initializer {
-                DashboardViewModel(container.clockRepository, container.settingsRepository) { Locale.getDefault() }
+                DashboardViewModel(
+                    clock = container.clockRepository,
+                    settings = container.settingsRepository,
+                    positions = container.positionRepository,
+                ) { Locale.getDefault() }
             }
             initializer { SettingsViewModel(container.settingsRepository) }
         }

@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /** Turns times into the texts shown on screen. Clock times are always 24-hour, as used on the air. */
@@ -30,10 +31,18 @@ class TimeFormatter(val locale: Locale) {
         return if (zone is ZoneOffset) offsetText else "${zone.id} · $offsetText"
     }
 
-    /** Local time of an event (sunrise, sunset), or null when it is not known. */
-    fun eventTime(instant: Instant?, zone: ZoneId): String? = instant?.let { shortTimeFormat.format(it.atZone(zone)) }
+    /**
+     * Local time of an event (sunrise, sunset) rounded to the nearest minute, as sunrise tables do
+     * (06:58:31 → 06:59), or null when it does not happen.
+     */
+    fun eventTime(instant: Instant?, zone: ZoneId): String? =
+        instant?.let { shortTimeFormat.format(it.roundedToMinute().atZone(zone)) }
 
-    /** E.g. "11:52" for 11 hours 52 minutes, or null when it is not known. */
-    fun duration(duration: Duration?): String? =
-        duration?.let { "%d:%02d".format(Locale.ROOT, it.toHours(), it.toMinutes() % 60) }
+    /** E.g. "11h 52m" (rounded to the nearest minute), or null when it is not known. */
+    fun duration(duration: Duration?): String? = duration?.let {
+        val minutes = (it.seconds + 30).floorDiv(60)
+        "%dh %02dm".format(Locale.ROOT, minutes / 60, minutes % 60)
+    }
+
+    private fun Instant.roundedToMinute(): Instant = plusSeconds(30).truncatedTo(ChronoUnit.MINUTES)
 }

@@ -22,6 +22,13 @@
     <string name="sunrise">Sunrise: %1$s</string>
     <string name="sunset">Sunset: %1$s</string>
     <string name="day_length">Day length: %1$s</string>
+    <string name="solar_noon">Solar noon: %1$s</string>
+    <string name="civil_twilight">Civil twilight: %1$s – %2$s</string>
+    <string name="sun_no_location">Location not available.</string>
+    <string name="sun_enter_locator">Enter your Maidenhead locator in Settings.</string>
+    <string name="sun_invalid_locator">The locator “%1$s” is not valid.</string>
+    <string name="sun_midnight_sun">The Sun does not set on this day.</string>
+    <string name="sun_polar_night">The Sun does not rise on this day.</string>
 
     <string name="section_location">LOCATION</string>
     <string name="latitude">Latitude: %1$s</string>

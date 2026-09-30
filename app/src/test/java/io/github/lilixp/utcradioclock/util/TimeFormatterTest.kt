@@ -55,8 +55,18 @@ class TimeFormatterTest {
     }
 
     @Test
-    fun eventTimeAndDuration() {
-        assertEquals("10:05", formatter.eventTime(winter, chisinau))
-        assertEquals("11:52", formatter.duration(Duration.ofHours(11).plusMinutes(52)))
+    fun eventTimesAreRoundedToTheNearestMinute() {
+        assertEquals("10:05", formatter.eventTime(winter, chisinau)) // 10:05:09
+        assertEquals("10:06", formatter.eventTime(Instant.parse("2026-01-15T08:05:30Z"), chisinau))
+        assertEquals("00:00", formatter.eventTime(Instant.parse("2026-01-15T21:59:45Z"), chisinau)) // into the next day
+    }
+
+    @Test
+    fun dayLengthInHoursAndMinutes() {
+        assertEquals("11h 52m", formatter.duration(Duration.ofHours(11).plusMinutes(52)))
+        assertEquals("11h 44m", formatter.duration(Duration.parse("PT11H44M23S")))
+        assertEquals("8h 31m", formatter.duration(Duration.parse("PT8H30M30S")))
+        assertEquals("24h 00m", formatter.duration(Duration.ofHours(24)))
+        assertEquals("0h 00m", formatter.duration(Duration.ZERO))
     }
 }

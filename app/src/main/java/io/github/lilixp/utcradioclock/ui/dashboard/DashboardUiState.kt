@@ -2,7 +2,7 @@ package io.github.lilixp.utcradioclock.ui.dashboard
 
 /**
  * Everything the dashboard shows, already as text. A null value means "not known yet" and is shown
- * as a dash; sun, location and propagation are filled in by later phases.
+ * as a dash; location and propagation are filled in by later phases.
  */
 data class DashboardUiState(
     val utcDate: String,
@@ -13,11 +13,43 @@ data class DashboardUiState(
     val timeZone: String,
     /** From Settings; null when empty. */
     val callsign: String? = null,
-    val sunrise: String? = null,
-    val sunset: String? = null,
-    val dayLength: String? = null,
+    val sun: SunUiState = SunUiState(),
     val latitude: String? = null,
     val longitude: String? = null,
     /** Maidenhead locator from Settings; null when empty. */
+    val locator: String? = null,
+)
+
+/** What the SUN card shows. */
+enum class SunStatus {
+    /** No locator in Settings: no position, so no solar data. */
+    NO_LOCATOR,
+
+    /** A locator that is not a valid Maidenhead locator: no position, so no solar data. */
+    INVALID_LOCATOR,
+
+    /** An ordinary day with sunrise and sunset. */
+    NORMAL,
+
+    /** The Sun does not set on this day. */
+    MIDNIGHT_SUN,
+
+    /** The Sun does not rise on this day. */
+    POLAR_NIGHT,
+}
+
+/**
+ * The SUN card, as text in local time (HH:mm). Every time is null when that event does not happen on
+ * the day (e.g. no civil twilight on a white night); nothing is ever made up.
+ */
+data class SunUiState(
+    val status: SunStatus = SunStatus.NO_LOCATOR,
+    val sunrise: String? = null,
+    val sunset: String? = null,
+    val solarNoon: String? = null,
+    val dayLength: String? = null,
+    val civilDawn: String? = null,
+    val civilDusk: String? = null,
+    /** The locator as entered, to say which one is not valid. */
     val locator: String? = null,
 )

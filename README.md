@@ -35,6 +35,24 @@ Un dashboard cu:
   vară/iarnă vine din baza de fusuri orare a telefonului (ex. Chișinău: UTC+3 → UTC+2).
 - Data locală apare sub ora locală doar când diferă de data UTC (de ex. după miezul nopții local).
 
+## Faza 3: Soarele
+
+Cardul **SOARE** arată, în ora locală a telefonului, rotunjite la minut:
+**răsărit, apus, amiaza solară, durata zilei** și **crepusculul civil** (dimineața – seara).
+
+- **Poziția** vine din locatorul Maidenhead din Setări: centrul pătratului lui (KN46dw →
+  46,9375° N, 28,2917° E; cu 6 caractere, cel mult ~3 km de stație). Nimic nu e fixat pe KN46dw.
+- **Fără locator** sau cu un locator greșit, cardul spune „Locația nu este disponibilă.” și ce e de
+  făcut; nu arată nicio oră inventată.
+- **Calculul** e offline (fără Internet, fără GPS), cu algoritmul NOAA (Meeus): răsărit/apus când
+  marginea de sus a Soarelui e la orizont (−0,833°, cu refracția), crepuscul civil la −6°. Precizie
+  de ordinul unui minut între cercurile polare.
+- **Zile polare:** când Soarele nu apune sau nu răsare deloc, cardul o spune în loc de ore. În
+  „nopțile albe” (Soarele nu coboară 6° sub orizont) crepusculul civil lipsește; în nopțile albe din
+  nord, apusul poate cădea după miezul nopții local și e arătat ca atare.
+- **Recalculare** doar când se schimbă ziua locală, fusul orar sau locatorul (verificate o dată pe
+  minut, separat de ceasul de o secundă), nu la fiecare secundă.
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -73,9 +91,13 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 ├── MainActivity.kt              ecranele (dashboard / setări), tema, bara de stare
 ├── AppContainer.kt              obiectele comune (injecție manuală, fără framework)
 ├── data/
-│   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă)
-│   └── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
-├── domain/model/                ClockReading, ThemeMode, StationIdentity, SunInfo, StationLocation
+│   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă, ziua locală)
+│   ├── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
+│   └── location/                PositionRepository (poziția stației: acum din locator, mai târziu GPS)
+├── domain/
+│   ├── model/                   ClockReading, LocalDay, ThemeMode, StationIdentity, GeoPosition, SolarDay
+│   ├── location/                Maidenhead (locator → latitudine/longitudine)
+│   └── solar/                   SolarCalculator (NOAA: răsărit, apus, amiază solară, crepuscul civil)
 ├── ui/
 │   ├── dashboard/               DashboardScreen, DashboardViewModel, DashboardUiState
 │   ├── settings/                SettingsScreen, SettingsViewModel
@@ -99,8 +121,11 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   (`ThemeMode.isDark` alege luminos sau întunecat), iar dashboard-ul nu se ocupă de ea.
 - **SettingsViewModel** doar citește și salvează prin **SettingsRepository**; curățarea valorilor
   (indicativ, locator) e în **StationIdentity**, iar SharedPreferences doar în repository.
-- **SunInfo** și **StationLocation** sunt goale în faza 1; fazele următoare le vor completa
-  din propriile lor repository-uri, fără să schimbe ecranul.
+- **Soarele:** `Maidenhead` și `SolarCalculator` sunt cod pur, fără Android și fără ceas, testate
+  separat. **PositionRepository** transformă locatorul din Setări în poziție; o sursă GPS îl poate
+  înlocui mai târziu fără să se schimbe restul. **DashboardViewModel** cere calculul doar când se
+  schimbă ziua locală, fusul sau poziția (`ClockRepository.localDays()`, verificat o dată pe minut),
+  păstrează ultimul rezultat și trimite ecranului doar texte.
 - **Locatorul** ajunge pe ecran ca simplu text din DashboardViewModel; acum vine din Setări,
   iar mai târziu ViewModel-ul îl poate lua din GPS fără ca ecranul să se schimbe.
 - Nu există bibliotecă de navigare, Hilt sau mai multe module: două ecrane nu le cer încă.
@@ -175,29 +200,41 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 
 - `TimeProviderTest`: momentul vine din `Clock.fixed`, fusul e cerut din nou la fiecare citire,
   UTC și ora locală din aceeași citire;
+- `MaidenheadTest`: locatori de 2, 4, 6 și 8 caractere în mai multe părți ale lumii, colțurile
+  lumii, litere mari/mici, locator gol și invalid;
+- `SolarCalculatorTest`: răsărit, apus, amiază solară, crepuscul civil și durata zilei pentru
+  Chișinău (ora de vară și de iarnă), Londra, New York, Tokio și Sydney (unde răsăritul e în ziua
+  UTC anterioară), noaptea albă la 65° N (apus după miezul nopții, fără crepuscul civil), zi și
+  noapte polară la 78,5° N, latitudini și longitudini extreme fără erori. Referințele sunt
+  momentele exacte calculate separat pe PC (vezi comentariul din test), toleranță 30 s;
 - `DashboardViewModelTest` (ceas virtual): starea inițială, ticul la fiecare secundă, alinierea la
   secundă fără drift, data locală după miezul nopții local, miezul nopții UTC, schimbarea fusului
   telefonului, trecerea la ora de iarnă, un singur ticker pentru mai mulți ascultători, oprirea
   tickerului când dashboard-ul nu mai e vizibil, limba textelor, indicativul și locatorul din setări;
+  Soarele din locator, alt locator, locator gol sau invalid, recalculare doar la zi nouă, fus nou
+  sau locator nou (nu la fiecare secundă), ora de iarnă în orele Soarelui;
 - `ThemeTest`: Sistem urmează telefonul, Luminos și Întunecat nu;
 - `MainActivityTest` (Robolectric, aplicația reală, ceas oprit la o oră cunoscută): UTC, ora locală
   și data pe ecran, același ViewModel (deci același ceas) după recreare, pornirea cu valorile
   implicite, Dashboard → Setări → Dashboard cu săgeata și cu butonul Înapoi al telefonului, tema
   întunecată și luminoasă aplicată întregii aplicații și păstrată când activitatea e recreată;
+  cardul SOARE fără locator, apoi cu orele calculate după ce locatorul e scris în Setări;
 - `TimeFormatterTest`: `HH:mm:ss` pe 24 de ore, același moment în mai multe fusuri orare, fusul
-  orar cu ora de vară și de iarnă, valorile necunoscute;
+  orar cu ora de vară și de iarnă, orele Soarelui rotunjite la minut, durata zilei „11h 45m”;
 - `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
 - `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
   locator, fiecare dintre cele trei teme) și valorile implicite;
 - `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
   iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
+  cardul SOARE cu date, fără locator, cu locator invalid, în zi polară, în noapte albă, în română
+  și engleză, în tema întunecată;
 - `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
   STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
 
 Teste care au nevoie de telefon sau emulator (`gradlew connectedDebugAndroidTest`), în
 `DashboardInstrumentedTest.kt`:
 
-- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT;
+- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT, cardul SOARE fără locator;
 - `AppInstrumentedTest`: aplicația reală care pornește și schimbă ora de la o secundă la alta,
   ecranul Setări cu ASPECT, deschis și închis.
 
