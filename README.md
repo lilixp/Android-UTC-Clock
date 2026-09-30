@@ -26,6 +26,15 @@ Un dashboard cu:
 - Pe dashboard, indicativul și locatorul apar discret în dreapta datei; locatorul apare și la
   **QTH** în cardul Locație. Un câmp gol nu se afișează.
 
+## Faza 2: UTC și ora locală
+
+- **UTC** și **LOCAL** în `HH:mm:ss`, actualizate la începutul fiecărei secunde. Ambele (și datele)
+  vin din **același moment** citit o singură dată, deci nu pot fi decalate între ele.
+- Ora locală folosește **fusul orar al telefonului**, nimic nu e fixat pe Moldova. Dacă utilizatorul
+  schimbă fusul (sau călătorește), noua oră locală apare la următoarea secundă. Trecerea la ora de
+  vară/iarnă vine din baza de fusuri orare a telefonului (ex. Chișinău: UTC+3 → UTC+2).
+- Data locală apare sub ora locală doar când diferă de data UTC (de ex. după miezul nopții local).
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -64,7 +73,7 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 ├── MainActivity.kt              ecranele (dashboard / setări), tema, bara de stare
 ├── AppContainer.kt              obiectele comune (injecție manuală, fără framework)
 ├── data/
-│   ├── time/                    TimeSource (ceasul telefonului), ClockRepository (un tic pe secundă)
+│   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă)
 │   └── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
 ├── domain/model/                ClockReading, ThemeMode, StationIdentity, SunInfo, StationLocation
 ├── ui/
@@ -74,10 +83,18 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 └── util/                        TimeFormatter (texte pentru ore, date, fus orar)
 ```
 
-- **ClockRepository** dă ora o dată pe secundă, aliniat la începutul secundei.
+- **TimeProvider** e singura sursă de timp: un `java.time.Clock` (în aplicație `Clock.systemUTC()`)
+  pentru moment și fusul orar al telefonului (`ZoneId.systemDefault()`, cerut din nou la fiecare
+  secundă). Testele îi dau `Clock.fixed(...)` sau un ceas virtual, deci nu depind de ora PC-ului.
+  Nicăieri altundeva nu se citește ora sistemului.
+- **ClockRepository** dă o citire (moment + fus) o dată pe secundă, ca `Flow`. Fiecare pas așteaptă
+  doar până la începutul secundei următoare, deci nu se acumulează întârzieri (fără drift).
 - **DashboardViewModel** combină ora cu indicativul și locatorul într-un singur
-  `StateFlow<DashboardUiState>`, care are deja textele gata de afișat. Ceasul merge doar cât
-  dashboard-ul e pe ecran (se oprește la 5 secunde după ce aplicația trece în fundal sau se deschid Setările).
+  `StateFlow<DashboardUiState>`, care are deja textele gata de afișat. Există **un singur ticker**,
+  împărțit de toți cei care ascultă (`stateIn`). ViewModel-ul supraviețuiește rotației, deci
+  recrearea ecranului nu pornește alt ceas. Ecranul ascultă cu `collectAsStateWithLifecycle`, deci
+  tickerul merge doar cât dashboard-ul e vizibil: se oprește la 5 secunde după ce aplicația trece
+  în fundal sau se deschid Setările și repornește imediat, cu ora curentă, la întoarcere.
 - **Tema** e o setare a întregii aplicații: MainActivity o ia din **SettingsViewModel**
   (`ThemeMode.isDark` alege luminos sau întunecat), iar dashboard-ul nu se ocupă de ea.
 - **SettingsViewModel** doar citește și salvează prin **SettingsRepository**; curățarea valorilor
@@ -154,15 +171,21 @@ gradlew installDebug
 | `gradlew lint` | Android lint: `app/build/reports/lint-results-debug.html` |
 | `gradlew build` | tot ce e mai sus, fără testele de pe telefon |
 
-Teste pe PC (`gradlew testDebugUnitTest`, fără telefon):
+Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu folosește ora reală a PC-ului:
 
-- `DashboardViewModelTest`: starea inițială, ticul la fiecare secundă, data locală după miezul
-  nopții, limba textelor, indicativul și locatorul din setări (cu ceas virtual);
+- `TimeProviderTest`: momentul vine din `Clock.fixed`, fusul e cerut din nou la fiecare citire,
+  UTC și ora locală din aceeași citire;
+- `DashboardViewModelTest` (ceas virtual): starea inițială, ticul la fiecare secundă, alinierea la
+  secundă fără drift, data locală după miezul nopții local, miezul nopții UTC, schimbarea fusului
+  telefonului, trecerea la ora de iarnă, un singur ticker pentru mai mulți ascultători, oprirea
+  tickerului când dashboard-ul nu mai e vizibil, limba textelor, indicativul și locatorul din setări;
 - `ThemeTest`: Sistem urmează telefonul, Luminos și Întunecat nu;
-- `MainActivityTest` (Robolectric, aplicația reală): pornirea cu valorile implicite, Dashboard →
-  Setări → Dashboard cu săgeata și cu butonul Înapoi al telefonului, tema întunecată și luminoasă
-  aplicată întregii aplicații și păstrată când activitatea e recreată (ca la rotire);
-- `TimeFormatterTest`: formatul orelor, fusul orar cu ora de vară și de iarnă, valorile necunoscute;
+- `MainActivityTest` (Robolectric, aplicația reală, ceas oprit la o oră cunoscută): UTC, ora locală
+  și data pe ecran, același ViewModel (deci același ceas) după recreare, pornirea cu valorile
+  implicite, Dashboard → Setări → Dashboard cu săgeata și cu butonul Înapoi al telefonului, tema
+  întunecată și luminoasă aplicată întregii aplicații și păstrată când activitatea e recreată;
+- `TimeFormatterTest`: `HH:mm:ss` pe 24 de ore, același moment în mai multe fusuri orare, fusul
+  orar cu ora de vară și de iarnă, valorile necunoscute;
 - `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
 - `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
   locator, fiecare dintre cele trei teme) și valorile implicite;

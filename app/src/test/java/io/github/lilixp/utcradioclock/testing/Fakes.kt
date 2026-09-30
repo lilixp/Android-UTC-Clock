@@ -1,7 +1,7 @@
 package io.github.lilixp.utcradioclock.testing
 
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
-import io.github.lilixp.utcradioclock.data.time.TimeSource
+import io.github.lilixp.utcradioclock.data.time.TimeProvider
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import kotlinx.coroutines.Dispatchers
@@ -14,23 +14,41 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 /** 30 September 2026, 15:42:31.000 UTC: the moment shown in the phase 1 mock-up. */
 val START: Instant = Instant.parse("2026-09-30T15:42:31Z")
 val CHISINAU: ZoneId = ZoneId.of("Europe/Chisinau")
 
-/** A clock that starts at [start] and moves only with the test's virtual time (delay / advanceTimeBy). */
+/**
+ * A [Clock] that starts at [start] and moves only with the test's virtual time (delay, advanceTimeBy),
+ * never with the PC's real time. It also counts how often it was read, to catch duplicate tickers.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
-class FakeTimeSource(
+class VirtualClock(
     private val scheduler: TestCoroutineScheduler,
     private val start: Instant = START,
-    private val zone: ZoneId = CHISINAU,
-) : TimeSource {
-    override fun now(): Instant = start.plusMillis(scheduler.currentTime)
-    override fun zone(): ZoneId = zone
+) : Clock() {
+    var reads = 0
+        private set
+
+    override fun instant(): Instant {
+        reads++
+        return start.plusMillis(scheduler.currentTime)
+    }
+
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+    override fun withZone(zone: ZoneId): Clock = throw UnsupportedOperationException()
 }
+
+/** The phone's time zone in tests; change [zone] to simulate the user changing it. */
+class TestZone(var zone: ZoneId = CHISINAU)
+
+/** The app's real [TimeProvider], fed by a test clock and a test time zone. */
+fun timeProvider(clock: Clock, zone: TestZone = TestZone()) = TimeProvider(clock) { zone.zone }
 
 /** Settings in memory, with the same cleaning of callsign and locator as the real repository. */
 class FakeSettingsRepository(

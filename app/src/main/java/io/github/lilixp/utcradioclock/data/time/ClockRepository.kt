@@ -5,10 +5,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-/** The current time, once per second, aligned to the start of each second so the display never lags. */
-class ClockRepository(private val timeSource: TimeSource) {
+/**
+ * The current time, once per second. Each tick waits only until the start of the next second of the
+ * clock (not a fixed 1000 ms), so a late tick is corrected by the next one and the display never drifts.
+ * The flow is cold: it ticks only while someone collects it and stops with the collector's coroutine.
+ */
+class ClockRepository(private val time: TimeProvider) {
 
-    fun current(): ClockReading = ClockReading(timeSource.now(), timeSource.zone())
+    /** UTC and local time are always taken from this one reading, so they belong to the same instant. */
+    fun current(): ClockReading = ClockReading(time.now(), time.zone())
 
     fun ticks(): Flow<ClockReading> = flow {
         while (true) {

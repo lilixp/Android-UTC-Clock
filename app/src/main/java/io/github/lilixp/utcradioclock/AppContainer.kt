@@ -5,14 +5,17 @@ import android.content.Context
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.settings.SharedPreferencesSettingsRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
-import io.github.lilixp.utcradioclock.data.time.SystemTimeSource
+import io.github.lilixp.utcradioclock.data.time.TimeProvider
 
 /** The app's shared objects, created once. Plain constructor injection: no DI framework needed yet. */
-class AppContainer(context: Context) {
-    val clockRepository = ClockRepository(SystemTimeSource)
+class AppContainer(context: Context, timeProvider: TimeProvider = TimeProvider()) {
+    val clockRepository = ClockRepository(timeProvider)
     val settingsRepository: SettingsRepository = SharedPreferencesSettingsRepository(context)
 }
 
-class RadioClockApplication : Application() {
-    val container: AppContainer by lazy { AppContainer(this) }
+open class RadioClockApplication : Application() {
+    val container: AppContainer by lazy { createContainer() }
+
+    /** Tests replace it (e.g. with a fixed clock) through a subclass of this application. */
+    protected open fun createContainer() = AppContainer(this)
 }
