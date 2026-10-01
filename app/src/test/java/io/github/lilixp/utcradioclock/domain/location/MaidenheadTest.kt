@@ -59,4 +59,62 @@ class MaidenheadTest {
             assertNull(text, Maidenhead.toPosition(text))
         }
     }
+
+    // ---- Coordinates → locator ----
+
+    @Test
+    fun fromPosition_sixCharactersWrittenAsInTheApp() {
+        assertEquals("KN46dx", Maidenhead.fromPosition(GeoPosition(46.9612, 28.3041))) // Boghiceni (GPS)
+        assertEquals("KN46dw", Maidenhead.fromPosition(GeoPosition(46.9375, 28.291667))) // centre of KN46dw
+    }
+
+    @Test
+    fun fromPosition_allHemispheres() {
+        assertEquals("IO91wm", Maidenhead.fromPosition(GeoPosition(51.5074, -0.1278))) // London: west
+        assertEquals("FN20xr", Maidenhead.fromPosition(GeoPosition(40.7128, -74.0060))) // New York
+        assertEquals("QF56od", Maidenhead.fromPosition(GeoPosition(-33.8688, 151.2093))) // Sydney: south
+        assertEquals("GG87jc", Maidenhead.fromPosition(GeoPosition(-22.9068, -43.1729))) // Rio: south and west
+    }
+
+    @Test
+    fun fromPosition_twoFourAndEightCharacters() {
+        val boghiceni = GeoPosition(46.9612, 28.3041)
+        assertEquals("KN", Maidenhead.fromPosition(boghiceni, 2))
+        assertEquals("KN46", Maidenhead.fromPosition(boghiceni, 4))
+        assertEquals("KN46dw15", Maidenhead.fromPosition(GeoPosition(46.939583, 28.2625), 8))
+    }
+
+    @Test
+    fun fromPosition_isTheInverseOfToPosition() {
+        for (locator in listOf("KN46dw", "IO91wm", "FN30as", "QF56ob", "AA00aa", "RR99xx", "JJ00aa", "KN46dw15")) {
+            assertEquals(locator, Maidenhead.fromPosition(Maidenhead.toPosition(locator)!!, locator.length))
+        }
+    }
+
+    @Test
+    fun fromPosition_edgesOfTheWorldStayInTheLastSquare() {
+        assertEquals("AA00aa", Maidenhead.fromPosition(GeoPosition(-90.0, -180.0)))
+        assertEquals("RR99xx", Maidenhead.fromPosition(GeoPosition(90.0, 180.0))) // not "SS..."
+        assertEquals("JJ00aa", Maidenhead.fromPosition(GeoPosition(0.0, 0.0)))
+    }
+
+    @Test
+    fun fromPosition_invalidCoordinates_noLocator() {
+        for (position in listOf(
+            GeoPosition(91.0, 0.0),
+            GeoPosition(-90.0001, 0.0),
+            GeoPosition(0.0, 180.0001),
+            GeoPosition(0.0, -181.0),
+            GeoPosition(Double.NaN, 28.0),
+            GeoPosition(46.0, Double.NaN),
+            GeoPosition(Double.POSITIVE_INFINITY, 0.0),
+        )) {
+            assertNull(position.toString(), Maidenhead.fromPosition(position))
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun fromPosition_onlyWholePairs() {
+        Maidenhead.fromPosition(GeoPosition(46.9612, 28.3041), 5)
+    }
 }

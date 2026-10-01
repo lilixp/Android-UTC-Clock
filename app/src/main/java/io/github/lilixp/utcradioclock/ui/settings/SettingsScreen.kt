@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.lilixp.utcradioclock.R
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
@@ -42,10 +43,11 @@ object SettingsTags {
     const val CALLSIGN_FIELD = "callsign_field"
     const val LOCATOR_FIELD = "locator_field"
     const val ABOUT_PROPAGATION = "about_propagation"
+    const val POSITION_HINT = "position_hint"
 }
 
 /**
- * Station (callsign and Maidenhead locator), appearance (theme) and about the app (version, author,
+ * Station (callsign, Maidenhead locator, where the position comes from), appearance (theme) and about the app (version, author,
  * where the propagation data come from). Every change is saved at once
  * (the screen says so), so there is nothing to lose when going back.
  */
@@ -60,6 +62,9 @@ fun SettingsScreen(
     onBack: () -> Unit,
     /** Shown in About the app, e.g. "2.0.0". */
     appVersion: String = "",
+    positionSource: PositionSource = PositionSource.MANUAL,
+    /** Choosing [PositionSource.AUTOMATIC] is also when the app asks for the location permission. */
+    onPositionSourceChange: (PositionSource) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -113,6 +118,7 @@ fun SettingsScreen(
                     ),
                     modifier = Modifier.fillMaxWidth().testTag(SettingsTags.LOCATOR_FIELD),
                 )
+                PositionSourceSelector(positionSource, onPositionSourceChange)
             }
             SettingsCard(R.string.section_appearance) {
                 ThemeSelector(themeMode, onThemeModeChange)
@@ -179,6 +185,36 @@ private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
             }
         }
     }
+}
+
+/** Manual (the locator) / Automatic (GPS), with a line on what the choice means. */
+@Composable
+private fun PositionSourceSelector(selected: PositionSource, onSelect: (PositionSource) -> Unit) {
+    Text(stringResource(R.string.position_source), style = MaterialTheme.typography.bodyLarge)
+    val options = listOf(
+        PositionSource.MANUAL to R.string.position_manual,
+        PositionSource.AUTOMATIC to R.string.position_automatic,
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (source, label) ->
+            SegmentedButton(
+                selected = source == selected,
+                onClick = { onSelect(source) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                icon = {}, // as for the theme: no check mark, so the labels fit with large text
+            ) {
+                Text(stringResource(label))
+            }
+        }
+    }
+    Text(
+        text = stringResource(
+            if (selected == PositionSource.AUTOMATIC) R.string.position_automatic_hint else R.string.position_manual_hint,
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(SettingsTags.POSITION_HINT),
+    )
 }
 
 @Preview(showBackground = true)

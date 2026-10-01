@@ -12,6 +12,11 @@
     </plurals>
     <string name="locator">Locator Maidenhead</string>
     <string name="locator_hint">De exemplu KN46dw: 4, 6 sau 8 caractere</string>
+    <string name="position_source">Poziția stației</string>
+    <string name="position_manual">Manual</string>
+    <string name="position_automatic">Automat (GPS)</string>
+    <string name="position_manual_hint">Centrul locatorului de mai sus.</string>
+    <string name="position_automatic_hint">Locația telefonului, citită la deschiderea aplicației și la fiecare 30 de minute. Cât timp nu există o poziție, se folosește locatorul de mai sus. Poziția rămâne pe telefon.</string>
     <string name="settings_saved_automatically">Modificările se salvează automat.</string>
     <string name="section_about">DESPRE APLICAȚIE</string>
     <string name="about_version">Versiunea %1$s</string>
@@ -26,6 +31,7 @@
     <string name="civil_twilight">Crepuscul civil: %1$s – %2$s</string>
     <string name="sun_no_location">Locația nu este disponibilă.</string>
     <string name="sun_enter_locator">Introdu locatorul Maidenhead în Setări.</string>
+    <string name="sun_no_position">Permite accesul la locație sau introdu locatorul Maidenhead în Setări.</string>
     <string name="sun_invalid_locator">Locatorul „%1$s” nu este valid.</string>
     <string name="sun_midnight_sun">Soarele nu apune în această zi.</string>
     <string name="sun_polar_night">Soarele nu răsare în această zi.</string>
@@ -33,6 +39,16 @@
     <string name="section_location">LOCAȚIE</string>
     <string name="latitude">Latitudine: %1$s</string>
     <string name="longitude">Longitudine: %1$s</string>
+    <string name="location_gps_approximate">GPS (aproximativ)</string>
+    <string name="location_from_locator">Locator din Setări (centrul pătratului)</string>
+    <string name="location_searching">Se caută poziția…</string>
+    <string name="location_no_permission">Aplicația nu are acces la locația telefonului.</string>
+    <string name="location_permission_blocked">Accesul la locație a fost refuzat. Îl poți permite din setările aplicației.</string>
+    <string name="location_off">Locația telefonului este oprită.</string>
+    <string name="location_unavailable">Poziția nu este disponibilă momentan.</string>
+    <string name="location_allow">Permite accesul la locație</string>
+    <string name="location_open_app_settings">Deschide setările aplicației</string>
+    <string name="location_turn_on">Pornește locația</string>
 
     <string name="section_propagation">PROPAGARE</string>
     <string name="propagation_loading">Se încarcă datele…</string>

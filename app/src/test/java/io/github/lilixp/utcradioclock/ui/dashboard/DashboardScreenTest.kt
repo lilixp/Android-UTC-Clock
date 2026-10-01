@@ -137,6 +137,14 @@ class DashboardScreenTest {
     }
 
     @Test
+    fun sunCardAutomaticWithoutAnyPosition_saysWhatToDo() {
+        show(state.copy(sun = SunUiState(SunStatus.NO_POSITION)))
+        // "Location not available." is also on the LOCATION card below, so only the advice is looked for
+        assertSunLines("Permite accesul la locație sau introdu locatorul Maidenhead în Setări.")
+        compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun sunCardWithInvalidLocator() {
         show(state.copy(sun = SunUiState(SunStatus.INVALID_LOCATOR, locator = "KN4"), locator = "KN4"))
         assertSunLines("Locația nu este disponibilă.", "Locatorul „KN4” nu este valid.")

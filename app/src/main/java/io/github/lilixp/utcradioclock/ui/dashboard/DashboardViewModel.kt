@@ -11,8 +11,11 @@ import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
 import io.github.lilixp.utcradioclock.domain.model.PolarCondition
+import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.SolarDay
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
+import io.github.lilixp.utcradioclock.domain.model.StationPosition
 import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.util.TimeFormatter
@@ -50,18 +53,20 @@ class DashboardViewModel(
 
     /**
      * The SUN card. It depends on the local day, the time zone and the position only, so it is worked
-     * out when one of them changes (at local midnight, on a time zone change, on a new locator), never
-     * on the 1 s clock ticks.
+     * out when one of them changes (at local midnight, on a time zone change, on a new locator or GPS
+     * position), never on the 1 s clock ticks.
      */
     private val sun: Flow<Sun> = combine(
         clock.localDays(),
         positions.position,
         settings.station.map { it.locator }.distinctUntilChanged(),
+        settings.positionSource,
         ::sunState,
     ).distinctUntilChanged()
 
     val uiState: StateFlow<DashboardUiState> =
-        combine(clock.ticks(), settings.station, sun, propagation, ::toUiState)
+        // positions.updates() asks the phone for its position, only while the dashboard is collected
+        combine(clock.ticks(), settings.station, sun, propagation, positions.updates(), ::toUiState)
             .stateIn(
                 scope = viewModelScope,
                 // Keeps ticking through a screen rotation, stops 5 s after the dashboard is no longer shown
@@ -69,8 +74,14 @@ class DashboardViewModel(
                 initialValue = toUiState(
                     clock.current(),
                     settings.station.value,
-                    sunState(clock.currentDay(), positions.current(), settings.station.value.locator),
+                    sunState(
+                        clock.currentDay(),
+                        positions.current(),
+                        settings.station.value.locator,
+                        settings.positionSource.value,
+                    ),
                     PropagationState(PropagationState.Status.LOADING),
+                    positions.currentState(),
                 ),
             )
 
@@ -79,6 +90,7 @@ class DashboardViewModel(
         station: StationIdentity,
         sun: Sun,
         propagation: PropagationState,
+        position: StationPosition,
     ): DashboardUiState {
         val (instant, zone) = reading
         val format = formatterFor(locale())
@@ -93,9 +105,24 @@ class DashboardViewModel(
             callsign = station.callsign.ifEmpty { null },
             sun = sun.ui,
             propagation = propagationState(propagation, reading, sun.day, format),
-            // Entered in Settings for now; a locator computed from GPS can be chosen here later,
-            // the screen only ever receives the text
-            locator = station.locator.ifEmpty { null },
+            location = locationState(position, reading, format),
+            // From GPS in automatic mode, otherwise as entered in Settings
+            locator = position.locator,
+        )
+    }
+
+    /** The LOCATION card: coordinates of the position used (GPS or the locator's centre) and where it came from. */
+    private fun locationState(position: StationPosition, reading: ClockReading, format: TimeFormatter): LocationUiState {
+        val fix = position.fix.takeIf { position.origin == PositionOrigin.GPS }
+        return LocationUiState(
+            latitude = position.position?.let { format.latitude(it.latitude) },
+            longitude = position.position?.let { format.longitude(it.longitude) },
+            origin = position.origin,
+            automatic = position.source == PositionSource.AUTOMATIC,
+            gps = position.gps,
+            fixTime = fix?.let { format.localStamp(it.time, reading.zone, reading.instant) },
+            accuracy = fix?.accuracyMeters?.let(format::accuracy),
+            approximate = fix?.approximate == true,
         )
     }
 
@@ -139,12 +166,12 @@ class DashboardViewModel(
         null -> day.sunrise != null && day.sunset != null && now >= day.sunrise && now < day.sunset
     }
 
-    private fun sunState(day: LocalDay, position: GeoPosition?, locator: String): Sun {
+    private fun sunState(day: LocalDay, position: GeoPosition?, locator: String, source: PositionSource): Sun {
         if (position == null) {
-            val ui = if (locator.isEmpty()) {
-                SunUiState(SunStatus.NO_LOCATOR)
-            } else {
-                SunUiState(SunStatus.INVALID_LOCATOR, locator = locator)
+            val ui = when {
+                locator.isNotEmpty() -> SunUiState(SunStatus.INVALID_LOCATOR, locator = locator)
+                source == PositionSource.AUTOMATIC -> SunUiState(SunStatus.NO_POSITION)
+                else -> SunUiState(SunStatus.NO_LOCATOR)
             }
             return Sun(ui, null)
         }

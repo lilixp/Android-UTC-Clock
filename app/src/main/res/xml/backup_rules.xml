@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup for Android 11 and lower: only the app settings (theme choice). -->
+<!-- Backup for Android 11 and lower: only the app settings (callsign, locator,
+     theme, position source). Not the last GPS position (position.xml) or the N0NBH cache: they stay on this phone. -->
 <full-backup-content>
     <include domain="sharedpref" path="settings.xml" />
 </full-backup-content>

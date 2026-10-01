@@ -9,13 +9,21 @@ import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.FAIR
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.GOOD
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
+import io.github.lilixp.utcradioclock.domain.model.GpsStatus
+import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.SolarConditions
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
+import io.github.lilixp.utcradioclock.testing.BOGHICENI
+import io.github.lilixp.utcradioclock.testing.FakeLastPositionStore
+import io.github.lilixp.utcradioclock.testing.FakeLocationProvider
 import io.github.lilixp.utcradioclock.testing.FakeSettingsRepository
+import io.github.lilixp.utcradioclock.testing.LONDON
 import io.github.lilixp.utcradioclock.testing.MainDispatcherRule
 import io.github.lilixp.utcradioclock.testing.START
 import io.github.lilixp.utcradioclock.testing.TestZone
 import io.github.lilixp.utcradioclock.testing.VirtualClock
+import io.github.lilixp.utcradioclock.testing.fix
 import io.github.lilixp.utcradioclock.testing.timeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,15 +64,20 @@ class DashboardViewModelTest {
     /** What the propagation repository says; tests set it directly (no network here). */
     private val propagation = MutableStateFlow(PropagationState(PropagationState.Status.LOADING))
 
+    /** The phone's location (never the real GPS) and the saved last position. */
+    private val locations = FakeLocationProvider()
+    private val lastPosition = FakeLastPositionStore()
+
     private fun TestScope.createViewModel(
         start: Instant = START,
         locale: Locale = Locale.forLanguageTag("ro"),
     ): DashboardViewModel {
         clock = VirtualClock(testScheduler, start)
+        val time = timeProvider(clock, zone)
         return DashboardViewModel(
-            clock = ClockRepository(timeProvider(clock, zone)),
+            clock = ClockRepository(time),
             settings = settings,
-            positions = PositionRepository(settings),
+            positions = PositionRepository(settings, locations, lastPosition, time),
             propagation = propagation,
             solar = countingSolar,
         ) { locale }
@@ -103,8 +116,7 @@ class DashboardViewModelTest {
         assertNull(state.localDate) // same day in UTC and locally
         assertEquals("Europe/Chisinau · UTC+03:00", state.timeZone)
         assertEquals(SunUiState(SunStatus.NO_LOCATOR), state.sun) // no locator, so no position
-        assertNull(state.latitude)
-        assertNull(state.longitude)
+        assertEquals(LocationUiState(), state.location) // no position: dashes, "not available"
         assertEquals("ER1PL", state.callsign) // default callsign
         assertNull(state.locator) // no locator until it is entered
         assertTrue(solarCalls.isEmpty()) // nothing is calculated without a position
@@ -449,5 +461,134 @@ class DashboardViewModelTest {
         assertEquals(4, shown.bands.size)
         assertEquals(listOf(null, null, null, null), shown.bands.map { it.now }) // night now, and no night value
         assertEquals(GOOD, shown.bands[1].day)
+    }
+
+    // ---- GPS and the LOCATION card ----
+
+    /** Tokyo: past midnight there at 15:42 UTC, while it is still day in Chișinău. */
+    private val tokyo = GeoPosition(35.6895, 139.6917)
+
+    @Test
+    fun manual_theCardShowsTheLocatorCentre() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val state = viewModel.uiState.value
+        assertEquals(
+            LocationUiState(latitude = "46,9375° N", longitude = "28,2917° E", origin = PositionOrigin.LOCATOR),
+            state.location,
+        )
+        assertEquals("KN46dw", state.locator)
+        assertEquals(0, locations.requests)
+    }
+
+    @Test
+    fun gpsPosition_shownWithItsLocatorTimeAndAccuracy() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(BOGHICENI, START.minusSeconds(91))
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val state = viewModel.uiState.value
+        assertEquals(
+            LocationUiState(
+                latitude = "46,9612° N",
+                longitude = "28,3041° E",
+                origin = PositionOrigin.GPS,
+                automatic = true,
+                gps = GpsStatus.OK,
+                fixTime = "18:41", // local time of the position
+                accuracy = "±12 m",
+            ),
+            state.location,
+        )
+        assertEquals("KN46dx", state.locator) // from GPS, also in the station badge
+    }
+
+    @Test
+    fun gpsPositionInEnglish_pointAsDecimalSeparator() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(LONDON, approximate = true)
+        val viewModel = createViewModel(locale = Locale.ENGLISH)
+        subscribe(viewModel)
+        val location = viewModel.uiState.value.location
+        assertEquals("51.5074° N", location.latitude)
+        assertEquals("0.1278° W", location.longitude)
+        assertTrue(location.approximate)
+    }
+
+    @Test
+    fun gpsPositionFeedsTheSun_notTheLocator() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(LONDON)
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+
+        assertEquals(LONDON, solarCalls.last().third) // the same solar calculation, fed by GPS
+        assertEquals("08:59", viewModel.uiState.value.sun.sunrise) // London's sunrise, in the phone's zone
+    }
+
+    @Test
+    fun gpsPositionDecidesDayAndNightForTheBands() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw") // 18:42 in Chișinău: still day there
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(tokyo) // 00:42 in Tokyo: night
+        propagation.value = current()
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+
+        val shown = viewModel.uiState.value.propagation
+        assertEquals(false, shown.isDay)
+        assertEquals(false, shown.dayNightByClock)
+        assertEquals(GOOD, shown.bands.first { it.group == BandGroup.BANDS_80_40 }.now) // 80-40m night: Good
+    }
+
+    @Test
+    fun noPermission_theManualLocatorIsUsedForEverything() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.permission = false
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val state = viewModel.uiState.value
+
+        assertEquals(GpsStatus.NO_PERMISSION, state.location.gps)
+        assertEquals(PositionOrigin.LOCATOR, state.location.origin)
+        assertEquals("46,9375° N", state.location.latitude)
+        assertEquals("07:04", state.sun.sunrise) // the Sun of KN46dw
+        assertEquals("KN46dw", state.locator)
+    }
+
+    @Test
+    fun automaticWithoutAnyPosition_sunSaysWhatToDo_bandsByTheClock() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.enabled = false
+        propagation.value = current()
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val state = viewModel.uiState.value
+
+        assertEquals(SunUiState(SunStatus.NO_POSITION), state.sun)
+        assertEquals(GpsStatus.LOCATION_OFF, state.location.gps)
+        assertEquals(PositionOrigin.NONE, state.location.origin)
+        assertNull(state.location.latitude)
+        assertTrue(state.propagation.dayNightByClock) // the fallback of Phase 4
+    }
+
+    @Test
+    fun theCardFollowsANewGpsPosition() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(BOGHICENI)
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        assertEquals("KN46dx", viewModel.uiState.value.locator)
+
+        locations.current = fix(LONDON, START.plus(Duration.ofMinutes(30)))
+        advance(Duration.ofMinutes(30)) // the next look, half an hour later
+        val state = viewModel.uiState.value
+        assertEquals("IO91wm", state.locator)
+        assertEquals("51,5074° N", state.location.latitude)
+        assertEquals("19:12", state.location.fixTime)
     }
 }

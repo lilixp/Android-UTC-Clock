@@ -69,4 +69,35 @@ class TimeFormatterTest {
         assertEquals("24h 00m", formatter.duration(Duration.ofHours(24)))
         assertEquals("0h 00m", formatter.duration(Duration.ZERO))
     }
+
+    // ---- Coordinates and the GPS time ----
+
+    @Test
+    fun coordinates_commaInRomanian_pointInEnglish_fourDecimals() {
+        assertEquals("46,9612° N", formatter.latitude(46.9612))
+        assertEquals("28,3041° E", formatter.longitude(28.3041))
+        val english = TimeFormatter(Locale.ENGLISH)
+        assertEquals("46.9612° N", english.latitude(46.9612))
+        assertEquals("28.2917° E", english.longitude(28.291667))
+    }
+
+    @Test
+    fun coordinates_southAndWestWithoutMinusSign() {
+        assertEquals("33,8688° S", formatter.latitude(-33.8688))
+        assertEquals("0,1278° W", formatter.longitude(-0.1278))
+        assertEquals("0,0000° N", formatter.latitude(0.0))
+    }
+
+    @Test
+    fun accuracyInWholeMetres() {
+        assertEquals("±12 m", formatter.accuracy(12.4f))
+        assertEquals("±2500 m", formatter.accuracy(2500f))
+    }
+
+    @Test
+    fun localStamp_timeOnTheSameLocalDay_dateOtherwise() {
+        val now = Instant.parse("2026-09-30T15:42:31Z")
+        assertEquals("18:40", formatter.localStamp(Instant.parse("2026-09-30T15:40:00Z"), chisinau, now))
+        assertEquals("29 sept. 18:40", formatter.localStamp(Instant.parse("2026-09-29T15:40:00Z"), chisinau, now))
+    }
 }

@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
+import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 
 /** Test tags for the parts the tests look for. */
@@ -39,6 +40,9 @@ object DashboardTags {
     const val LOCAL_TIME = "local_time"
     const val CALLSIGN = "callsign"
     const val LOCATOR = "locator"
+    const val LOCATION_SOURCE = "location_source"
+    const val LOCATION_STATUS = "location_status"
+    const val LOCATION_ACTION = "location_action"
 }
 
 // Digits of equal width, so the time does not shift sideways as the seconds change
@@ -46,7 +50,13 @@ private const val TABULAR_DIGITS = "tnum"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(state: DashboardUiState, onOpenSettings: () -> Unit) {
+fun DashboardScreen(
+    state: DashboardUiState,
+    /** The location permission was refused for good ("Don't ask again"). */
+    locationPermissionBlocked: Boolean = false,
+    onLocationAction: (LocationAction) -> Unit = {},
+    onOpenSettings: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,13 +89,7 @@ fun DashboardScreen(state: DashboardUiState, onOpenSettings: () -> Unit) {
             item { UtcCard(state) }
             item { LocalCard(state) }
             item { SunCard(state.sun) }
-            item {
-                InfoCard(R.string.section_location) {
-                    InfoLine(R.string.latitude, state.latitude)
-                    InfoLine(R.string.longitude, state.longitude)
-                    InfoLine(R.string.qth, state.locator)
-                }
-            }
+            item { LocationCard(state.location, state.locator, locationPermissionBlocked, onLocationAction) }
             item { PropagationCard(state.propagation) }
         }
     }
@@ -99,13 +103,13 @@ fun DashboardScreen(state: DashboardUiState, onOpenSettings: () -> Unit) {
 private fun SunCard(sun: SunUiState) {
     InfoCard(R.string.section_sun) {
         when (sun.status) {
-            SunStatus.NO_LOCATOR, SunStatus.INVALID_LOCATOR -> {
+            SunStatus.NO_LOCATOR, SunStatus.NO_POSITION, SunStatus.INVALID_LOCATOR -> {
                 Text(stringResource(R.string.sun_no_location), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = if (sun.status == SunStatus.NO_LOCATOR) {
-                        stringResource(R.string.sun_enter_locator)
-                    } else {
-                        stringResource(R.string.sun_invalid_locator, sun.locator.orEmpty())
+                    text = when (sun.status) {
+                        SunStatus.NO_LOCATOR -> stringResource(R.string.sun_enter_locator)
+                        SunStatus.NO_POSITION -> stringResource(R.string.sun_no_position)
+                        else -> stringResource(R.string.sun_invalid_locator, sun.locator.orEmpty())
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -237,7 +241,7 @@ private fun SectionLabel(text: String) {
 
 /** "Sunrise: 06:58", or "Sunrise: —" while the value is not known. */
 @Composable
-private fun InfoLine(@StringRes format: Int, value: String?) {
+internal fun InfoLine(@StringRes format: Int, value: String?) {
     Text(
         text = stringResource(format, value ?: stringResource(R.string.not_available)),
         style = MaterialTheme.typography.bodyLarge,
@@ -260,6 +264,11 @@ private val PreviewState = DashboardUiState(
         civilDawn = "06:33",
         civilDusk = "19:19",
         locator = "KN46dw",
+    ),
+    location = LocationUiState(
+        latitude = "46,9375° N",
+        longitude = "28,2917° E",
+        origin = PositionOrigin.LOCATOR,
     ),
     locator = "KN46dw",
 )

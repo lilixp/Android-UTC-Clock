@@ -3,10 +3,12 @@ package io.github.lilixp.utcradioclock.ui.dashboard
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
+import io.github.lilixp.utcradioclock.domain.model.GpsStatus
+import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
 
 /**
  * Everything the dashboard shows, already as text. A null value means "not known yet" and is shown
- * as a dash; the location coordinates are filled in by a later phase.
+ * as a dash.
  */
 data class DashboardUiState(
     val utcDate: String,
@@ -19,10 +21,27 @@ data class DashboardUiState(
     val callsign: String? = null,
     val sun: SunUiState = SunUiState(),
     val propagation: PropagationUiState = PropagationUiState(),
+    val location: LocationUiState = LocationUiState(),
+    /** The station's locator: from GPS (6 characters) or as entered in Settings; null when there is none. */
+    val locator: String? = null,
+)
+
+/** The LOCATION card (the locator itself is [DashboardUiState.locator]). */
+data class LocationUiState(
+    /** E.g. "46,9375° N"; null without a position. */
     val latitude: String? = null,
     val longitude: String? = null,
-    /** Maidenhead locator from Settings; null when empty. */
-    val locator: String? = null,
+    val origin: PositionOrigin = PositionOrigin.NONE,
+    /** Whether "Automatic (GPS)" is chosen in Settings. */
+    val automatic: Boolean = false,
+    /** How the phone's location is doing; null in manual mode. */
+    val gps: GpsStatus? = null,
+    /** When the GPS position was taken, local time, e.g. "18:42"; with [PositionOrigin.GPS] only. */
+    val fixTime: String? = null,
+    /** E.g. "±15 m"; null when the phone did not say. */
+    val accuracy: String? = null,
+    /** Only approximate location is allowed (Android 12+). */
+    val approximate: Boolean = false,
 )
 
 /** SFI, K or A: the value exactly as N0NBH gave it, and its colour level. */
@@ -56,6 +75,9 @@ data class PropagationUiState(
 enum class SunStatus {
     /** No locator in Settings: no position, so no solar data. */
     NO_LOCATOR,
+
+    /** Automatic mode, but no GPS position yet and no locator to fall back on. */
+    NO_POSITION,
 
     /** A locator that is not a valid Maidenhead locator: no position, so no solar data. */
     INVALID_LOCATOR,

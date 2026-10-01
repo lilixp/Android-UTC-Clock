@@ -7,8 +7,13 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
-/** Turns times into the texts shown on screen. Clock times are always 24-hour, as used on the air. */
+/**
+ * Turns times (and the station's coordinates) into the texts shown on screen. Clock times are always
+ * 24-hour, as used on the air.
+ */
 class TimeFormatter(val locale: Locale) {
 
     private val dateFormat = DateTimeFormatter.ofPattern("d MMMM yyyy", locale)
@@ -56,6 +61,31 @@ class TimeFormatter(val locale: Locale) {
             stampFormat.format(time)
         }
     }
+
+    /**
+     * A local moment, e.g. when the GPS position was taken: "18:42" on the same local day as [now],
+     * otherwise "30 sept. 18:42".
+     */
+    fun localStamp(instant: Instant, zone: ZoneId, now: Instant): String {
+        val time = instant.atZone(zone)
+        return if (time.toLocalDate() == now.atZone(zone).toLocalDate()) {
+            shortTimeFormat.format(time)
+        } else {
+            stampFormat.format(time)
+        }
+    }
+
+    /** "46,9375° N" in Romanian, "46.9375° N" in English: 4 decimals, about 10 m. */
+    fun latitude(degrees: Double): String = coordinate(degrees, if (degrees < 0) "S" else "N")
+
+    /** "28,2917° E", "0,1278° W": hemisphere letters as used internationally. */
+    fun longitude(degrees: Double): String = coordinate(degrees, if (degrees < 0) "W" else "E")
+
+    /** "±15 m": whole metres. */
+    fun accuracy(meters: Float): String = "±%d m".format(locale, meters.roundToInt())
+
+    private fun coordinate(degrees: Double, hemisphere: String) =
+        "%.4f° %s".format(locale, abs(degrees), hemisphere)
 
     /** A value as published, without a useless ".0": 93.0 → "93", 1.5 → "1.5". */
     fun number(value: Double): String =

@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock.data.settings
 
 import android.content.Context
 import androidx.core.content.edit
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +13,12 @@ import kotlinx.coroutines.flow.asStateFlow
 interface SettingsRepository {
     val themeMode: StateFlow<ThemeMode>
     val station: StateFlow<StationIdentity>
+
+    /** Manual (the locator) unless the user chose the phone's location. */
+    val positionSource: StateFlow<PositionSource>
     fun setThemeMode(mode: ThemeMode)
+
+    fun setPositionSource(source: PositionSource)
 
     /** Saves the callsign, cleaned by [StationIdentity.normalizeCallsign]. */
     fun setCallsign(callsign: String)
@@ -43,9 +49,20 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     )
     override val station: StateFlow<StationIdentity> = _station.asStateFlow()
 
+    private val _positionSource = MutableStateFlow(
+        PositionSource.entries.firstOrNull { it.name == preferences.getString(KEY_POSITION_SOURCE, null) }
+            ?: PositionSource.MANUAL,
+    )
+    override val positionSource: StateFlow<PositionSource> = _positionSource.asStateFlow()
+
     override fun setThemeMode(mode: ThemeMode) {
         preferences.edit { putString(KEY_THEME_MODE, mode.name) }
         _themeMode.value = mode
+    }
+
+    override fun setPositionSource(source: PositionSource) {
+        preferences.edit { putString(KEY_POSITION_SOURCE, source.name) }
+        _positionSource.value = source
     }
 
     override fun setCallsign(callsign: String) {
@@ -65,5 +82,6 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_CALLSIGN = "callsign"
         const val KEY_LOCATOR = "locator"
+        const val KEY_POSITION_SOURCE = "position_source" // the choice only; the position itself is not here
     }
 }

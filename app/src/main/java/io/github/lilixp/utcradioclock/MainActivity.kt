@@ -1,12 +1,18 @@
 package io.github.lilixp.utcradioclock
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -17,7 +23,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
+import io.github.lilixp.utcradioclock.ui.dashboard.LocationAction
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
 import io.github.lilixp.utcradioclock.ui.settings.SettingsScreen
 import io.github.lilixp.utcradioclock.ui.settings.SettingsViewModel
@@ -27,10 +35,65 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
+    private val container get() = (application as RadioClockApplication).container
+
+    /**
+     * Android said no without showing its dialog ("Don't ask again", or refused twice): only the app's
+     * page in the system settings can allow location now, so the LOCATION card offers that instead.
+     */
+    private var locationBlocked by mutableStateOf(false)
+
+    /** Android's own permission dialog; precise and approximate are asked together, the user picks. */
+    private val locationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val granted = result.values.any { it }
+            locationBlocked = !granted && LOCATION_PERMISSIONS.none(::shouldShowRequestPermissionRationale)
+            container.positionRepository.refreshNow()
+        }
+
+    /** Asked only when the user wants the automatic position, never at start. */
+    private fun requestLocation() {
+        if (container.locationProvider.hasPermission()) {
+            container.positionRepository.refreshNow()
+        } else {
+            locationPermission.launch(LOCATION_PERMISSIONS)
+        }
+    }
+
+    private fun onLocationAction(action: LocationAction) {
+        when (action) {
+            LocationAction.REQUEST_PERMISSION -> requestLocation()
+            LocationAction.OPEN_APP_SETTINGS -> open(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+            )
+            LocationAction.OPEN_LOCATION_SETTINGS -> open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+        }
+    }
+
+    /** A system settings page; the user decides there, the app changes nothing itself. */
+    private fun open(intent: Intent) {
+        try {
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            // Some devices have no such page; the card keeps saying what is missing
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from the system settings (permission, location turned on) or from another app: look again
+        container.positionRepository.refreshNow()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_LOCATION_BLOCKED, locationBlocked)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val container = (application as RadioClockApplication).container
+        locationBlocked = savedInstanceState?.getBoolean(KEY_LOCATION_BLOCKED) == true
         val factory = viewModelFactory {
             initializer {
                 DashboardViewModel(
@@ -62,6 +125,7 @@ class MainActivity : ComponentActivity() {
             UTCRadioClockTheme(darkTheme = darkTheme) {
                 if (showSettings) {
                     val station by settings.station.collectAsStateWithLifecycle()
+                    val positionSource by settings.positionSource.collectAsStateWithLifecycle()
                     BackHandler { showSettings = false }
                     SettingsScreen(
                         station = station,
@@ -71,14 +135,32 @@ class MainActivity : ComponentActivity() {
                         onThemeModeChange = settings::setThemeMode,
                         onBack = { showSettings = false },
                         appVersion = BuildConfig.VERSION_NAME,
+                        positionSource = positionSource,
+                        onPositionSourceChange = { source ->
+                            settings.setPositionSource(source)
+                            if (source == PositionSource.AUTOMATIC) requestLocation()
+                        },
                     )
                 } else {
                     // Collected only while the dashboard is shown: the clock does not tick behind Settings
                     val dashboard: DashboardViewModel = viewModel(factory = factory)
                     val state by dashboard.uiState.collectAsStateWithLifecycle()
-                    DashboardScreen(state = state, onOpenSettings = { showSettings = true })
+                    DashboardScreen(
+                        state = state,
+                        onOpenSettings = { showSettings = true },
+                        locationPermissionBlocked = locationBlocked,
+                        onLocationAction = ::onLocationAction,
+                    )
                 }
             }
         }
+    }
+
+    private companion object {
+        val LOCATION_PERMISSIONS = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
+        const val KEY_LOCATION_BLOCKED = "location_blocked"
     }
 }

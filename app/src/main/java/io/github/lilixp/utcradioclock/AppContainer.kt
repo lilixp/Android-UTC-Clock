@@ -2,7 +2,10 @@ package io.github.lilixp.utcradioclock
 
 import android.app.Application
 import android.content.Context
+import io.github.lilixp.utcradioclock.data.location.AndroidLocationProvider
+import io.github.lilixp.utcradioclock.data.location.LocationProvider
 import io.github.lilixp.utcradioclock.data.location.PositionRepository
+import io.github.lilixp.utcradioclock.data.location.SharedPreferencesLastPositionStore
 import io.github.lilixp.utcradioclock.data.propagation.HttpClient
 import io.github.lilixp.utcradioclock.data.propagation.PropagationRepository
 import io.github.lilixp.utcradioclock.data.propagation.SharedPreferencesPropagationCache
@@ -18,10 +21,18 @@ class AppContainer(
     timeProvider: TimeProvider = TimeProvider(),
     /** The Internet; tests pass a fake, so they never go online. */
     http: HttpClient = UrlConnectionHttpClient(userAgent = USER_AGENT),
+    /** The phone's location; tests pass a fake, so they never use the real GPS. */
+    locations: LocationProvider = AndroidLocationProvider(context),
 ) {
     val clockRepository = ClockRepository(timeProvider)
+    val locationProvider: LocationProvider = locations
     val settingsRepository: SettingsRepository = SharedPreferencesSettingsRepository(context)
-    val positionRepository = PositionRepository(settingsRepository)
+    val positionRepository = PositionRepository(
+        settingsRepository,
+        locationProvider,
+        SharedPreferencesLastPositionStore(context),
+        timeProvider,
+    )
     val propagationRepository = PropagationRepository(http, SharedPreferencesPropagationCache(context), timeProvider)
 
     private companion object {

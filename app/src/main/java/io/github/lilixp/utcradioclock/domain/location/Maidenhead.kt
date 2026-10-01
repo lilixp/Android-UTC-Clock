@@ -1,6 +1,7 @@
 package io.github.lilixp.utcradioclock.domain.location
 
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
+import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 
 /**
  * Maidenhead locator → the centre of its square. A locator is 1 to 4 pairs of characters, each pair
@@ -15,6 +16,8 @@ import io.github.lilixp.utcradioclock.domain.model.GeoPosition
  *
  * E.g. KN46dw → 46.9375° N, 28.2917° E. The centre is at most half a square away from the station:
  * about 3 km with 6 characters, enough for sunrise and sunset to the minute.
+ *
+ * [fromPosition] goes the other way (e.g. from GPS), with the same table.
  */
 object Maidenhead {
 
@@ -42,4 +45,32 @@ object Maidenhead {
         }
         return GeoPosition(latitude = latitude + height / 2, longitude = longitude + width / 2)
     }
+
+    /**
+     * The locator of the square that contains [position], with [characters] characters (2, 4, 6 or 8),
+     * written as the app writes locators: KN46dw. Null for a position that is not on Earth (out of
+     * range, NaN). The north pole and the 180° meridian belong to the last square, as in other programs.
+     */
+    fun fromPosition(position: GeoPosition, characters: Int = DEFAULT_CHARACTERS): String? {
+        require(characters in 2..2 * pairs.size && characters % 2 == 0) { "2, 4, 6 or 8 characters" }
+        if (!position.isValid) return null
+        // Fractions of the whole world, kept just below 1 so 180° and 90° stay in the last square
+        var x = ((position.longitude + 180.0) / 360.0).coerceAtMost(ALMOST_ONE)
+        var y = ((position.latitude + 90.0) / 180.0).coerceAtMost(ALMOST_ONE)
+        val text = StringBuilder()
+        for (i in 0 until characters / 2) {
+            val pair = pairs[i]
+            val column = (x * pair.count).toInt().coerceIn(0, pair.count - 1)
+            val row = (y * pair.count).toInt().coerceIn(0, pair.count - 1)
+            text.append(pair.first + column).append(pair.first + row)
+            x = x * pair.count - column
+            y = y * pair.count - row
+        }
+        return StationIdentity.normalizeLocator(text.toString())
+    }
+
+    /** Six characters (KN46dw): a square of about 6 × 4.6 km here, like the locators people enter. */
+    const val DEFAULT_CHARACTERS = 6
+
+    private const val ALMOST_ONE = 1.0 - 1e-12
 }

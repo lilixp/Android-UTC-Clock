@@ -15,10 +15,69 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 data class LocalDay(val date: LocalDate, val zone: ZoneId)
 
 /**
- * A place on Earth in degrees: latitude north positive, longitude east positive. For now it is the
- * centre of the station's Maidenhead locator; a later phase can give it from GPS instead.
+ * A place on Earth in degrees: latitude north positive, longitude east positive. It comes from GPS or
+ * from the centre of the station's Maidenhead locator.
  */
-data class GeoPosition(val latitude: Double, val longitude: Double)
+data class GeoPosition(val latitude: Double, val longitude: Double) {
+    /** Within −90…90° and −180…180° (NaN and infinity are not). */
+    val isValid: Boolean
+        get() = latitude in -90.0..90.0 && longitude in -180.0..180.0
+}
+
+/** Where the station's position comes from, as chosen in Settings. */
+enum class PositionSource {
+    /** The Maidenhead locator entered in Settings (the default: no permission needed). */
+    MANUAL,
+
+    /** The phone's location (GPS / Location Services), with the manual locator as fallback. */
+    AUTOMATIC,
+}
+
+/** One position from the phone's Location Services. */
+data class LocationFix(
+    val position: GeoPosition,
+    /** Radius of 68 % confidence, in metres; null when the phone did not say. */
+    val accuracyMeters: Float?,
+    /** When the phone measured it. */
+    val time: Instant,
+    /** Only "approximate location" was allowed (Android 12+): off by up to about 3 km. */
+    val approximate: Boolean = false,
+)
+
+/** How the automatic (GPS) position is doing. */
+enum class GpsStatus {
+    /** Looking for a position (the first one, or a newer one). */
+    SEARCHING,
+
+    /** A position from the phone, recent enough. */
+    OK,
+
+    /** The app may not use the phone's location (not asked yet, refused, or revoked). */
+    NO_PERMISSION,
+
+    /** Location is turned off on the phone. */
+    LOCATION_OFF,
+
+    /** The phone gave no position this time (e.g. indoors, timeout). */
+    UNAVAILABLE,
+}
+
+/** Where the station's position finally comes from. */
+enum class PositionOrigin { GPS, LOCATOR, NONE }
+
+/** The station's position as everything else uses it, and where it came from. */
+data class StationPosition(
+    /** Null when there is neither a GPS position nor a valid locator. */
+    val position: GeoPosition?,
+    val origin: PositionOrigin,
+    /** The 6-character locator of the GPS position, or the locator as entered; null when empty. */
+    val locator: String?,
+    val source: PositionSource,
+    /** Null in [PositionSource.MANUAL] mode: GPS is not used at all. */
+    val gps: GpsStatus? = null,
+    /** The GPS position used, when [origin] is [PositionOrigin.GPS]. */
+    val fix: LocationFix? = null,
+)
 
 /** Days on which the Sun does not cross the horizon at all (far north or south). */
 enum class PolarCondition {

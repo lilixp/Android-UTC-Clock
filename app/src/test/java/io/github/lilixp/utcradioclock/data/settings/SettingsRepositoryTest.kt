@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock.data.settings
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import org.junit.Assert.assertEquals
@@ -62,5 +63,14 @@ class SettingsRepositoryTest {
         val again = restart()
         assertEquals(ThemeMode.DARK, again.themeMode.value)
         assertEquals(StationIdentity("ER1PL", "KN46dw"), again.station.value)
+    }
+
+    @Test
+    fun positionSource_manualByDefault_savedAndReloaded() {
+        assertEquals(PositionSource.MANUAL, restart().positionSource.value)
+        restart().setPositionSource(PositionSource.AUTOMATIC)
+        assertEquals(PositionSource.AUTOMATIC, restart().positionSource.value)
+        restart().setPositionSource(PositionSource.MANUAL)
+        assertEquals(PositionSource.MANUAL, restart().positionSource.value)
     }
 }

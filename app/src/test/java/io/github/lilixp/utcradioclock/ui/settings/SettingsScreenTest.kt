@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 import io.github.lilixp.utcradioclock.testing.FakeSettingsRepository
@@ -45,6 +47,7 @@ class SettingsScreenTest {
     private fun show(dark: Boolean = false) = compose.setContent {
         val station by viewModel.station.collectAsStateWithLifecycle()
         val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+        val positionSource by viewModel.positionSource.collectAsStateWithLifecycle()
         UTCRadioClockTheme(darkTheme = dark) {
             background = MaterialTheme.colorScheme.background
             SettingsScreen(
@@ -55,6 +58,8 @@ class SettingsScreenTest {
                 onThemeModeChange = viewModel::setThemeMode,
                 onBack = { wentBack = true },
                 appVersion = "2.0.0",
+                positionSource = positionSource,
+                onPositionSourceChange = viewModel::setPositionSource,
             )
         }
     }
@@ -76,6 +81,42 @@ class SettingsScreenTest {
         compose.onNodeWithText("ABOUT THE APP").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("UTC Radio Clock · Version 2.0.0").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("N0NBH, at hamqsl.com", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun positionSource_manualByDefault_withWhatItMeans() {
+        show()
+        compose.onNodeWithText("Poziția stației").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Manual").assertIsSelected()
+        compose.onNodeWithText("Automat (GPS)").assertIsNotSelected()
+        compose.onNodeWithTag(SettingsTags.POSITION_HINT).assertTextEquals("Centrul locatorului de mai sus.")
+    }
+
+    @Test
+    fun positionSource_automaticIsSaved_andExplained() {
+        show()
+        compose.onNodeWithText("Automat (GPS)").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(PositionSource.AUTOMATIC, settings.positionSource.value)
+        compose.onNodeWithText("Automat (GPS)").assertIsSelected()
+        compose.onNodeWithTag(SettingsTags.POSITION_HINT)
+            .assertTextContains("se folosește locatorul de mai sus", substring = true)
+            .assertTextContains("Poziția rămâne pe telefon", substring = true)
+        // The manual locator stays there, as the fallback
+        compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).assertIsDisplayed()
+
+        compose.onNodeWithText("Manual").performClick()
+        compose.waitForIdle()
+        assertEquals(PositionSource.MANUAL, settings.positionSource.value)
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun positionSourceInEnglish() {
+        show()
+        compose.onNodeWithText("Station position").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Automatic (GPS)").performScrollTo().performClick()
+        compose.onNodeWithTag(SettingsTags.POSITION_HINT).assertTextContains("The position stays on the phone.", substring = true)
     }
 
     /** Clicks a theme option and checks that only it is selected and that it was saved. */

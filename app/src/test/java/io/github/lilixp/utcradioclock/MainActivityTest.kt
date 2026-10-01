@@ -1,5 +1,8 @@
 package io.github.lilixp.utcradioclock
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
@@ -21,17 +24,24 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
+import io.github.lilixp.utcradioclock.testing.BOGHICENI
 import io.github.lilixp.utcradioclock.testing.FixedTimeApplication
+import io.github.lilixp.utcradioclock.testing.GpsFixedTimeApplication
 import io.github.lilixp.utcradioclock.testing.OfflineFixedTimeApplication
+import io.github.lilixp.utcradioclock.testing.fix
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -136,6 +146,122 @@ class MainActivityTest {
         compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(DashboardTags.UTC_TIME))
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31")
     }
+
+    // ---- Position from GPS ----
+
+    private fun app() = compose.activity.application as FixedTimeApplication
+
+    private fun chooseAutomaticPosition() {
+        openSettings()
+        chooseAutomaticPositionFromSettings()
+    }
+
+    private fun chooseAutomaticPositionFromSettings() {
+        compose.onNodeWithText("Automat (GPS)").performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
+    private fun backToDashboard() {
+        compose.onNodeWithContentDescription("Înapoi").performClick()
+        onDashboard()
+    }
+
+    private fun assertOnLocationCard(text: String) {
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
+        compose.onNodeWithText(text).assertIsDisplayed()
+    }
+
+    /** What Android's permission dialog answers, delivered as the system would. */
+    @Suppress("DEPRECATION") // the way the system hands the answer to the activity
+    private fun answerPermissionDialog(granted: Boolean) {
+        val request = shadowOf(compose.activity).lastRequestedPermission
+        val results = IntArray(request.requestedPermissions.size) {
+            if (granted) PackageManager.PERMISSION_GRANTED else PackageManager.PERMISSION_DENIED
+        }
+        compose.runOnUiThread {
+            compose.activity.onRequestPermissionsResult(request.requestCode, request.requestedPermissions, results)
+        }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun manualByDefault_thePermissionIsNeverAskedAtStart() {
+        onDashboard()
+        assertNull(shadowOf(compose.activity).lastRequestedPermission)
+        assertEquals(0, app().locations.requests)
+    }
+
+    @Test
+    @Config(qualifiers = "ro", application = GpsFixedTimeApplication::class)
+    fun automatic_theGpsPositionOnTheDashboard() {
+        chooseAutomaticPosition()
+        assertNull(shadowOf(compose.activity).lastRequestedPermission) // already allowed: no dialog
+        backToDashboard()
+
+        compose.onNodeWithTag(DashboardTags.LOCATOR).assertTextEquals("KN46dx") // the station badge
+        assertOnLocationCard("Latitudine: 46,9612° N")
+        assertOnLocationCard("Longitudine: 28,3041° E")
+        assertOnLocationCard("QTH: KN46dx")
+        assertOnLocationCard("GPS · 18:42 · ±12 m")
+    }
+
+    @Test
+    fun automatic_asksForBothPermissions_whenChosen() {
+        chooseAutomaticPosition()
+        val asked = shadowOf(compose.activity).lastRequestedPermission.requestedPermissions.toSet()
+        assertEquals(setOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), asked)
+    }
+
+    @Test
+    fun permissionAllowedInTheDialog_thePositionAppears() {
+        chooseAutomaticPosition()
+        app().locations.permission = true
+        app().locations.current = fix(BOGHICENI)
+        answerPermissionDialog(granted = true)
+        backToDashboard()
+        assertOnLocationCard("QTH: KN46dx")
+    }
+
+    @Test
+    fun permissionRefused_theLocatorIsUsed_andTheCardOffersToAskAgain() {
+        openSettings()
+        compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
+        chooseAutomaticPositionFromSettings()
+        answerPermissionDialog(granted = false)
+        backToDashboard()
+
+        assertOnLocationCard("Locator din Setări (centrul pătratului)")
+        assertOnLocationCard("QTH: KN46dw")
+        // Robolectric's Android says the dialog may not be shown again: "Don't ask again"
+        assertOnLocationCard("Accesul la locație a fost refuzat. Îl poți permite din setările aplicației.")
+        compose.onNodeWithText("Deschide setările aplicației").performClick()
+        val opened = shadowOf(compose.activity).nextStartedActivity
+        assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, opened.action)
+        assertEquals("package:io.github.lilixp.utcradioclock", opened.dataString)
+    }
+
+    @Test
+    fun notAskedYet_theCardButtonShowsTheDialog() {
+        app().settings().setPositionSource(PositionSource.AUTOMATIC) // chosen earlier, permission revoked since
+        compose.activityRule.scenario.recreate()
+        onDashboard()
+        assertOnLocationCard("Aplicația nu are acces la locația telefonului.")
+        compose.onNodeWithText("Permite accesul la locație").performClick()
+        assertTrue(shadowOf(compose.activity).lastRequestedPermission != null)
+    }
+
+    @Test
+    @Config(qualifiers = "ro", application = GpsFixedTimeApplication::class)
+    fun locationTurnedOff_theCardOpensTheLocationSettings() {
+        app().locations.enabled = false
+        chooseAutomaticPosition()
+        backToDashboard()
+        assertOnLocationCard("Locația telefonului este oprită.")
+        compose.onNodeWithText("Pornește locația").performClick()
+        assertEquals(Settings.ACTION_LOCATION_SOURCE_SETTINGS, shadowOf(compose.activity).nextStartedActivity.action)
+    }
+
+    private fun FixedTimeApplication.settings() = container.settingsRepository
 
     @Test
     fun startsOnTheDashboardWithDefaults() {

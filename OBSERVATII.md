@@ -29,6 +29,12 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 | 01.10.2026 | Benzile: doar cele 3 niveluri N0NBH (Good/Fair/Poor → Bun/Mediu/Slab, verde/galben/roșu); nu 5 niveluri inventate. Pe dashboard: valoarea de zi sau de noapte după Soare la stație; fără locator, 06:00–18:00 ora locală (spus în dialog). |
 | 01.10.2026 | SFI/K/A colorate (alegerea lui Lilian): K după scara NOAA (0–3 / 4 / ≥5), A după categoriile NOAA (<16 / 16–29 / ≥30), SFI după pragurile uzuale din v1 (≥120 / 90–119 / <90; NOAA nu are scală pentru SFI). |
 | 01.10.2026 | K afișat ca în sursă, întreg („K 0”), fără zecimale inventate. |
+| 01.10.2026 | Sub benzi doar „Actualizat … UTC” (câmpul `updated` din XML N0NBH); sursa N0NBH/HamQSL e în Setări → Despre aplicație și în dialogul benzilor. |
+| 01.10.2026 | GPS (faza 5): se cer **ACCESS_FINE_LOCATION și ACCESS_COARSE_LOCATION** împreună (locatorul de 6 caractere are nevoie de precizie; utilizatorul poate alege totuși „aproximativă”); fără locație în fundal. |
+| 01.10.2026 | Sursa poziției implicită: **Manual**; permisiunea se cere doar la alegerea „Automat (GPS)” sau din butonul cardului LOCAȚIE. În Automat, fără poziție GPS se folosește locatorul manual. |
+| 01.10.2026 | Ultima poziție GPS salvată local în `position.xml` (rotunjită la ~100 m), **exclusă din backup**, ștearsă la trecerea pe Manual. Nu e trimisă nicăieri. |
+| 01.10.2026 | Locatorul din GPS: 6 caractere, scris `KN46dw`. Coordonatele: 4 zecimale, virgulă în română, punct în engleză, N/S/E/W. |
+| 01.10.2026 | Poziția se citește doar cu dashboard-ul pe ecran: la deschidere și revenire, apoi la 30 de minute; o poziție mai nouă de 10 minute nu mai pornește GPS-ul; o citire durează cel mult 30 s. Fără Google Play Services (LocationManager prin `LocationManagerCompat`). |
 | 01.10.2026 | Rețea fără biblioteci noi: `HttpURLConnection` + `XmlPullParser` din Android; permisiunea `INTERNET`. Cache: ultimul XML valid în SharedPreferences (`propagation_cache`, în afara backup-ului). Descărcare doar cât dashboard-ul e pe ecran: cel mult o dată pe oră, după o eroare din nou peste 15 minute. |
 
 ## De verificat (încă nevăzut pe telefon)
@@ -42,13 +48,15 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 - **Miezul nopții local**: data locală sub ora LOCAL și recalcularea Soarelui pentru ziua nouă.
 - **Propagarea fără Internet pe telefon** (mod avion): pe PC e testată (date salvate cu „Date
   neactualizate”, fără date „Date indisponibile”); pe telefon o poate încerca Lilian cu modul avion.
+- **GPS pe telefon** (faza 5, de verificat împreună): alegerea Automat și dialogul de permisiune,
+  locația exactă și cea aproximativă, refuzul și „Nu mai întreba”, butonul spre setările aplicației,
+  locația oprită și butonul „Pornește locația”, poziția în casă (fără semnal), locatorul KN46dx
+  calculat la Boghiceni, revenirea pe Manual (poziția salvată se șterge).
 - **Trecerea benzilor de la zi la noapte** la apus (culorile se schimbă dacă N0NBH dă valori diferite
   ziua și noaptea): testată pe PC; de privit o dată pe telefon seara.
 
 ## Propuneri mici (nefăcute, așteaptă decizia lui Lilian)
 
-- Cardul **LOCAȚIE** arată încă „Latitudine: —” și „Longitudine: —”, deși aplicația are poziția din
-  locator (KN46dw → 46,9375° N, 28,2917° E). Ar fi o modificare mică să le afișeze.
 - **Semnarea versiunii Release**: acum `app-release-unsigned.apk`; pentru distribuire (Google Play
   sau APK dat altora) trebuie o cheie de semnare, păstrată în afara depozitului.
 - **Explicații la SFI / K / A** (ca la benzi): un dialog cu valoarea, pragurile și sursa scalei.
@@ -58,13 +66,10 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 
 ## Ce urmează (fazele următoare, în ordinea din cerințele inițiale)
 
-Făcute: SFI, K, A și propagarea HF pe benzi (faza 4, de la N0NBH).
+Făcute: SFI, K, A și propagarea HF pe benzi (faza 4, de la N0NBH); GPS și locația (faza 5).
 
-1. **GPS / locație**: permisiunea de locație, poziția din GPS în `PositionRepository` (în locul
-   centrului locatorului sau alături de el), locatorul calculat automat din poziție, cardul LOCAȚIE
-   cu latitudine și longitudine. Ecranele nu trebuie refăcute.
-2. **Widget** pe ecranul principal.
-3. **Notificări** (de ex. furtună geomagnetică, K ≥ 5).
+1. **Widget** pe ecranul principal.
+2. **Notificări** (de ex. furtună geomagnetică, K ≥ 5).
 
 Rețeaua există deja (faza 4): `HttpClient` + cache + teste fără Internet; o sursă nouă de date
 online se poate adăuga la fel.

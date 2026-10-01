@@ -13,6 +13,11 @@
     </plurals>
     <string name="locator">Maidenhead locator</string>
     <string name="locator_hint">For example KN46dw: 4, 6 or 8 characters</string>
+    <string name="position_source">Station position</string>
+    <string name="position_manual">Manual</string>
+    <string name="position_automatic">Automatic (GPS)</string>
+    <string name="position_manual_hint">The centre of the locator above.</string>
+    <string name="position_automatic_hint">The location of the phone, checked when the app is opened and every 30 minutes. The locator above is used while there is no position. The position stays on the phone.</string>
     <string name="settings_saved_automatically">Changes are saved automatically.</string>
     <string name="section_about">ABOUT THE APP</string>
     <string name="about_version">Version %1$s</string>
@@ -30,6 +35,7 @@
     <string name="civil_twilight">Civil twilight: %1$s – %2$s</string>
     <string name="sun_no_location">Location not available.</string>
     <string name="sun_enter_locator">Enter your Maidenhead locator in Settings.</string>
+    <string name="sun_no_position">Allow location access or enter your Maidenhead locator in Settings.</string>
     <string name="sun_invalid_locator">The locator “%1$s” is not valid.</string>
     <string name="sun_midnight_sun">The Sun does not set on this day.</string>
     <string name="sun_polar_night">The Sun does not rise on this day.</string>
@@ -38,6 +44,17 @@
     <string name="latitude">Latitude: %1$s</string>
     <string name="longitude">Longitude: %1$s</string>
     <string name="qth" translatable="false">QTH: %1$s</string>
+    <string name="location_gps" translatable="false">GPS</string>
+    <string name="location_gps_approximate">GPS (approximate)</string>
+    <string name="location_from_locator">Locator from Settings (centre of the square)</string>
+    <string name="location_searching">Looking for the position…</string>
+    <string name="location_no_permission">The app may not use the location of the phone.</string>
+    <string name="location_permission_blocked">Location access was denied. You can allow it in the app settings.</string>
+    <string name="location_off">Location is turned off on the phone.</string>
+    <string name="location_unavailable">No position available right now.</string>
+    <string name="location_allow">Allow location access</string>
+    <string name="location_open_app_settings">Open app settings</string>
+    <string name="location_turn_on">Turn on location</string>
 
     <string name="section_propagation">PROPAGATION</string>
     <string name="index_sfi" translatable="false">SFI %1$s</string>

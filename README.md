@@ -1,7 +1,7 @@
 # UTCRadioClock
 
-Aplicație Android pentru radioamatori: ora UTC, ora locală și, în fazele următoare, soarele,
-locația (locator Maidenhead), activitatea solară și geomagnetică și condițiile de propagare HF.
+Aplicație Android pentru radioamatori: ora UTC, ora locală, Soarele, locația (GPS sau locator
+Maidenhead), activitatea solară și geomagnetică și condițiile de propagare HF.
 
 Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e pe branch-ul `main`).
 
@@ -15,7 +15,9 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | – | Audit și curățenie | `6f0293f` |
 | 2 | UTC și ora locală (`TimeProvider`, `java.time.Clock`) | `98c0d8a` |
 | 3 | Soarele: răsărit, apus, amiază solară, durata zilei, crepuscul civil | `6a6aa1e` |
-| 4 | Propagarea HF și datele geomagnetice de la N0NBH (hamqsl.com) | (acest commit) |
+| 4 | Propagarea HF și datele geomagnetice de la N0NBH (hamqsl.com) | `43a545e` |
+| – | Sub benzi doar „Actualizat … UTC”; sursa în Setări → Despre aplicație | `a4b88f2` |
+| 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE | (acest commit) |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
@@ -101,6 +103,46 @@ Actualizat 05:29 UTC
 - **Actualizare:** doar cât dashboard-ul e pe ecran: datele salvate imediat, o descărcare doar dacă
   sunt mai vechi de o oră, apoi o dată pe oră; după o eroare, din nou după 15 minute.
 
+## Faza 5: GPS și locație
+
+În **Setări → STAȚIE → Poziția stației** se alege de unde vine poziția:
+
+- **Manual** (implicit): centrul locatorului scris mai sus, exact ca înainte. Aplicația nu cere
+  nicio permisiune.
+- **Automat (GPS)**: locația telefonului. Abia la alegerea acestei opțiuni Android afișează
+  dialogul de permisiune (locație exactă sau aproximativă, cum alege utilizatorul). Cât timp nu
+  există o poziție GPS, se folosește locatorul manual; fără niciunul, „Locația nu este disponibilă.”
+
+Cardul **LOCAȚIE**:
+
+```
+Latitudine: 46,9612° N
+Longitudine: 28,3041° E
+QTH: KN46dx
+GPS · 18:41 · ±12 m             (sau: Locator din Setări (centrul pătratului))
+```
+
+- **Coordonatele** au 4 zecimale (circa 10 m), cu virgulă în română și punct în engleză; în modul
+  Manual sunt cele ale centrului locatorului.
+- **Locatorul** e calculat din coordonate cu 6 caractere, scris ca în restul aplicației (`KN46dx`),
+  și apare și sus, sub indicativ.
+- **Stările GPS**, fiecare cu un mesaj și, unde se poate face ceva, un buton:
+  fără permisiune („Permite accesul la locație”, dialogul Android), refuzată definitiv („Deschide
+  setările aplicației”, pagina aplicației din sistem), locația telefonului oprită („Pornește
+  locația”), se caută poziția, poziție indisponibilă momentan. Aplicația nu schimbă singură
+  nicio setare a sistemului.
+- **Soarele și benzile** folosesc aceeași poziție: cu GPS, răsăritul, apusul și ziua/noaptea
+  benzilor sunt cele ale locului unde e telefonul. Calculul solar și datele N0NBH sunt neschimbate.
+
+**Când se citește poziția:** doar cât dashboard-ul e pe ecran: la deschidere și la revenirea în
+aplicație, apoi o dată la 30 de minute. O poziție mai nouă de 10 minute (a aplicației sau a altei
+aplicații) se folosește direct, fără să pornească GPS-ul; altfel o singură citire, cel mult 30 de
+secunde. Fără urmărire continuă, nimic în fundal, fără Google Play Services.
+
+**Confidențialitate:** poziția nu pleacă de pe telefon (nici la N0NBH, nici altundeva). Ultima
+poziție GPS se păstrează în `position.xml`, rotunjită la circa 100 m, ca aplicația să aibă o poziție
+și la pornire, în casă sau fără semnal. Fișierul nu intră în backup și se șterge la trecerea pe Manual.
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -140,20 +182,22 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 ├── AppContainer.kt              obiectele comune (injecție manuală, fără framework)
 ├── data/
 │   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă, ziua locală)
-│   ├── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
-│   ├── location/                PositionRepository (poziția stației: acum din locator, mai târziu GPS)
+│   ├── settings/                SettingsRepository (tema, indicativul, locatorul, sursa poziției, în SharedPreferences)
+│   ├── location/                PositionRepository (GPS sau locator), LocationProvider (locația Android),
+│   │                            LastPositionStore (ultima poziție GPS, position.xml)
 │   └── propagation/             HttpClient, PropagationCache, PropagationRepository (N0NBH + cache)
 ├── domain/
 │   ├── model/                   ClockReading, LocalDay, ThemeMode, StationIdentity, GeoPosition,
+│   │                            PositionSource, LocationFix, StationPosition, GpsStatus,
 │   │                            SolarDay, SolarConditions, BandGroup, ConditionLevel
-│   ├── location/                Maidenhead (locator → latitudine/longitudine)
+│   ├── location/                Maidenhead (locator ↔ latitudine/longitudine)
 │   ├── solar/                   SolarCalculator (NOAA: răsărit, apus, amiază solară, crepuscul civil)
 │   └── propagation/             HamQslParser (XML N0NBH), IndexScales (culorile SFI/K/A)
 ├── ui/
-│   ├── dashboard/               DashboardScreen, PropagationCard, DashboardViewModel, DashboardUiState
+│   ├── dashboard/               DashboardScreen, LocationCard, PropagationCard, DashboardViewModel, DashboardUiState
 │   ├── settings/                SettingsScreen, SettingsViewModel
 │   └── theme/                   culorile Material 3 (luminos și întunecat)
-└── util/                        TimeFormatter (texte pentru ore, date, fus orar)
+└── util/                        TimeFormatter (texte pentru ore, date, fus orar, coordonate)
 ```
 
 - **TimeProvider** e singura sursă de timp: un `java.time.Clock` (în aplicație `Clock.systemUTC()`)
@@ -173,8 +217,8 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 - **SettingsViewModel** doar citește și salvează prin **SettingsRepository**; curățarea valorilor
   (indicativ, locator) e în **StationIdentity**, iar SharedPreferences doar în repository.
 - **Soarele:** `Maidenhead` și `SolarCalculator` sunt cod pur, fără Android și fără ceas, testate
-  separat. **PositionRepository** transformă locatorul din Setări în poziție; o sursă GPS îl poate
-  înlocui mai târziu fără să se schimbe restul. **DashboardViewModel** cere calculul doar când se
+  separat. **PositionRepository** dă poziția stației: centrul locatorului din Setări sau, în modul
+  Automat, poziția GPS (cu locatorul ca rezervă). **DashboardViewModel** cere calculul doar când se
   schimbă ziua locală, fusul sau poziția (`ClockRepository.localDays()`, verificat o dată pe minut),
   păstrează ultimul rezultat și trimite ecranului doar texte.
 - **Propagarea:** `UrlConnectionHttpClient` (HttpURLConnection din Android, timeout 10 s, fără
@@ -182,8 +226,13 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   **PropagationRepository** îl păstrează în SharedPreferences (`propagation_cache`, în afara
   backup-ului) și dă un `Flow<PropagationState>` (se încarcă / curent / neactualizat / indisponibil),
   pe care **DashboardViewModel** îl transformă în texte și culori. Nimic din rețea nu e în ecran.
-- **Locatorul** ajunge pe ecran ca simplu text din DashboardViewModel; acum vine din Setări,
-  iar mai târziu ViewModel-ul îl poate lua din GPS fără ca ecranul să se schimbe.
+- **Poziția:** `AndroidLocationProvider` (LocationManager din Android, prin `LocationManagerCompat`;
+  fără Google Play Services) dă o singură poziție când e cerută. **PositionRepository** alege între
+  GPS și locator, ține minte ultima poziție (`position.xml`, în afara backup-ului) și o cere din nou
+  doar cât `updates()` e ascultat de dashboard (la 30 de minute sau la `refreshNow()`, de ex. după
+  dialogul de permisiune). Soarele și benzile primesc aceeași `GeoPosition` ca înainte, deci
+  `SolarCalculator` și codul N0NBH nu s-au schimbat. Permisiunea și paginile de setări ale
+  sistemului sunt în MainActivity; ecranul primește doar texte.
 - Nu există bibliotecă de navigare, Hilt sau mai multe module: două ecrane nu le cer încă.
   Se adaugă când apar mai multe ecrane (de ex. widget).
 
@@ -257,7 +306,23 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 - `TimeProviderTest`: momentul vine din `Clock.fixed`, fusul e cerut din nou la fiecare citire,
   UTC și ora locală din aceeași citire;
 - `MaidenheadTest`: locatori de 2, 4, 6 și 8 caractere în mai multe părți ale lumii, colțurile
-  lumii, litere mari/mici, locator gol și invalid;
+  lumii, litere mari/mici, locator gol și invalid; invers, din coordonate: Boghiceni (KN46dx),
+  toate emisferele, 2/4/6/8 caractere, drum dus-întors, polul nord și meridianul 180°, coordonate
+  invalide (în afara limitelor, NaN, infinit);
+- `PositionRepositoryTest` (ceas virtual, telefon simulat, fără GPS real): modul Manual nu întreabă
+  telefonul; poziție GPS validă (folosită, salvată, locatorul ei); fără permisiune, permisiune dată
+  mai târziu, locație oprită (cu și fără poziție salvată), nicio poziție, telefonul nu răspunde
+  (30 s), coordonate invalide, erori ale serviciilor de locație: în toate, rezerva e locatorul;
+  poziție recentă a altei aplicații sau salvată (fără să pornească GPS-ul), citire la 30 de minute,
+  nimic cât dashboard-ul nu e pe ecran, ștergerea poziției salvate la trecerea pe Manual;
+- `AndroidLocationProviderTest` (Robolectric, LocationManager simulat): fără permisiune nu se
+  citește nimic, locație aproximativă sau exactă, cea mai nouă poziție a providerilor, locația
+  oprită, o poziție nouă, toți providerii opriți;
+- `SharedPreferencesLastPositionStoreTest` (Robolectric): salvare și reîncărcare rotunjite la
+  0,001°, ștergere, fișier stricat, `position.xml` lipsă din regulile de backup;
+- `LocationCardTest` (Robolectric): cardul LOCAȚIE cu GPS, aproximativ, locator manual, fără
+  poziție, fără permisiune, refuzată definitiv, locația oprită, poziție indisponibilă, căutare,
+  butoanele și ce cer ele, tema întunecată, în română și engleză;
 - `SolarCalculatorTest`: răsărit, apus, amiază solară, crepuscul civil și durata zilei pentru
   Chișinău (ora de vară și de iarnă), Londra, New York, Tokio și Sydney (unde răsăritul e în ziua
   UTC anterioară), noaptea albă la 65° N (apus după miezul nopții, fără crepuscul civil), zi și
@@ -267,6 +332,9 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   secundă fără drift, data locală după miezul nopții local, miezul nopții UTC, schimbarea fusului
   telefonului, trecerea la ora de iarnă, un singur ticker pentru mai mulți ascultători, oprirea
   tickerului când dashboard-ul nu mai e vizibil, limba textelor, indicativul și locatorul din setări;
+  cardul LOCAȚIE în modul Manual și cu GPS (coordonate cu virgulă și cu punct, locatorul KN46dx, ora
+  și precizia), poziția GPS în calculul Soarelui și în ziua/noaptea benzilor, rezerva pe locator fără
+  permisiune, fără nicio poziție, poziție GPS nouă după 30 de minute;
   Soarele din locator, alt locator, locator gol sau invalid, recalculare doar la zi nouă, fus nou
   sau locator nou (nu la fiecare secundă), ora de iarnă în orele Soarelui;
 - `ThemeTest`: Sistem urmează telefonul, Luminos și Întunecat nu;
@@ -275,17 +343,23 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   implicite, Dashboard → Setări → Dashboard cu săgeata și cu butonul Înapoi al telefonului, tema
   întunecată și luminoasă aplicată întregii aplicații și păstrată când activitatea e recreată;
   cardul SOARE fără locator, apoi cu orele calculate după ce locatorul e scris în Setări;
+  GPS: permisiunea nu e cerută la pornire, alegerea Automat cere ambele permisiuni, poziția pe
+  dashboard după acordare, refuzul definitiv (locatorul folosit, butonul deschide pagina aplicației
+  din setările sistemului), butonul cardului reafișează dialogul, locația oprită deschide setările
+  de locație;
 - `TimeFormatterTest`: `HH:mm:ss` pe 24 de ore, același moment în mai multe fusuri orare, fusul
   orar cu ora de vară și de iarnă, orele Soarelui rotunjite la minut, durata zilei „11h 45m”;
+  coordonatele (virgulă în română, punct în engleză, S și W fără minus), precizia, ora poziției;
 - `StationIdentityTest`: curățarea indicativului și a locatorului, lungimile maxime;
 - `SettingsRepositoryTest` (Robolectric): salvarea și reîncărcarea după repornire (indicativ,
-  locator, fiecare dintre cele trei teme) și valorile implicite;
+  locator, fiecare dintre cele trei teme, sursa poziției) și valorile implicite;
 - `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
   iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
   cardul SOARE cu date, fără locator, cu locator invalid, în zi polară, în noapte albă, în română
   și engleză, în tema întunecată;
 - `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
   STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
+  Poziția stației Manual / Automat (GPS), salvată, cu explicația ei, în română și engleză;
 - `HamQslParserTest` (Robolectric): răspunsul real N0NBH din 1 octombrie 2026
   (`app/src/test/resources/hamqsl`), zi și noapte, zecimale, „No Report” și valori goale (rămân
   lipsă, nu zero), benzi incomplete, răspunsuri invalide (HTML, XML tăiat, JSON, gol);
