@@ -18,6 +18,7 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | 4 | Propagarea HF și datele geomagnetice de la N0NBH (hamqsl.com) | `43a545e` |
 | – | Sub benzi doar „Actualizat … UTC”; sursa în Setări → Despre aplicație | `a4b88f2` |
 | 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE (verificată pe S24+) | `38e55a4` |
+| A | Corecții după testarea autonomă: locator 4/6/8, ordinea GPS, aproximativ ↔ exact, mesajul SOARE | (acest commit) |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
@@ -138,6 +139,16 @@ GPS · 18:41 · ±12 m             (sau: Locator din Setări (centrul pătratulu
 aplicație, apoi o dată la 30 de minute. O poziție mai nouă de 10 minute (a aplicației sau a altei
 aplicații) se folosește direct, fără să pornească GPS-ul; altfel o singură citire, cel mult 30 de
 secunde. Fără urmărire continuă, nimic în fundal, fără Google Play Services.
+
+**Faza A (corecții după testarea pe S24+):**
+
+- **Locatorul** e valid doar cu **4, 6 sau 8 caractere** (`KN46`, `KN46dw`, `KN46dw12`), ca în
+  indicația din Setări. `KN`, `KN4`, `KN46d` sunt invalide: nu devin poziție, QTH sau insignă, iar
+  cardurile SOARE și LOCAȚIE spun „Locatorul „KN4” nu este valid.”
+- **GPS:** întâi permisiunea, apoi dacă locația e pornită, abia apoi poziția recentă (regula de
+  10 minute rămâne); o poziție luată cu altă precizie (aproximativ ↔ exact) nu mai e folosită.
+- **Cardul SOARE** fără poziție, în modul Automat, spune motivul: fără permisiune, locația oprită,
+  se caută poziția sau poziție indisponibilă.
 
 **Confidențialitate:** poziția nu pleacă de pe telefon (nici la N0NBH, nici altundeva). Ultima
 poziție GPS se păstrează în `position.xml`, rotunjită la circa 100 m, ca aplicația să aibă o poziție
@@ -305,16 +316,20 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 
 - `TimeProviderTest`: momentul vine din `Clock.fixed`, fusul e cerut din nou la fiecare citire,
   UTC și ora locală din aceeași citire;
-- `MaidenheadTest`: locatori de 2, 4, 6 și 8 caractere în mai multe părți ale lumii, colțurile
-  lumii, litere mari/mici, locator gol și invalid; invers, din coordonate: Boghiceni (KN46dx),
-  toate emisferele, 2/4/6/8 caractere, drum dus-întors, polul nord și meridianul 180°, coordonate
-  invalide (în afara limitelor, NaN, infinit);
+- `MaidenheadTest`: locatori de 4, 6 și 8 caractere în mai multe părți ale lumii, colțurile
+  lumii, litere mari/mici, locator gol și invalid; regula aplicației (valide KN46, KN46dw, KN46dw12;
+  invalide KN, KN4, KN46d, KN46dwx, gol, caractere nepermise); invers, din coordonate: Boghiceni
+  (KN46dx), toate emisferele, 4/6/8 caractere, drum dus-întors, polul nord și meridianul 180°,
+  coordonate invalide (în afara limitelor, NaN, infinit);
 - `PositionRepositoryTest` (ceas virtual, telefon simulat, fără GPS real): modul Manual nu întreabă
   telefonul; poziție GPS validă (folosită, salvată, locatorul ei); fără permisiune, permisiune dată
   mai târziu, locație oprită (cu și fără poziție salvată), nicio poziție, telefonul nu răspunde
   (30 s), coordonate invalide, erori ale serviciilor de locație: în toate, rezerva e locatorul;
   poziție recentă a altei aplicații sau salvată (fără să pornească GPS-ul), citire la 30 de minute,
-  nimic cât dashboard-ul nu e pe ecran, ștergerea poziției salvate la trecerea pe Manual;
+  nimic cât dashboard-ul nu e pe ecran, ștergerea poziției salvate la trecerea pe Manual; Faza A:
+  locatori valizi și invalizi (niciodată poziție sau QTH), locația oprită cu poziție recentă, locația
+  pornită cu poziție recentă (fără citire nouă) și veche, aproximativ ↔ exact (la pornire, în timpul
+  rulării, poziția altei aplicații, cu locația oprită), aceeași precizie (regula de 10 minute);
 - `AndroidLocationProviderTest` (Robolectric, LocationManager simulat): fără permisiune nu se
   citește nimic, locație aproximativă sau exactă, cea mai nouă poziție a providerilor, locația
   oprită, o poziție nouă, toți providerii opriți;
@@ -322,7 +337,7 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   0,001°, ștergere, fișier stricat, `position.xml` lipsă din regulile de backup;
 - `LocationCardTest` (Robolectric): cardul LOCAȚIE cu GPS, aproximativ, locator manual, fără
   poziție, fără permisiune, refuzată definitiv, locația oprită, poziție indisponibilă, căutare,
-  butoanele și ce cer ele, tema întunecată, în română și engleză;
+  butoanele și ce cer ele, tema întunecată, în română și engleză; locatorul invalid spus pe card;
 - `SolarCalculatorTest`: răsărit, apus, amiază solară, crepuscul civil și durata zilei pentru
   Chișinău (ora de vară și de iarnă), Londra, New York, Tokio și Sydney (unde răsăritul e în ziua
   UTC anterioară), noaptea albă la 65° N (apus după miezul nopții, fără crepuscul civil), zi și
@@ -334,7 +349,10 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   tickerului când dashboard-ul nu mai e vizibil, limba textelor, indicativul și locatorul din setări;
   cardul LOCAȚIE în modul Manual și cu GPS (coordonate cu virgulă și cu punct, locatorul KN46dx, ora
   și precizia), poziția GPS în calculul Soarelui și în ziua/noaptea benzilor, rezerva pe locator fără
-  permisiune, fără nicio poziție, poziție GPS nouă după 30 de minute;
+  permisiune, fără nicio poziție, poziție GPS nouă după 30 de minute; Faza A: locator invalid (nici
+  QTH, nici insignă, spus pe cardul LOCAȚIE, benzile după ceas), locatori de 4 și 8 caractere, cardul
+  SOARE în modul Automat pentru fiecare stare GPS, fără recalcularea Soarelui la o stare GPS nouă cu
+  aceeași poziție;
   Soarele din locator, alt locator, locator gol sau invalid, recalculare doar la zi nouă, fus nou
   sau locator nou (nu la fiecare secundă), ora de iarnă în orele Soarelui;
 - `ThemeTest`: Sistem urmează telefonul, Luminos și Întunecat nu;
@@ -356,7 +374,8 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 - `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
   iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
   cardul SOARE cu date, fără locator, cu locator invalid, în zi polară, în noapte albă, în română
-  și engleză, în tema întunecată;
+  și engleză, în tema întunecată; în modul Automat câte un mesaj pentru fiecare stare GPS (locația
+  oprită nu mai cere permisiunea);
 - `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
   STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
   Poziția stației Manual / Automat (GPS), salvată, cu explicația ei, în română și engleză;

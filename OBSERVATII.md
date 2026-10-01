@@ -35,6 +35,9 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 | 01.10.2026 | Ultima poziție GPS salvată local în `position.xml` (rotunjită la ~100 m), **exclusă din backup**, ștearsă la trecerea pe Manual. Nu e trimisă nicăieri. |
 | 01.10.2026 | Locatorul din GPS: 6 caractere, scris `KN46dw`. Coordonatele: 4 zecimale, virgulă în română, punct în engleză, N/S/E/W. |
 | 01.10.2026 | Poziția se citește doar cu dashboard-ul pe ecran: la deschidere și revenire, apoi la 30 de minute; o poziție mai nouă de 10 minute nu mai pornește GPS-ul; o citire durează cel mult 30 s. Fără Google Play Services (LocationManager prin `LocationManagerCompat`). |
+| 01.10.2026 | **Faza A — locatorul:** sunt valide doar locatorii de **4, 6 sau 8 caractere** (`KN46`, `KN46dw`, `KN46dw12`), verificați de `Maidenhead.toPosition` / `isValid` (singurul loc). `KN`, `KN4`, `KN46d`, `KN46dwx`, caracterele nepermise și textul gol sunt invalide. Setările păstrează textul cât e scris, dar un locator invalid nu devine poziție, QTH, insignă, sursă pentru Soare sau propagare; dashboard-ul spune „Locatorul „KN4” nu este valid.” |
+| 01.10.2026 | **Faza A — GPS:** ordinea în `PositionRepository.locate()` este permisiune → locația pornită → abia apoi poziția recentă (regula de 10 minute rămâne). O poziție luată cu altă precizie (aproximativ ↔ exact) nu mai e folosită: se cere una nouă. |
+| 01.10.2026 | **Faza A — Soarele:** fără poziție, în modul Automat, cardul SOARE spune motivul din `GpsStatus`: fără permisiune, locația oprită, se caută poziția, poziție indisponibilă. |
 | 01.10.2026 | Rețea fără biblioteci noi: `HttpURLConnection` + `XmlPullParser` din Android; permisiunea `INTERNET`. Cache: ultimul XML valid în SharedPreferences (`propagation_cache`, în afara backup-ului). Descărcare doar cât dashboard-ul e pe ecran: cel mult o dată pe oră, după o eroare din nou peste 15 minute. |
 
 ## De verificat (încă nevăzut pe telefon)
@@ -60,6 +63,8 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
   Cerută de Lilian după testarea fazei 5 (util la POTA / portabil, într-un loc nou): tragerea în jos
   actualizează tot: poziția GPS (fără regula de 10 minute), Soarele, datele N0NBH (tot cu limita
   de o oră) și tot ce depinde de poziție.
+- **Alte date din fluxul N0NBH**, nefolosite acum: pete solare, raze X, vânt solar, câmpul magnetic,
+  zgomot (signal noise), condiții VHF (aurora, E-skip), MUF.
 
 ## Din testarea fazei 5 pe S24+ (1 octombrie 2026)
 
@@ -67,17 +72,15 @@ Faza 5 a trecut 25 de verificări pe telefon, fără probleme funcționale criti
 aproximativ, locatorul, Manual, rezerva pe locator, poziția salvată, permisiunile, refuzul,
 refuzul definitiv, locația oprită, Soarele și propagarea pe poziția GPS.
 
-Observații de rezolvat **împreună cu redesignul**, nu acum:
+Observații (cele două corecții de logică sunt **rezolvate în Faza A**; indicatorul rămâne pentru redesign):
 
 - **Ultima poziție vs. poziția actuală:** cu GPS-ul oprit se arată ultima poziție salvată
   („GPS · 10:44 · ±100 m”), fără să fie clar că e cea veche. De arătat, de exemplu, „GPS · ultima
   poziție · 10:44” sau un indicator separat, plus starea „GPS oprit — se folosește ultima poziție”.
-- **Cauza observației 10** (GPS oprit, aplicația repornită, niciun mesaj): dacă poziția salvată are
-  sub 10 minute, `PositionRepository.locate()` o folosește ca OK înainte să verifice dacă locația e
-  pornită. De verificat întâi locația, apoi vechimea poziției.
-- **Observația 16** (după trecerea de la aproximativ la exact, informația nu se schimbă imediat):
-  aceeași regulă de 10 minute refolosește poziția aproximativă. La o schimbare de permisiune poziția
-  veche ar trebui ignorată.
+- ~~**Cauza observației 10**~~ **Rezolvat în Faza A:** locația oprită e verificată înaintea poziției
+  recente, deci „Locația telefonului este oprită.” apare și cu o poziție salvată de sub 10 minute.
+- ~~**Observația 16**~~ **Rezolvat în Faza A:** după schimbarea aproximativ ↔ exact, poziția veche nu
+  mai e folosită; la următoarea citire (de ex. revenirea în aplicație) se cere una nouă.
 - **Actualizarea la 30 de minute** e conformă planului; tragerea în jos (mai sus) acoperă cazul
   în care se vrea o poziție nouă imediat.
 
@@ -85,9 +88,28 @@ Observații de rezolvat **împreună cu redesignul**, nu acum:
 
 - **Acasă** minimalist: data, `ER1PL / KN46dw`, UTC și LOCAL.
 - **Soare**, **Locație** și **Propagare HF** în ecrane separate.
-- Observațiile de mai sus despre GPS și tragerea în jos se fac odată cu redesignul.
-- **Alte date din fluxul N0NBH**, nefolosite acum: pete solare, raze X, vânt solar, câmpul magnetic,
-  zgomot (signal noise), condiții VHF (aurora, E-skip), MUF.
+- Observațiile de mai sus despre GPS (indicatorul „ultima poziție”, „GPS oprit — se folosește ultima
+  poziție”) și tragerea în jos se fac odată cu redesignul.
+- Din testarea autonomă pe S24+ (`PHONE_TEST_REPORT.md`, `NEXT_STAGE_ANALYSIS.md`), tot pentru
+  redesign: „Automatic (GPS)” pe două rânduri în engleză la font 1,3; indicativul de 15 caractere
+  lângă dată; etichetele benzilor și „Întunecat” la limită; data lângă orele Soarelui care cad în altă
+  zi (locator departe de fusul telefonului); eroarea afișată chiar la câmpul locator din Setări;
+  peisaj; testarea la mai multe dimensiuni de font.
+
+## Faza A — corecții funcționale (1 octombrie 2026)
+
+Rezolvate (detalii în `PHASE_A_REPORT.md`):
+
+1. **Locatorul:** doar 4, 6 sau 8 caractere; `KN`, `KN4`, `KN46d` etc. nu mai sunt poziție, QTH sau
+   insignă; dashboard-ul spune că locatorul nu e valid (T7.5 din testarea autonomă).
+2. **GPS, locația oprită:** verificată înaintea poziției recente (observația 10 din testarea manuală).
+3. **GPS, aproximativ ↔ exact:** poziția cu cealaltă precizie e ignorată și se cere una nouă
+   (observația 16).
+4. **Cardul SOARE în modul Automat:** motivul real (fără permisiune / locația oprită / se caută /
+   indisponibilă), nu mereu „Permite accesul la locație” (T8.5).
+
+De verificat pe telefon, cu Lilian: locația oprită cu o poziție recentă, schimbarea aproximativ ↔
+exact, `KN` / `KN4` în Setări, mesajul SOARE cu locația oprită.
 
 ## Ce urmează (fazele următoare, în ordinea din cerințele inițiale)
 

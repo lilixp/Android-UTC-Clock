@@ -42,6 +42,8 @@ data class LocationUiState(
     val accuracy: String? = null,
     /** Only approximate location is allowed (Android 12+). */
     val approximate: Boolean = false,
+    /** The locator from Settings when it is not valid (e.g. "KN4"): said instead of "not available". */
+    val invalidLocator: String? = null,
 )
 
 /** SFI, K or A: the value exactly as N0NBH gave it, and its colour level. */
@@ -76,8 +78,17 @@ enum class SunStatus {
     /** No locator in Settings: no position, so no solar data. */
     NO_LOCATOR,
 
-    /** Automatic mode, but no GPS position yet and no locator to fall back on. */
-    NO_POSITION,
+    /** Automatic mode, no position: the app may not use the location of the phone. */
+    GPS_NO_PERMISSION,
+
+    /** Automatic mode, no position: location is turned off on the phone. */
+    GPS_LOCATION_OFF,
+
+    /** Automatic mode, no position yet: the phone is looking for one. */
+    GPS_SEARCHING,
+
+    /** Automatic mode, no position: the phone gave none this time. */
+    GPS_UNAVAILABLE,
 
     /** A locator that is not a valid Maidenhead locator: no position, so no solar data. */
     INVALID_LOCATOR,
@@ -104,6 +115,6 @@ data class SunUiState(
     val dayLength: String? = null,
     val civilDawn: String? = null,
     val civilDusk: String? = null,
-    /** The locator as entered, to say which one is not valid. */
+    /** The locator as entered, only to say which one is not valid ([SunStatus.INVALID_LOCATOR]). */
     val locator: String? = null,
 )

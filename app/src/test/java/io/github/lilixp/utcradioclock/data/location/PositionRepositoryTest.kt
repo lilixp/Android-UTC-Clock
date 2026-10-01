@@ -272,4 +272,182 @@ class PositionRepositoryTest {
         advance(Duration.ofHours(1))
         assertEquals(0, phone.requests) // only updates() (the dashboard on screen) asks the phone
     }
+
+    // ---- Phase A: only valid locators (4, 6 or 8 characters) ----
+
+    @Test
+    fun validLocators_fourSixEightCharacters_arePositions() = runTest {
+        settings.setPositionSource(PositionSource.MANUAL)
+        val repository = repository()
+        val state = collect(repository)
+        for (locator in listOf("KN46", "KN46dw", "KN46dw12")) {
+            settings.setLocator(locator)
+            runCurrent()
+            assertEquals(locator, PositionOrigin.LOCATOR, state().origin)
+            assertEquals(locator, Maidenhead.toPosition(locator), state().position)
+            assertEquals(locator, locator, state().locator)
+            assertNull(locator, state().invalidLocator)
+        }
+    }
+
+    @Test
+    fun invalidLocators_neverAPositionOrAQth_butSaidToBeInvalid() = runTest {
+        settings.setPositionSource(PositionSource.MANUAL)
+        val repository = repository()
+        val state = collect(repository)
+        for (locator in listOf("KN", "KN4", "KN46d", "KN46dwx", "ZZ99")) {
+            settings.setLocator(locator)
+            runCurrent()
+            val saved = settings.station.value.locator // as Settings keeps it while typing
+            assertEquals(
+                locator,
+                StationPosition(null, PositionOrigin.NONE, null, PositionSource.MANUAL, invalidLocator = saved),
+                state(),
+            )
+            assertNull(locator, repository.current())
+        }
+    }
+
+    @Test
+    fun automatic_invalidLocatorIsNotTheFallback() = runTest {
+        settings.setLocator("KN4")
+        phone.enabled = false
+        val state = collect(repository())
+        assertEquals(GpsStatus.LOCATION_OFF, state().gps)
+        assertEquals(PositionOrigin.NONE, state().origin)
+        assertNull(state().position)
+        assertNull(state().locator)
+        assertEquals("KN4", state().invalidLocator)
+    }
+
+    // ---- Phase A: location off is checked before a recent position is used ----
+
+    @Test
+    fun locationOff_withARecentPosition_isStillSaid() = runTest {
+        store.saved = fix(BOGHICENI, START.minus(Duration.ofMinutes(3))) // recent: would be used as it is
+        phone.enabled = false
+        val state = collect(repository())
+
+        assertEquals(GpsStatus.LOCATION_OFF, state().gps) // not hidden behind "OK"
+        assertEquals(BOGHICENI, state().position) // the last position is still used
+        assertEquals(0, phone.requests)
+    }
+
+    @Test
+    fun locationOn_withARecentPosition_theTenMinuteRuleStays() = runTest {
+        store.saved = fix(BOGHICENI, START.minus(Duration.ofMinutes(9)))
+        phone.current = fix(LONDON)
+        val state = collect(repository())
+
+        assertEquals(GpsStatus.OK, state().gps)
+        assertEquals(BOGHICENI, state().position)
+        assertEquals(0, phone.requests) // no new reading
+    }
+
+    @Test
+    fun locationOn_withAnOldPosition_aNewOneIsAsked() = runTest {
+        store.saved = fix(LONDON, START.minus(Duration.ofMinutes(11)))
+        phone.current = fix(BOGHICENI)
+        val state = collect(repository())
+
+        assertEquals(GpsStatus.OK, state().gps)
+        assertEquals(BOGHICENI, state().position)
+        assertEquals(1, phone.requests)
+    }
+
+    @Test
+    fun locationTurnedOffLater_seenAtTheNextLook() = runTest {
+        phone.current = fix(BOGHICENI)
+        val repository = repository()
+        val state = collect(repository)
+        assertEquals(GpsStatus.OK, state().gps)
+
+        phone.enabled = false // turned off a minute later: the position is still recent
+        advance(Duration.ofMinutes(1))
+        repository.refreshNow() // e.g. back in the app
+        runCurrent()
+        assertEquals(GpsStatus.LOCATION_OFF, state().gps)
+        assertEquals(BOGHICENI, state().position)
+    }
+
+    // ---- Phase A: approximate <-> exact ----
+
+    @Test
+    fun exactToApproximate_theExactPositionIsNotUsedAgain() = runTest {
+        store.saved = fix(BOGHICENI, START.minus(Duration.ofMinutes(2))) // exact, recent
+        phone.precise = false // only approximate allowed now
+        phone.current = fix(LONDON, approximate = true)
+        val state = collect(repository())
+
+        assertEquals(1, phone.requests) // a new position, despite the recent one
+        assertEquals(LONDON, state().position)
+        assertEquals(true, state().fix?.approximate)
+        assertEquals(fix(LONDON, approximate = true), store.saved)
+    }
+
+    @Test
+    fun approximateToExact_theApproximatePositionIsNotUsedAgain() = runTest {
+        store.saved = fix(LONDON, START.minus(Duration.ofMinutes(2)), approximate = true)
+        phone.precise = true
+        phone.current = fix(BOGHICENI)
+        val state = collect(repository())
+
+        assertEquals(1, phone.requests)
+        assertEquals(BOGHICENI, state().position)
+        assertEquals(false, state().fix?.approximate)
+    }
+
+    @Test
+    fun precisionChangedWhileTheAppRuns_newPositionAtTheNextLook() = runTest {
+        phone.current = fix(BOGHICENI)
+        val repository = repository()
+        val state = collect(repository)
+        assertEquals(1, phone.requests)
+
+        phone.precise = false // changed in the Android settings, back in the app a minute later
+        phone.current = fix(LONDON, START.plus(Duration.ofMinutes(1)), approximate = true)
+        advance(Duration.ofMinutes(1))
+        repository.refreshNow()
+        runCurrent()
+        assertEquals(2, phone.requests)
+        assertEquals(LONDON, state().position)
+        assertEquals("IO91wm", state().locator)
+    }
+
+    @Test
+    fun precisionChanged_otherAppsPositionWithTheOldPrecisionIsNotUsedEither() = runTest {
+        phone.precise = false
+        phone.lastKnown = fix(BOGHICENI, START.minus(Duration.ofMinutes(1))) // exact, from before
+        phone.current = fix(LONDON, approximate = true)
+        val state = collect(repository())
+        assertEquals(1, phone.requests)
+        assertEquals(LONDON, state().position)
+    }
+
+    @Test
+    fun precisionChanged_locationOff_theOldPositionIsNotShown() = runTest {
+        store.saved = fix(BOGHICENI, START.minus(Duration.ofMinutes(2))) // exact
+        phone.precise = false
+        phone.enabled = false
+        val state = collect(repository())
+        assertEquals(GpsStatus.LOCATION_OFF, state().gps)
+        assertEquals(PositionOrigin.LOCATOR, state().origin) // the locator, not the exact position from before
+        assertEquals(kn46dw, state().position)
+    }
+
+    @Test
+    fun precisionChanged_atStart_theOldPositionIsNotTheFirstOneShown() = runTest {
+        store.saved = fix(BOGHICENI, START.minus(Duration.ofMinutes(2))) // exact
+        phone.precise = false
+        assertEquals(kn46dw, repository().current()) // before anything is asked
+    }
+
+    @Test
+    fun samePrecision_approximate_theTenMinuteRuleStays() = runTest {
+        store.saved = fix(LONDON, START.minus(Duration.ofMinutes(2)), approximate = true)
+        phone.precise = false
+        val state = collect(repository())
+        assertEquals(0, phone.requests)
+        assertEquals(LONDON, state().position)
+    }
 }

@@ -36,6 +36,8 @@
     <string name="sun_no_location">Location not available.</string>
     <string name="sun_enter_locator">Enter your Maidenhead locator in Settings.</string>
     <string name="sun_no_position">Allow location access or enter your Maidenhead locator in Settings.</string>
+    <string name="sun_location_off">Turn on location on the phone or enter your Maidenhead locator in Settings.</string>
+    <string name="sun_gps_unavailable">No GPS position right now. You can enter your Maidenhead locator in Settings.</string>
     <string name="sun_invalid_locator">The locator “%1$s” is not valid.</string>
     <string name="sun_midnight_sun">The Sun does not set on this day.</string>
     <string name="sun_polar_night">The Sun does not rise on this day.</string>

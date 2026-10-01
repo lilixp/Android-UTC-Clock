@@ -165,4 +165,18 @@ class LocationCardTest {
         compose.onNodeWithTag(DashboardTags.LOCATION_STATUS).assertTextEquals("The app may not use the location of the phone.")
         compose.onNodeWithText("Allow location access").assertIsDisplayed()
     }
+
+    @Test
+    fun invalidLocator_saidOnTheCard_dashesAndNoQth() {
+        show(LocationUiState(invalidLocator = "KN4"), locator = null)
+        for (text in listOf("Latitudine: —", "Longitudine: —", "QTH: —")) compose.onNodeWithText(text).assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals("Locatorul „KN4” nu este valid.")
+    }
+
+    @Test
+    fun invalidLocatorInAutomaticMode_locationOffIsAlsoSaid() {
+        show(LocationUiState(automatic = true, gps = GpsStatus.LOCATION_OFF, invalidLocator = "KN"), locator = null)
+        compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals("Locatorul „KN” nu este valid.")
+        compose.onNodeWithTag(DashboardTags.LOCATION_STATUS).assertTextEquals("Locația telefonului este oprită.")
+    }
 }

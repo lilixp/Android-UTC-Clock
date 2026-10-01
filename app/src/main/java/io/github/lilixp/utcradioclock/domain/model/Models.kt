@@ -70,13 +70,15 @@ data class StationPosition(
     /** Null when there is neither a GPS position nor a valid locator. */
     val position: GeoPosition?,
     val origin: PositionOrigin,
-    /** The 6-character locator of the GPS position, or the locator as entered; null when empty. */
+    /** The 6-character locator of the GPS position, or the valid locator from Settings; never an invalid one. */
     val locator: String?,
     val source: PositionSource,
     /** Null in [PositionSource.MANUAL] mode: GPS is not used at all. */
     val gps: GpsStatus? = null,
     /** The GPS position used, when [origin] is [PositionOrigin.GPS]. */
     val fix: LocationFix? = null,
+    /** The locator entered in Settings when it is not a valid locator (e.g. "KN4"), to say so; otherwise null. */
+    val invalidLocator: String? = null,
 )
 
 /** Days on which the Sun does not cross the horizon at all (far north or south). */
@@ -113,7 +115,8 @@ data class SolarDay(
 
 /**
  * The station's callsign and Maidenhead locator, as entered in Settings; either may be empty.
- * Only simple rules for now: allowed characters and a maximum length, no full locator check.
+ * Only the characters and the length are cleaned here, so a locator can be saved while it is typed;
+ * whether it is a valid locator is decided by [io.github.lilixp.utcradioclock.domain.location.Maidenhead].
  */
 data class StationIdentity(val callsign: String = DEFAULT_CALLSIGN, val locator: String = "") {
     companion object {
@@ -122,7 +125,7 @@ data class StationIdentity(val callsign: String = DEFAULT_CALLSIGN, val locator:
         /** Even long callsigns with a prefix and suffix (e.g. "ER/YO3ABC/QRP") fit in 15 characters. */
         const val MAX_CALLSIGN_LENGTH = 15
 
-        /** A Maidenhead locator has 2, 4, 6 or 8 characters (e.g. KN46dw). */
+        /** A Maidenhead locator has 4, 6 or 8 characters (e.g. KN46dw); shorter text is kept while typing. */
         const val MAX_LOCATOR_LENGTH = 8
 
         /** Upper-case letters, digits and "/", without spaces, at most [MAX_CALLSIGN_LENGTH] characters. */

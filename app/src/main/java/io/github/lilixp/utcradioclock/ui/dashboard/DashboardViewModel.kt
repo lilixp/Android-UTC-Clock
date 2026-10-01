@@ -9,6 +9,7 @@ import io.github.lilixp.utcradioclock.data.time.ClockRepository
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
+import io.github.lilixp.utcradioclock.domain.model.GpsStatus
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
 import io.github.lilixp.utcradioclock.domain.model.PolarCondition
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
@@ -52,15 +53,32 @@ class DashboardViewModel(
     private data class Sun(val ui: SunUiState, val day: SolarDay?)
 
     /**
+     * What the SUN card depends on: the position, or why there is none. The GPS status is kept only
+     * while there is no position, so a new GPS status alone never reaches the card or the calculation.
+     */
+    private data class SunInput(
+        val position: GeoPosition?,
+        val source: PositionSource,
+        val gps: GpsStatus?,
+        val invalidLocator: String?,
+    )
+
+    private fun sunInput(station: StationPosition) = SunInput(
+        position = station.position,
+        source = station.source,
+        gps = station.gps.takeIf { station.position == null },
+        invalidLocator = station.invalidLocator,
+    )
+
+    /**
      * The SUN card. It depends on the local day, the time zone and the position only, so it is worked
      * out when one of them changes (at local midnight, on a time zone change, on a new locator or GPS
-     * position), never on the 1 s clock ticks.
+     * position), never on the 1 s clock ticks. Without a position it says why, from the same
+     * [StationPosition] the LOCATION card shows.
      */
     private val sun: Flow<Sun> = combine(
         clock.localDays(),
-        positions.position,
-        settings.station.map { it.locator }.distinctUntilChanged(),
-        settings.positionSource,
+        positions.state.map(::sunInput).distinctUntilChanged(),
         ::sunState,
     ).distinctUntilChanged()
 
@@ -74,12 +92,7 @@ class DashboardViewModel(
                 initialValue = toUiState(
                     clock.current(),
                     settings.station.value,
-                    sunState(
-                        clock.currentDay(),
-                        positions.current(),
-                        settings.station.value.locator,
-                        settings.positionSource.value,
-                    ),
+                    sunState(clock.currentDay(), sunInput(positions.currentState())),
                     PropagationState(PropagationState.Status.LOADING),
                     positions.currentState(),
                 ),
@@ -123,6 +136,7 @@ class DashboardViewModel(
             fixTime = fix?.let { format.localStamp(it.time, reading.zone, reading.instant) },
             accuracy = fix?.accuracyMeters?.let(format::accuracy),
             approximate = fix?.approximate == true,
+            invalidLocator = position.invalidLocator,
         )
     }
 
@@ -166,11 +180,20 @@ class DashboardViewModel(
         null -> day.sunrise != null && day.sunset != null && now >= day.sunrise && now < day.sunset
     }
 
-    private fun sunState(day: LocalDay, position: GeoPosition?, locator: String, source: PositionSource): Sun {
+    private fun sunState(day: LocalDay, input: SunInput): Sun {
+        val position = input.position
         if (position == null) {
             val ui = when {
-                locator.isNotEmpty() -> SunUiState(SunStatus.INVALID_LOCATOR, locator = locator)
-                source == PositionSource.AUTOMATIC -> SunUiState(SunStatus.NO_POSITION)
+                // Automatic: say what keeps GPS from giving a position (the locator is only the fallback)
+                input.source == PositionSource.AUTOMATIC -> SunUiState(
+                    when (input.gps) {
+                        GpsStatus.NO_PERMISSION -> SunStatus.GPS_NO_PERMISSION
+                        GpsStatus.LOCATION_OFF -> SunStatus.GPS_LOCATION_OFF
+                        GpsStatus.UNAVAILABLE -> SunStatus.GPS_UNAVAILABLE
+                        GpsStatus.SEARCHING, GpsStatus.OK, null -> SunStatus.GPS_SEARCHING
+                    },
+                )
+                input.invalidLocator != null -> SunUiState(SunStatus.INVALID_LOCATOR, locator = input.invalidLocator)
                 else -> SunUiState(SunStatus.NO_LOCATOR)
             }
             return Sun(ui, null)
@@ -190,7 +213,6 @@ class DashboardViewModel(
             dayLength = format.duration(solarDay.dayLength),
             civilDawn = time(solarDay.civilDawn),
             civilDusk = time(solarDay.civilDusk),
-            locator = locator,
         )
         return Sun(ui, solarDay)
     }

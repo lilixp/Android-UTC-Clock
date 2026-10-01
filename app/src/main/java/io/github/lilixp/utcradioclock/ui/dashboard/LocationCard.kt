@@ -47,7 +47,9 @@ internal fun LocationCard(
                 location.accuracy,
             ).joinToString(" · ")
             PositionOrigin.LOCATOR -> stringResource(R.string.location_from_locator)
-            PositionOrigin.NONE -> stringResource(R.string.sun_no_location)
+            PositionOrigin.NONE -> location.invalidLocator
+                ?.let { stringResource(R.string.sun_invalid_locator, it) }
+                ?: stringResource(R.string.sun_no_location)
         }
         Text(
             text = source,

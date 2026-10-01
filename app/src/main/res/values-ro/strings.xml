@@ -32,6 +32,8 @@
     <string name="sun_no_location">Locația nu este disponibilă.</string>
     <string name="sun_enter_locator">Introdu locatorul Maidenhead în Setări.</string>
     <string name="sun_no_position">Permite accesul la locație sau introdu locatorul Maidenhead în Setări.</string>
+    <string name="sun_location_off">Pornește locația telefonului sau introdu locatorul Maidenhead în Setări.</string>
+    <string name="sun_gps_unavailable">Poziția GPS nu este disponibilă momentan. Poți introduce locatorul Maidenhead în Setări.</string>
     <string name="sun_invalid_locator">Locatorul „%1$s” nu este valid.</string>
     <string name="sun_midnight_sun">Soarele nu apune în această zi.</string>
     <string name="sun_polar_night">Soarele nu răsare în această zi.</string>

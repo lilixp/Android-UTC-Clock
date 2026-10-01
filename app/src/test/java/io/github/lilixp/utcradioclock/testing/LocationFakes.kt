@@ -19,6 +19,8 @@ val LONDON = GeoPosition(51.5074, -0.1278)
  */
 class FakeLocationProvider(
     var permission: Boolean = true,
+    /** Precise location allowed; false = only approximate (Android 12+). */
+    var precise: Boolean = true,
     var enabled: Boolean = true,
     var lastKnown: LocationFix? = null,
     var current: LocationFix? = null,
@@ -34,6 +36,11 @@ class FakeLocationProvider(
     override fun hasPermission(): Boolean {
         failure?.let { throw it }
         return permission
+    }
+
+    override fun hasPrecisePermission(): Boolean {
+        failure?.let { throw it }
+        return permission && precise
     }
 
     override fun isLocationEnabled(): Boolean {

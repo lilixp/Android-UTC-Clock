@@ -2,8 +2,11 @@ package io.github.lilixp.utcradioclock.domain.location
 
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class MaidenheadTest {
@@ -29,8 +32,7 @@ class MaidenheadTest {
     }
 
     @Test
-    fun twoFourAndEightCharacters() {
-        assertPosition(45.0, 30.0, Maidenhead.toPosition("KN")) // a 20° × 10° field
+    fun fourAndEightCharacters() {
         assertPosition(46.5, 29.0, Maidenhead.toPosition("KN46")) // a 2° × 1° square
         // KN46dw15: the 30″ × 15″ square (1, 5) inside KN46dw, whose corner is 46.916667° N, 28.25° E
         assertPosition(46.939583, 28.2625, Maidenhead.toPosition("KN46dw15"))
@@ -55,7 +57,7 @@ class MaidenheadTest {
 
     @Test
     fun invalidLocators_noPosition() {
-        for (text in listOf("K", "KN4", "KN46d", "SN46", "KS46", "KNA6", "KN4X", "KN46yw", "KN46dz", "KN46dwAB", "KN46dw1", "46KN")) {
+        for (text in listOf("K", "KN", "KN4", "KN46d", "SN46", "KS46", "KNA6", "KN4X", "KN46yw", "KN46dz", "KN46dwAB", "KN46dw1", "46KN")) {
             assertNull(text, Maidenhead.toPosition(text))
         }
     }
@@ -77,9 +79,8 @@ class MaidenheadTest {
     }
 
     @Test
-    fun fromPosition_twoFourAndEightCharacters() {
+    fun fromPosition_fourAndEightCharacters() {
         val boghiceni = GeoPosition(46.9612, 28.3041)
-        assertEquals("KN", Maidenhead.fromPosition(boghiceni, 2))
         assertEquals("KN46", Maidenhead.fromPosition(boghiceni, 4))
         assertEquals("KN46dw15", Maidenhead.fromPosition(GeoPosition(46.939583, 28.2625), 8))
     }
@@ -113,8 +114,35 @@ class MaidenheadTest {
         }
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun fromPosition_onlyWholePairs() {
-        Maidenhead.fromPosition(GeoPosition(46.9612, 28.3041), 5)
+    @Test
+    fun fromPosition_onlyTheLengthsTheAppAccepts() {
+        for (characters in listOf(0, 2, 3, 5, 7, 10)) {
+            try {
+                Maidenhead.fromPosition(GeoPosition(46.9612, 28.3041), characters)
+                fail("$characters characters")
+            } catch (_: IllegalArgumentException) {
+                // expected
+            }
+        }
+    }
+
+    // ---- The rule of the app: 4, 6 or 8 characters (Phase A) ----
+
+    @Test
+    fun isValid_fourSixOrEightCharacters() {
+        for (locator in listOf("KN46", "KN46dw", "KN46dw12", "kn46DW", " KN46dw ", "AA00", "RR99xx99")) {
+            assertTrue(locator, Maidenhead.isValid(locator))
+        }
+    }
+
+    @Test
+    fun isValid_notOtherLengthsOrCharacters() {
+        for (locator in listOf(
+            "", "   ", "K", "KN", "KN4", "KN46d", "KN46dwx", "KN46dw1", "KN46dw123", "KN46dw12ab",
+            "KN-46", "KN46d!", "KN46 dw", "ZZ99", "KN46zz", "KN46dwAA", "ĂN46",
+        )) {
+            assertFalse(locator, Maidenhead.isValid(locator))
+            assertNull(locator, Maidenhead.toPosition(locator))
+        }
     }
 }

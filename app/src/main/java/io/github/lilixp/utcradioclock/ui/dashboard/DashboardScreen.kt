@@ -103,12 +103,21 @@ fun DashboardScreen(
 private fun SunCard(sun: SunUiState) {
     InfoCard(R.string.section_sun) {
         when (sun.status) {
-            SunStatus.NO_LOCATOR, SunStatus.NO_POSITION, SunStatus.INVALID_LOCATOR -> {
+            SunStatus.NO_LOCATOR,
+            SunStatus.INVALID_LOCATOR,
+            SunStatus.GPS_NO_PERMISSION,
+            SunStatus.GPS_LOCATION_OFF,
+            SunStatus.GPS_SEARCHING,
+            SunStatus.GPS_UNAVAILABLE,
+            -> {
                 Text(stringResource(R.string.sun_no_location), style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = when (sun.status) {
                         SunStatus.NO_LOCATOR -> stringResource(R.string.sun_enter_locator)
-                        SunStatus.NO_POSITION -> stringResource(R.string.sun_no_position)
+                        SunStatus.GPS_NO_PERMISSION -> stringResource(R.string.sun_no_position)
+                        SunStatus.GPS_LOCATION_OFF -> stringResource(R.string.sun_location_off)
+                        SunStatus.GPS_SEARCHING -> stringResource(R.string.location_searching)
+                        SunStatus.GPS_UNAVAILABLE -> stringResource(R.string.sun_gps_unavailable)
                         else -> stringResource(R.string.sun_invalid_locator, sun.locator.orEmpty())
                     },
                     style = MaterialTheme.typography.bodyMedium,

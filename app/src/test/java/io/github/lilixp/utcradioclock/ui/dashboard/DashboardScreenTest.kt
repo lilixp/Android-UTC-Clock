@@ -136,19 +136,40 @@ class DashboardScreenTest {
         compose.onNodeWithText("Amiază solară", substring = true).assertDoesNotExist()
     }
 
-    @Test
-    fun sunCardAutomaticWithoutAnyPosition_saysWhatToDo() {
-        show(state.copy(sun = SunUiState(SunStatus.NO_POSITION)))
+    /** Automatic mode without a position: the SUN card says why, from the GPS status (Phase A). */
+    private fun assertSunSays(status: SunStatus, advice: String) {
+        show(state.copy(sun = SunUiState(status)))
         // "Location not available." is also on the LOCATION card below, so only the advice is looked for
-        assertSunLines("Permite accesul la locație sau introdu locatorul Maidenhead în Setări.")
+        assertSunLines(advice)
         compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
     }
 
     @Test
+    fun sunCardAutomatic_noPermission() =
+        assertSunSays(SunStatus.GPS_NO_PERMISSION, "Permite accesul la locație sau introdu locatorul Maidenhead în Setări.")
+
+    @Test
+    fun sunCardAutomatic_locationOff_notAboutThePermission() {
+        assertSunSays(SunStatus.GPS_LOCATION_OFF, "Pornește locația telefonului sau introdu locatorul Maidenhead în Setări.")
+        compose.onNodeWithText("Permite accesul", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun sunCardAutomatic_searching() = assertSunSays(SunStatus.GPS_SEARCHING, "Se caută poziția…")
+
+    @Test
+    fun sunCardAutomatic_unavailable() = assertSunSays(
+        SunStatus.GPS_UNAVAILABLE,
+        "Poziția GPS nu este disponibilă momentan. Poți introduce locatorul Maidenhead în Setări.",
+    )
+
+    @Test
     fun sunCardWithInvalidLocator() {
-        show(state.copy(sun = SunUiState(SunStatus.INVALID_LOCATOR, locator = "KN4"), locator = "KN4"))
+        // As the ViewModel gives it since Phase A: an invalid locator is not the station's locator
+        show(state.copy(sun = SunUiState(SunStatus.INVALID_LOCATOR, locator = "KN4"), locator = null))
         assertSunLines("Locația nu este disponibilă.", "Locatorul „KN4” nu este valid.")
         compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag(DashboardTags.LOCATOR).assertDoesNotExist() // not next to the callsign
     }
 
     @Test

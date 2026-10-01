@@ -24,6 +24,9 @@ interface LocationProvider {
     /** Approximate or precise location is allowed. */
     fun hasPermission(): Boolean
 
+    /** Precise location is allowed (not only approximate). */
+    fun hasPrecisePermission(): Boolean
+
     /** Location is turned on on the phone. */
     fun isLocationEnabled(): Boolean
 
@@ -48,6 +51,8 @@ class AndroidLocationProvider(private val context: Context) : LocationProvider {
     private val precise get() = granted(Manifest.permission.ACCESS_FINE_LOCATION)
 
     override fun hasPermission(): Boolean = precise || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+    override fun hasPrecisePermission(): Boolean = precise
 
     override fun isLocationEnabled(): Boolean = manager?.let(LocationManagerCompat::isLocationEnabled) == true
 

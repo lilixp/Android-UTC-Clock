@@ -88,23 +88,29 @@ class PositionRepository(
         }
     }
 
-    /** One look at the phone's location, the cheapest way that gives a recent position. */
+    /**
+     * One look at the phone's location, the cheapest way that gives a recent position. In this order:
+     * the permission, whether location is on, and only then a recent position (younger than [RECENT])
+     * used again without asking the phone, so a recent position never hides that location is off.
+     */
     private suspend fun locate() {
         if (!ask(false) { locations.hasPermission() }) {
             gps.value = Gps(GpsStatus.NO_PERMISSION) // a position saved earlier is not used without permission
             return
         }
-        val known = gps.value.fix ?: store.load()
-        if (known != null && known.isRecent()) {
-            gps.value = Gps(GpsStatus.OK, known)
-            return
-        }
+        val precise = ask(false) { locations.hasPrecisePermission() }
+        // A position taken with the other precision (approximate ↔ exact changed since) is not used again
+        val known = (gps.value.fix ?: store.load())?.takeIf { it.fits(precise) }
         if (!ask(false) { locations.isLocationEnabled() }) {
             gps.value = Gps(GpsStatus.LOCATION_OFF, known) // the last position is still the best there is
             return
         }
+        if (known != null && known.isRecent()) {
+            gps.value = Gps(GpsStatus.OK, known)
+            return
+        }
         // Another app may have asked recently: then nothing needs to be turned on at all
-        ask(null) { locations.lastKnown() }?.takeIf { it.position.isValid && it.isRecent() }?.let {
+        ask(null) { locations.lastKnown() }?.takeIf { it.position.isValid && it.isRecent() && it.fits(precise) }?.let {
             accept(it)
             return
         }
@@ -117,6 +123,9 @@ class PositionRepository(
         store.save(fix)
         gps.value = Gps(GpsStatus.OK, fix)
     }
+
+    /** Taken with the precision allowed now: approximate only while only approximate location is allowed. */
+    private fun LocationFix.fits(precise: Boolean): Boolean = approximate == !precise
 
     private fun LocationFix.isRecent(): Boolean {
         val age = Duration.between(time, now())
@@ -136,7 +145,8 @@ class PositionRepository(
 
     private fun startingGps(): Gps =
         if (ask(false) { locations.hasPermission() }) {
-            Gps(GpsStatus.SEARCHING, store.load())
+            val precise = ask(false) { locations.hasPrecisePermission() }
+            Gps(GpsStatus.SEARCHING, store.load()?.takeIf { it.fits(precise) })
         } else {
             Gps(GpsStatus.NO_PERMISSION)
         }
@@ -155,13 +165,15 @@ class PositionRepository(
                 fix = fix,
             )
         }
+        // An invalid locator (e.g. "KN4") is never a position, a QTH or the station's locator
         val manual = Maidenhead.toPosition(station.locator)
         return StationPosition(
             position = manual,
             origin = if (manual != null) PositionOrigin.LOCATOR else PositionOrigin.NONE,
-            locator = station.locator.ifEmpty { null },
+            locator = station.locator.takeIf { manual != null },
             source = source,
             gps = status,
+            invalidLocator = station.locator.takeIf { manual == null && it.isNotEmpty() },
         )
     }
 

@@ -569,7 +569,7 @@ class DashboardViewModelTest {
         subscribe(viewModel)
         val state = viewModel.uiState.value
 
-        assertEquals(SunUiState(SunStatus.NO_POSITION), state.sun)
+        assertEquals(SunUiState(SunStatus.GPS_LOCATION_OFF), state.sun) // not "no permission" (Phase A)
         assertEquals(GpsStatus.LOCATION_OFF, state.location.gps)
         assertEquals(PositionOrigin.NONE, state.location.origin)
         assertNull(state.location.latitude)
@@ -590,5 +590,102 @@ class DashboardViewModelTest {
         assertEquals("IO91wm", state.locator)
         assertEquals("51,5074° N", state.location.latitude)
         assertEquals("19:12", state.location.fixTime)
+    }
+
+    // ---- Phase A: invalid locators and the SUN card in automatic mode ----
+
+    @Test
+    fun invalidLocator_notTheQth_notTheBadge_saidOnTheLocationCard() = runTest(mainDispatcher.dispatcher.scheduler) {
+        for (locator in listOf("KN4", "KN", "KN46d")) {
+            settings.setLocator(locator)
+            val state = createViewModel().uiState.value
+            assertNull(locator, state.locator) // neither QTH nor next to the callsign
+            assertEquals(locator, PositionOrigin.NONE, state.location.origin)
+            assertEquals(locator, locator, state.location.invalidLocator)
+            assertNull(locator, state.location.latitude)
+            assertEquals(locator, SunUiState(SunStatus.INVALID_LOCATOR, locator = locator), state.sun)
+        }
+        assertTrue(solarCalls.isEmpty()) // never a position for the Sun
+    }
+
+    @Test
+    fun invalidLocator_bandsByTheClock() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN")
+        propagation.value = current()
+        assertTrue(createViewModel().uiState.value.propagation.dayNightByClock)
+    }
+
+    @Test
+    fun fourAndEightCharacterLocators_workEverywhere() = runTest(mainDispatcher.dispatcher.scheduler) {
+        for (locator in listOf("KN46", "KN46dw12")) {
+            settings.setLocator(locator)
+            val state = createViewModel().uiState.value
+            assertEquals(locator, state.locator)
+            assertEquals(SunStatus.NORMAL, state.sun.status)
+            assertEquals(PositionOrigin.LOCATOR, state.location.origin)
+        }
+    }
+
+    private fun TestScope.automaticSun(): SunUiState {
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        return viewModel.uiState.value.sun
+    }
+
+    @Test
+    fun sunAutomatic_noPermission() = runTest(mainDispatcher.dispatcher.scheduler) {
+        locations.permission = false
+        assertEquals(SunUiState(SunStatus.GPS_NO_PERMISSION), automaticSun())
+    }
+
+    @Test
+    fun sunAutomatic_locationOff() = runTest(mainDispatcher.dispatcher.scheduler) {
+        locations.enabled = false
+        assertEquals(SunUiState(SunStatus.GPS_LOCATION_OFF), automaticSun())
+    }
+
+    @Test
+    fun sunAutomatic_searching() = runTest(mainDispatcher.dispatcher.scheduler) {
+        locations.hangs = true
+        assertEquals(SunUiState(SunStatus.GPS_SEARCHING), automaticSun())
+    }
+
+    @Test
+    fun sunAutomatic_unavailable() = runTest(mainDispatcher.dispatcher.scheduler) {
+        locations.current = null
+        assertEquals(SunUiState(SunStatus.GPS_UNAVAILABLE), automaticSun())
+    }
+
+    @Test
+    fun sunAutomatic_validPosition() = runTest(mainDispatcher.dispatcher.scheduler) {
+        locations.current = fix(BOGHICENI)
+        val sun = automaticSun()
+        assertEquals(SunStatus.NORMAL, sun.status)
+        assertEquals(BOGHICENI, solarCalls.last().third)
+    }
+
+    @Test
+    fun sunAutomatic_withAValidLocator_theLocatorIsUsedWhileGpsHasNothing() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        locations.enabled = false
+        val sun = automaticSun()
+        assertEquals(SunStatus.NORMAL, sun.status)
+        assertEquals("07:04", sun.sunrise)
+    }
+
+    @Test
+    fun gpsStatusChangeWithTheSamePosition_noNewSolarCalculation() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(BOGHICENI)
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val calls = solarCalls.size
+
+        locations.enabled = false // the next look says "location off", the position stays
+        advance(Duration.ofMinutes(30))
+        assertEquals(GpsStatus.LOCATION_OFF, viewModel.uiState.value.location.gps)
+        assertEquals(SunStatus.NORMAL, viewModel.uiState.value.sun.status)
+        assertEquals(calls, solarCalls.size)
     }
 }
