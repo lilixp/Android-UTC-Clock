@@ -48,10 +48,6 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 - **Miezul nopții local**: data locală sub ora LOCAL și recalcularea Soarelui pentru ziua nouă.
 - **Propagarea fără Internet pe telefon** (mod avion): pe PC e testată (date salvate cu „Date
   neactualizate”, fără date „Date indisponibile”); pe telefon o poate încerca Lilian cu modul avion.
-- **GPS pe telefon** (faza 5, de verificat împreună): alegerea Automat și dialogul de permisiune,
-  locația exactă și cea aproximativă, refuzul și „Nu mai întreba”, butonul spre setările aplicației,
-  locația oprită și butonul „Pornește locația”, poziția în casă (fără semnal), locatorul KN46dx
-  calculat la Boghiceni, revenirea pe Manual (poziția salvată se șterge).
 - **Trecerea benzilor de la zi la noapte** la apus (culorile se schimbă dacă N0NBH dă valori diferite
   ziua și noaptea): testată pe PC; de privit o dată pe telefon seara.
 
@@ -61,6 +57,35 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
   sau APK dat altora) trebuie o cheie de semnare, păstrată în afara depozitului.
 - **Explicații la SFI / K / A** (ca la benzi): un dialog cu valoarea, pragurile și sursa scalei.
 - **Actualizare la cerere** (de ex. tragere în jos): ar trebui să respecte tot regula N0NBH de o oră.
+  Cerută de Lilian după testarea fazei 5 (util la POTA / portabil, într-un loc nou): tragerea în jos
+  actualizează tot: poziția GPS (fără regula de 10 minute), Soarele, datele N0NBH (tot cu limita
+  de o oră) și tot ce depinde de poziție.
+
+## Din testarea fazei 5 pe S24+ (1 octombrie 2026)
+
+Faza 5 a trecut 25 de verificări pe telefon, fără probleme funcționale critice: GPS exact și
+aproximativ, locatorul, Manual, rezerva pe locator, poziția salvată, permisiunile, refuzul,
+refuzul definitiv, locația oprită, Soarele și propagarea pe poziția GPS.
+
+Observații de rezolvat **împreună cu redesignul**, nu acum:
+
+- **Ultima poziție vs. poziția actuală:** cu GPS-ul oprit se arată ultima poziție salvată
+  („GPS · 10:44 · ±100 m”), fără să fie clar că e cea veche. De arătat, de exemplu, „GPS · ultima
+  poziție · 10:44” sau un indicator separat, plus starea „GPS oprit — se folosește ultima poziție”.
+- **Cauza observației 10** (GPS oprit, aplicația repornită, niciun mesaj): dacă poziția salvată are
+  sub 10 minute, `PositionRepository.locate()` o folosește ca OK înainte să verifice dacă locația e
+  pornită. De verificat întâi locația, apoi vechimea poziției.
+- **Observația 16** (după trecerea de la aproximativ la exact, informația nu se schimbă imediat):
+  aceeași regulă de 10 minute refolosește poziția aproximativă. La o schimbare de permisiune poziția
+  veche ar trebui ignorată.
+- **Actualizarea la 30 de minute** e conformă planului; tragerea în jos (mai sus) acoperă cazul
+  în care se vrea o poziție nouă imediat.
+
+## Redesign UI/UX (stabilit, pentru o etapă ulterioară)
+
+- **Acasă** minimalist: data, `ER1PL / KN46dw`, UTC și LOCAL.
+- **Soare**, **Locație** și **Propagare HF** în ecrane separate.
+- Observațiile de mai sus despre GPS și tragerea în jos se fac odată cu redesignul.
 - **Alte date din fluxul N0NBH**, nefolosite acum: pete solare, raze X, vânt solar, câmpul magnetic,
   zgomot (signal noise), condiții VHF (aurora, E-skip), MUF.
 

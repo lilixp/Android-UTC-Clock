@@ -17,7 +17,7 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | 3 | Soarele: răsărit, apus, amiază solară, durata zilei, crepuscul civil | `6a6aa1e` |
 | 4 | Propagarea HF și datele geomagnetice de la N0NBH (hamqsl.com) | `43a545e` |
 | – | Sub benzi doar „Actualizat … UTC”; sursa în Setări → Despre aplicație | `a4b88f2` |
-| 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE | (acest commit) |
+| 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE (verificată pe S24+) | `38e55a4` |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
