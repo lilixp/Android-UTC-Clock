@@ -188,11 +188,11 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun propagationSaysItComesLater() {
+    fun propagationCardIsLastAndLoadingAtFirst() {
         show()
         scrollTo("PROPAGARE")
         compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
-        compose.onNodeWithText("Funcția va fi disponibilă într-o fază ulterioară.").assertExists()
+        compose.onNodeWithText("Se încarcă datele…").assertExists()
     }
 
     @Test

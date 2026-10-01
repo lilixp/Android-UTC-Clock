@@ -1,7 +1,7 @@
 # Observații – UTC Radio Clock (versiunea 2.0)
 
 Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fazelor e în
-[README.md](README.md). Actualizat: 30 septembrie 2026, după faza 3 (`6a6aa1e`).
+[README.md](README.md). Actualizat: 1 octombrie 2026, după faza 4 (propagarea HF, N0NBH).
 
 ## Reguli de lucru
 
@@ -25,6 +25,11 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 | 30.09.2026 | Soarele: poziția = centrul locatorului Maidenhead; algoritm NOAA offline; orele rotunjite la minut; recalculare doar la zi nouă, fus nou sau locator nou (verificate o dată pe minut). |
 | 30.09.2026 | Referințele pentru testele solare sunt momentele exacte calculate separat pe PC (bisecție pe formulele NOAA); biblioteca `astral` s-a dovedit mai puțin exactă (1¾ min la 65° N). |
 | 30.09.2026 | Robolectric imită API 36 (cel mai nou suportat) și are nevoie de `--add-opens` pe JDK-ul nou; e documentat în `app/build.gradle.kts`. |
+| 01.10.2026 | Propagarea: sursa este XML-ul N0NBH `https://www.hamqsl.com/solarxml.php` (SFI, K, A, benzile zi/noapte, ora datelor). Autorul îl oferă pentru alte programe, cere actualizare de cel mult o dată pe oră și mențiunea sursei; nu are licență formală și poate dispărea. |
+| 01.10.2026 | Benzile: doar cele 3 niveluri N0NBH (Good/Fair/Poor → Bun/Mediu/Slab, verde/galben/roșu); nu 5 niveluri inventate. Pe dashboard: valoarea de zi sau de noapte după Soare la stație; fără locator, 06:00–18:00 ora locală (spus în dialog). |
+| 01.10.2026 | SFI/K/A colorate (alegerea lui Lilian): K după scara NOAA (0–3 / 4 / ≥5), A după categoriile NOAA (<16 / 16–29 / ≥30), SFI după pragurile uzuale din v1 (≥120 / 90–119 / <90; NOAA nu are scală pentru SFI). |
+| 01.10.2026 | K afișat ca în sursă, întreg („K 0”), fără zecimale inventate. |
+| 01.10.2026 | Rețea fără biblioteci noi: `HttpURLConnection` + `XmlPullParser` din Android; permisiunea `INTERNET`. Cache: ultimul XML valid în SharedPreferences (`propagation_cache`, în afara backup-ului). Descărcare doar cât dashboard-ul e pe ecran: cel mult o dată pe oră, după o eroare din nou peste 15 minute. |
 
 ## De verificat (încă nevăzut pe telefon)
 
@@ -35,6 +40,10 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 - **Trecerea la ora de iarnă** pe 25 octombrie 2026 (04:00 → 03:00 la Chișinău): acoperită de
   teste; de privit ceasul și cardul SOARE în ziua aceea.
 - **Miezul nopții local**: data locală sub ora LOCAL și recalcularea Soarelui pentru ziua nouă.
+- **Propagarea fără Internet pe telefon** (mod avion): pe PC e testată (date salvate cu „Date
+  neactualizate”, fără date „Date indisponibile”); pe telefon o poate încerca Lilian cu modul avion.
+- **Trecerea benzilor de la zi la noapte** la apus (culorile se schimbă dacă N0NBH dă valori diferite
+  ziua și noaptea): testată pe PC; de privit o dată pe telefon seara.
 
 ## Propuneri mici (nefăcute, așteaptă decizia lui Lilian)
 
@@ -42,18 +51,20 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
   locator (KN46dw → 46,9375° N, 28,2917° E). Ar fi o modificare mică să le afișeze.
 - **Semnarea versiunii Release**: acum `app-release-unsigned.apk`; pentru distribuire (Google Play
   sau APK dat altora) trebuie o cheie de semnare, păstrată în afara depozitului.
+- **Explicații la SFI / K / A** (ca la benzi): un dialog cu valoarea, pragurile și sursa scalei.
+- **Actualizare la cerere** (de ex. tragere în jos): ar trebui să respecte tot regula N0NBH de o oră.
+- **Alte date din fluxul N0NBH**, nefolosite acum: pete solare, raze X, vânt solar, câmpul magnetic,
+  zgomot (signal noise), condiții VHF (aurora, E-skip), MUF.
 
 ## Ce urmează (fazele următoare, în ordinea din cerințele inițiale)
+
+Făcute: SFI, K, A și propagarea HF pe benzi (faza 4, de la N0NBH).
 
 1. **GPS / locație**: permisiunea de locație, poziția din GPS în `PositionRepository` (în locul
    centrului locatorului sau alături de el), locatorul calculat automat din poziție, cardul LOCAȚIE
    cu latitudine și longitudine. Ecranele nu trebuie refăcute.
-2. **Activitatea solară**: flux solar (SFI), indice solar — date online, cu cache și fără să blocheze
-   ecranul când nu e Internet.
-3. **Activitatea geomagnetică**: Kp, A-index.
-4. **Propagarea HF** pe benzi (cardul PROPAGARE).
-5. **Widget** pe ecranul principal.
-6. **Notificări**.
+2. **Widget** pe ecranul principal.
+3. **Notificări** (de ex. furtună geomagnetică, K ≥ 5).
 
-Pentru fazele cu Internet va fi nevoie de: permisiunea `INTERNET`, un client HTTP (decizie de luat:
-`HttpURLConnection` din Android sau o bibliotecă), cache pentru date vechi și teste fără rețea.
+Rețeaua există deja (faza 4): `HttpClient` + cache + teste fără Internet; o sursă nouă de date
+online se poate adăuga la fel.

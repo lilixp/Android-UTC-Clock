@@ -62,7 +62,7 @@ class DashboardInstrumentedTest {
         val latitude = context.getString(R.string.latitude, dash)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(latitude))
         compose.onNodeWithText(latitude).assertIsDisplayed()
-        val propagation = context.getString(R.string.propagation_later)
+        val propagation = context.getString(R.string.propagation_loading) // no data in this state yet
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(propagation))
         compose.onNodeWithText(propagation).assertIsDisplayed()
         // The theme choice lives in Settings now

@@ -3,14 +3,17 @@ package io.github.lilixp.utcradioclock.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.lilixp.utcradioclock.data.location.PositionRepository
+import io.github.lilixp.utcradioclock.data.propagation.PropagationState
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
+import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
 import io.github.lilixp.utcradioclock.domain.model.PolarCondition
 import io.github.lilixp.utcradioclock.domain.model.SolarDay
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
+import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.util.TimeFormatter
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +32,8 @@ class DashboardViewModel(
     private val clock: ClockRepository,
     private val settings: SettingsRepository,
     private val positions: PositionRepository,
+    /** N0NBH data with its cache ([io.github.lilixp.utcradioclock.data.propagation.PropagationRepository.updates]). */
+    propagation: Flow<PropagationState>,
     /** The solar calculation; tests pass their own to count how often it runs. */
     private val solar: (LocalDate, ZoneId, GeoPosition) -> SolarDay = SolarCalculator::calculate,
     /** Read on every tick: the ViewModel survives a language change, the texts must follow it. */
@@ -40,12 +45,15 @@ class DashboardViewModel(
     /** The last solar calculation, reused while the day, the time zone and the position stay the same. */
     private var lastSolar: Pair<Pair<LocalDay, GeoPosition>, SolarDay>? = null
 
+    /** The SUN card and the solar day behind it (null without a position). */
+    private data class Sun(val ui: SunUiState, val day: SolarDay?)
+
     /**
      * The SUN card. It depends on the local day, the time zone and the position only, so it is worked
      * out when one of them changes (at local midnight, on a time zone change, on a new locator), never
      * on the 1 s clock ticks.
      */
-    private val sun: Flow<SunUiState> = combine(
+    private val sun: Flow<Sun> = combine(
         clock.localDays(),
         positions.position,
         settings.station.map { it.locator }.distinctUntilChanged(),
@@ -53,7 +61,7 @@ class DashboardViewModel(
     ).distinctUntilChanged()
 
     val uiState: StateFlow<DashboardUiState> =
-        combine(clock.ticks(), settings.station, sun, ::toUiState)
+        combine(clock.ticks(), settings.station, sun, propagation, ::toUiState)
             .stateIn(
                 scope = viewModelScope,
                 // Keeps ticking through a screen rotation, stops 5 s after the dashboard is no longer shown
@@ -62,10 +70,16 @@ class DashboardViewModel(
                     clock.current(),
                     settings.station.value,
                     sunState(clock.currentDay(), positions.current(), settings.station.value.locator),
+                    PropagationState(PropagationState.Status.LOADING),
                 ),
             )
 
-    private fun toUiState(reading: ClockReading, station: StationIdentity, sun: SunUiState): DashboardUiState {
+    private fun toUiState(
+        reading: ClockReading,
+        station: StationIdentity,
+        sun: Sun,
+        propagation: PropagationState,
+    ): DashboardUiState {
         val (instant, zone) = reading
         val format = formatterFor(locale())
         val utcDate = format.utcDate(instant)
@@ -77,25 +91,66 @@ class DashboardViewModel(
             localDate = localDate.takeIf { it != utcDate },
             timeZone = format.timeZone(instant, zone),
             callsign = station.callsign.ifEmpty { null },
-            sun = sun,
+            sun = sun.ui,
+            propagation = propagationState(propagation, reading, sun.day, format),
             // Entered in Settings for now; a locator computed from GPS can be chosen here later,
             // the screen only ever receives the text
             locator = station.locator.ifEmpty { null },
         )
     }
 
-    private fun sunState(day: LocalDay, position: GeoPosition?, locator: String): SunUiState {
+    /**
+     * The PROPAGATION card. Each band shows N0NBH's day or night condition, whichever applies now at
+     * the station: day between sunrise and sunset there (Phase 3), or, without a position, between
+     * 06:00 and 18:00 local time (the dialog says so).
+     */
+    private fun propagationState(
+        state: PropagationState,
+        reading: ClockReading,
+        solarDay: SolarDay?,
+        format: TimeFormatter,
+    ): PropagationUiState {
+        val isDay = solarDay?.let { isDay(it, reading.instant) }
+            ?: (reading.instant.atZone(reading.zone).hour in DAY_START_HOUR until DAY_END_HOUR)
+        val conditions = state.conditions
+        return PropagationUiState(
+            status = state.status,
+            solarFlux = conditions?.solarFlux?.let { IndexUi(format.number(it), IndexScales.solarFlux(it)) },
+            kIndex = conditions?.kIndex?.let { IndexUi(format.number(it), IndexScales.kIndex(it)) },
+            aIndex = conditions?.aIndex?.let { IndexUi(format.number(it), IndexScales.aIndex(it)) },
+            bands = if (conditions == null) {
+                emptyList()
+            } else {
+                BandGroup.entries.map { group ->
+                    val band = conditions.bands[group]
+                    BandUi(group, now = if (isDay) band?.day else band?.night, day = band?.day, night = band?.night)
+                }
+            },
+            isDay = isDay,
+            dayNightByClock = solarDay == null,
+            updated = (conditions?.updated ?: state.fetchedAt)?.let { format.utcStamp(it, reading.instant) },
+        )
+    }
+
+    private fun isDay(day: SolarDay, now: Instant): Boolean = when (day.polar) {
+        PolarCondition.MIDNIGHT_SUN -> true
+        PolarCondition.POLAR_NIGHT -> false
+        null -> day.sunrise != null && day.sunset != null && now >= day.sunrise && now < day.sunset
+    }
+
+    private fun sunState(day: LocalDay, position: GeoPosition?, locator: String): Sun {
         if (position == null) {
-            return if (locator.isEmpty()) {
+            val ui = if (locator.isEmpty()) {
                 SunUiState(SunStatus.NO_LOCATOR)
             } else {
                 SunUiState(SunStatus.INVALID_LOCATOR, locator = locator)
             }
+            return Sun(ui, null)
         }
         val solarDay = solarDay(day, position)
         val format = formatterFor(locale())
         fun time(instant: Instant?) = format.eventTime(instant, day.zone)
-        return SunUiState(
+        val ui = SunUiState(
             status = when (solarDay.polar) {
                 null -> SunStatus.NORMAL
                 PolarCondition.MIDNIGHT_SUN -> SunStatus.MIDNIGHT_SUN
@@ -109,6 +164,7 @@ class DashboardViewModel(
             civilDusk = time(solarDay.civilDusk),
             locator = locator,
         )
+        return Sun(ui, solarDay)
     }
 
     private fun solarDay(day: LocalDay, position: GeoPosition): SolarDay {
@@ -124,5 +180,9 @@ class DashboardViewModel(
 
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        /** Without a position, "day" for the band conditions is 06:00–18:00 local time. */
+        const val DAY_START_HOUR = 6
+        const val DAY_END_HOUR = 18
     }
 }

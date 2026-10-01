@@ -1,8 +1,12 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
+import io.github.lilixp.utcradioclock.data.propagation.PropagationState
+import io.github.lilixp.utcradioclock.domain.model.BandGroup
+import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
+
 /**
  * Everything the dashboard shows, already as text. A null value means "not known yet" and is shown
- * as a dash; location and propagation are filled in by later phases.
+ * as a dash; the location coordinates are filled in by a later phase.
  */
 data class DashboardUiState(
     val utcDate: String,
@@ -14,10 +18,38 @@ data class DashboardUiState(
     /** From Settings; null when empty. */
     val callsign: String? = null,
     val sun: SunUiState = SunUiState(),
+    val propagation: PropagationUiState = PropagationUiState(),
     val latitude: String? = null,
     val longitude: String? = null,
     /** Maidenhead locator from Settings; null when empty. */
     val locator: String? = null,
+)
+
+/** SFI, K or A: the value exactly as N0NBH gave it, and its colour level. */
+data class IndexUi(val value: String, val level: ConditionLevel)
+
+/** One band group: N0NBH's condition now (day or night at the station), by day and by night. */
+data class BandUi(
+    val group: BandGroup,
+    val now: ConditionLevel?,
+    val day: ConditionLevel?,
+    val night: ConditionLevel?,
+)
+
+/** The PROPAGATION card (N0NBH, hamqsl.com). Null values were not in the data and are shown as "—". */
+data class PropagationUiState(
+    val status: PropagationState.Status = PropagationState.Status.LOADING,
+    val solarFlux: IndexUi? = null,
+    val kIndex: IndexUi? = null,
+    val aIndex: IndexUi? = null,
+    /** The four band groups when there is data; empty while loading or unavailable. */
+    val bands: List<BandUi> = emptyList(),
+    /** Whether the bands show the day conditions now. */
+    val isDay: Boolean = true,
+    /** True when day/night comes from the clock (06–18) because there is no position. */
+    val dayNightByClock: Boolean = false,
+    /** When N0NBH updated the data, in UTC, e.g. "05:29" or "30 sep. 05:29" for another day. */
+    val updated: String? = null,
 )
 
 /** What the SUN card shows. */

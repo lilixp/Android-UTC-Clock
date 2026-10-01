@@ -44,5 +44,24 @@ class TimeFormatter(val locale: Locale) {
         "%dh %02dm".format(Locale.ROOT, minutes / 60, minutes % 60)
     }
 
+    /**
+     * A moment in UTC for "data updated at": "05:29" on the same UTC day as [now], otherwise with the
+     * date, "30 sept. 05:29" (in the phone's language), so old data is not mistaken for today's.
+     */
+    fun utcStamp(instant: Instant, now: Instant): String {
+        val time = instant.atZone(ZoneOffset.UTC)
+        return if (time.toLocalDate() == now.atZone(ZoneOffset.UTC).toLocalDate()) {
+            shortTimeFormat.format(time)
+        } else {
+            stampFormat.format(time)
+        }
+    }
+
+    /** A value as published, without a useless ".0": 93.0 → "93", 1.5 → "1.5". */
+    fun number(value: Double): String =
+        if (value == Math.rint(value)) "%d".format(Locale.ROOT, value.toLong()) else value.toString()
+
+    private val stampFormat = DateTimeFormatter.ofPattern("d MMM HH:mm", locale)
+
     private fun Instant.roundedToMinute(): Instant = plusSeconds(30).truncatedTo(ChronoUnit.MINUTES)
 }

@@ -3,16 +3,31 @@ package io.github.lilixp.utcradioclock
 import android.app.Application
 import android.content.Context
 import io.github.lilixp.utcradioclock.data.location.PositionRepository
+import io.github.lilixp.utcradioclock.data.propagation.HttpClient
+import io.github.lilixp.utcradioclock.data.propagation.PropagationRepository
+import io.github.lilixp.utcradioclock.data.propagation.SharedPreferencesPropagationCache
+import io.github.lilixp.utcradioclock.data.propagation.UrlConnectionHttpClient
 import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.settings.SharedPreferencesSettingsRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
 import io.github.lilixp.utcradioclock.data.time.TimeProvider
 
 /** The app's shared objects, created once. Plain constructor injection: no DI framework needed yet. */
-class AppContainer(context: Context, timeProvider: TimeProvider = TimeProvider()) {
+class AppContainer(
+    context: Context,
+    timeProvider: TimeProvider = TimeProvider(),
+    /** The Internet; tests pass a fake, so they never go online. */
+    http: HttpClient = UrlConnectionHttpClient(userAgent = USER_AGENT),
+) {
     val clockRepository = ClockRepository(timeProvider)
     val settingsRepository: SettingsRepository = SharedPreferencesSettingsRepository(context)
     val positionRepository = PositionRepository(settingsRepository)
+    val propagationRepository = PropagationRepository(http, SharedPreferencesPropagationCache(context), timeProvider)
+
+    private companion object {
+        /** Says who is asking, as feed owners like to know (N0NBH asks for at most one request an hour). */
+        const val USER_AGENT = "UTCRadioClock/2.0 (Android; ham radio clock by ER1PL)"
+    }
 }
 
 open class RadioClockApplication : Application() {

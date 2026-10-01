@@ -31,7 +31,19 @@
     <string name="longitude">Longitudine: %1$s</string>
 
     <string name="section_propagation">PROPAGARE</string>
-    <string name="propagation_later">Funcția va fi disponibilă într-o fază ulterioară.</string>
+    <string name="propagation_loading">Se încarcă datele…</string>
+    <string name="propagation_unavailable">Date indisponibile</string>
+    <string name="propagation_unavailable_hint">Fără conexiune la Internet și fără date salvate. Datele apar când telefonul e online.</string>
+    <string name="propagation_source_updated">N0NBH (hamqsl.com) · actualizat %1$s UTC</string>
+    <string name="propagation_stale">Date neactualizate · ultima actualizare %1$s UTC</string>
+    <string name="propagation_source">Condiții calculate de N0NBH (hamqsl.com).</string>
+    <string name="band_day_night">Ziua: %1$s • Noaptea: %2$s</string>
+    <string name="band_now_day">Acum e zi la stație.</string>
+    <string name="band_now_night">Acum e noapte la stație.</string>
+    <string name="band_day_by_clock">Fără locator, ziua este între 06:00 și 18:00 ora locală.</string>
+    <string name="level_good">Bun</string>
+    <string name="level_fair">Mediu</string>
+    <string name="level_poor">Slab</string>
 
     <string name="section_appearance">ASPECT</string>
     <string name="theme_system">Sistem</string>

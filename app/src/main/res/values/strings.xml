@@ -36,7 +36,25 @@
     <string name="qth" translatable="false">QTH: %1$s</string>
 
     <string name="section_propagation">PROPAGATION</string>
-    <string name="propagation_later">This feature will be available in a later phase.</string>
+    <string name="index_sfi" translatable="false">SFI %1$s</string>
+    <string name="index_k" translatable="false">K %1$s</string>
+    <string name="index_a" translatable="false">A %1$s</string>
+    <string name="propagation_loading">Loading data…</string>
+    <string name="propagation_unavailable">Data unavailable</string>
+    <string name="propagation_unavailable_hint">No Internet connection and no saved data. The data will appear once the phone is online.</string>
+    <string name="propagation_source_updated">N0NBH (hamqsl.com) · updated %1$s UTC</string>
+    <string name="propagation_stale">Data not updated · last update %1$s UTC</string>
+    <string name="propagation_source">Conditions calculated by N0NBH (hamqsl.com).</string>
+    <string name="band_title" translatable="false">%1$s m</string>
+    <string name="band_day_night">Day: %1$s • Night: %2$s</string>
+    <string name="band_now_day">It is daytime at the station now.</string>
+    <string name="band_now_night">It is night at the station now.</string>
+    <string name="band_day_by_clock">Without a locator, day is 06:00–18:00 local time.</string>
+    <string name="band_description" translatable="false">%1$s: %2$s</string>
+    <string name="level_good">Good</string>
+    <string name="level_fair">Fair</string>
+    <string name="level_poor">Poor</string>
+    <string name="ok" translatable="false">OK</string>
 
     <string name="section_appearance">APPEARANCE</string>
     <string name="theme_system">System</string>

@@ -4,7 +4,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
 import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 
 // A fixed palette (no wallpaper-based dynamic color): the clock looks the same on every phone.
@@ -58,7 +62,45 @@ fun ThemeMode.isDark(systemIsDark: Boolean): Boolean = when (this) {
     ThemeMode.DARK -> true
 }
 
+/** A colour and the text colour that reads well on it. */
+@Immutable
+data class LevelColor(val container: Color, val content: Color)
+
+/**
+ * Green / yellow / red for good / fair / poor (N0NBH band conditions, SFI, K, A), plus a neutral one
+ * for values that are not known. Darker shades with white text in the light theme, lighter shades
+ * with dark text in the dark theme; yellow always has dark text.
+ */
+@Immutable
+data class ConditionColors(val good: LevelColor, val fair: LevelColor, val poor: LevelColor, val unknown: LevelColor) {
+    fun of(level: ConditionLevel?): LevelColor = when (level) {
+        ConditionLevel.GOOD -> good
+        ConditionLevel.FAIR -> fair
+        ConditionLevel.POOR -> poor
+        null -> unknown
+    }
+}
+
+private val LightConditionColors = ConditionColors(
+    good = LevelColor(Color(0xFF2E7D32), Color.White),
+    fair = LevelColor(Color(0xFFF9C80E), Color(0xFF1F1A00)),
+    poor = LevelColor(Color(0xFFC62828), Color.White),
+    unknown = LevelColor(Color(0xFFD5DCDD), Color(0xFF3F484A)),
+)
+
+private val DarkConditionColors = ConditionColors(
+    good = LevelColor(Color(0xFF81C784), Color(0xFF0B2E0F)),
+    fair = LevelColor(Color(0xFFFFD54F), Color(0xFF2B2000)),
+    poor = LevelColor(Color(0xFFEF7A7A), Color(0xFF3B0A0A)),
+    unknown = LevelColor(Color(0xFF3F484A), Color(0xFFBFC8CA)),
+)
+
+/** The condition colours of the current theme. */
+val LocalConditionColors = staticCompositionLocalOf { LightConditionColors }
+
 @Composable
 fun UTCRadioClockTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+    CompositionLocalProvider(LocalConditionColors provides if (darkTheme) DarkConditionColors else LightConditionColors) {
+        MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+    }
 }

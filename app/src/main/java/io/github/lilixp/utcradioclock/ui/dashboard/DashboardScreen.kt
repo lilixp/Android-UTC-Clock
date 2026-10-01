@@ -86,11 +86,7 @@ fun DashboardScreen(state: DashboardUiState, onOpenSettings: () -> Unit) {
                     InfoLine(R.string.qth, state.locator)
                 }
             }
-            item {
-                InfoCard(R.string.section_propagation) {
-                    Text(stringResource(R.string.propagation_later), style = MaterialTheme.typography.bodyLarge)
-                }
-            }
+            item { PropagationCard(state.propagation) }
         }
     }
 }
@@ -217,7 +213,7 @@ private fun LocalCard(state: DashboardUiState) {
 }
 
 @Composable
-private fun InfoCard(@StringRes title: Int, content: @Composable () -> Unit) {
+internal fun InfoCard(@StringRes title: Int, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

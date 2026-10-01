@@ -1,8 +1,15 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import io.github.lilixp.utcradioclock.data.location.PositionRepository
+import io.github.lilixp.utcradioclock.data.propagation.PropagationState
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
+import io.github.lilixp.utcradioclock.domain.model.BandCondition
+import io.github.lilixp.utcradioclock.domain.model.BandGroup
+import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.FAIR
+import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.GOOD
+import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
+import io.github.lilixp.utcradioclock.domain.model.SolarConditions
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.testing.FakeSettingsRepository
 import io.github.lilixp.utcradioclock.testing.MainDispatcherRule
@@ -11,6 +18,7 @@ import io.github.lilixp.utcradioclock.testing.TestZone
 import io.github.lilixp.utcradioclock.testing.VirtualClock
 import io.github.lilixp.utcradioclock.testing.timeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -45,6 +53,9 @@ class DashboardViewModelTest {
         SolarCalculator.calculate(date, zone, position)
     }
 
+    /** What the propagation repository says; tests set it directly (no network here). */
+    private val propagation = MutableStateFlow(PropagationState(PropagationState.Status.LOADING))
+
     private fun TestScope.createViewModel(
         start: Instant = START,
         locale: Locale = Locale.forLanguageTag("ro"),
@@ -54,9 +65,24 @@ class DashboardViewModelTest {
             clock = ClockRepository(timeProvider(clock, zone)),
             settings = settings,
             positions = PositionRepository(settings),
+            propagation = propagation,
             solar = countingSolar,
         ) { locale }
     }
+
+    /** N0NBH data like on 1 October 2026: SFI 93, K 0, A 3; 80-40m Fair by day and Good by night, etc. */
+    private val n0nbh = SolarConditions(
+        updated = Instant.parse("2026-09-30T15:00:00Z"),
+        solarFlux = 93.0,
+        kIndex = 0.0,
+        aIndex = 3.0,
+        bands = mapOf(
+            BandGroup.BANDS_80_40 to BandCondition(FAIR, GOOD),
+            BandGroup.BANDS_30_20 to BandCondition(GOOD, GOOD),
+            BandGroup.BANDS_17_15 to BandCondition(FAIR, POOR),
+            BandGroup.BANDS_12_10 to BandCondition(POOR, POOR),
+        ),
+    )
 
     /** Collects uiState as the screen does, so the clock ticks. */
     private fun TestScope.subscribe(viewModel: DashboardViewModel) =
@@ -328,5 +354,94 @@ class DashboardViewModelTest {
     fun textsFollowTheLanguage() = runTest(mainDispatcher.dispatcher.scheduler) {
         val state = createViewModel(locale = Locale.ENGLISH).uiState.value
         assertEquals("30 September 2026", state.utcDate)
+    }
+
+    // ---- The PROPAGATION card ----
+
+    private fun TestScope.shownPropagation(state: PropagationState): PropagationUiState {
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        propagation.value = state
+        runCurrent()
+        return viewModel.uiState.value.propagation
+    }
+
+    private fun current(conditions: SolarConditions = n0nbh) =
+        PropagationState(PropagationState.Status.CURRENT, conditions, START.minus(Duration.ofMinutes(10)))
+
+    @Test
+    fun loading_noValues() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = createViewModel().uiState.value.propagation
+        assertEquals(PropagationState.Status.LOADING, shown.status)
+        assertNull(shown.solarFlux)
+        assertTrue(shown.bands.isEmpty())
+    }
+
+    @Test
+    fun data_valuesAsPublished_withTheirLevels() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current())
+        assertEquals(PropagationState.Status.CURRENT, shown.status)
+        assertEquals(IndexUi("93", FAIR), shown.solarFlux) // 90–119
+        assertEquals(IndexUi("0", GOOD), shown.kIndex) // whole number, as N0NBH publishes it
+        assertEquals(IndexUi("3", GOOD), shown.aIndex)
+        assertEquals(BandGroup.entries.toList(), shown.bands.map { it.group }) // all four, in order
+        assertEquals("15:00", shown.updated) // N0NBH's update time, UTC
+    }
+
+    @Test
+    fun withLocator_dayUntilSunsetAtTheStation_thenNight() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw") // sunset 18:49 local, it is 18:42:31 now
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        propagation.value = current()
+        runCurrent()
+        val day = viewModel.uiState.value.propagation
+        assertTrue(day.isDay)
+        assertEquals(false, day.dayNightByClock)
+        assertEquals(listOf(FAIR, GOOD, FAIR, POOR), day.bands.map { it.now }) // the day column
+
+        advance(Duration.ofMinutes(7)) // 18:49:31, after sunset
+        val night = viewModel.uiState.value.propagation
+        assertEquals(false, night.isDay)
+        assertEquals(listOf(GOOD, GOOD, POOR, POOR), night.bands.map { it.now }) // the night column
+        assertEquals(BandUi(BandGroup.BANDS_80_40, now = GOOD, day = FAIR, night = GOOD), night.bands.first())
+    }
+
+    @Test
+    fun withoutLocator_dayNightByTheClock() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current()) // 18:42 local: after 18:00
+        assertEquals(false, shown.isDay)
+        assertTrue(shown.dayNightByClock)
+        assertEquals(listOf(GOOD, GOOD, POOR, POOR), shown.bands.map { it.now })
+    }
+
+    @Test
+    fun staleData_keptAndMarked_withItsDate() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val old = n0nbh.copy(updated = Instant.parse("2026-09-29T21:00:00Z"))
+        val shown = shownPropagation(PropagationState(PropagationState.Status.STALE, old, START.minus(Duration.ofHours(18))))
+        assertEquals(PropagationState.Status.STALE, shown.status)
+        assertEquals(IndexUi("93", FAIR), shown.solarFlux) // the last valid value, not a new one
+        val updated = shown.updated!!
+        assertTrue("another day shows the date: $updated", updated.startsWith("29 ") && updated.endsWith("21:00"))
+    }
+
+    @Test
+    fun unavailable_nothingToShow() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(PropagationState(PropagationState.Status.UNAVAILABLE))
+        assertEquals(PropagationState.Status.UNAVAILABLE, shown.status)
+        assertNull(shown.solarFlux)
+        assertNull(shown.kIndex)
+        assertNull(shown.aIndex)
+        assertTrue(shown.bands.isEmpty())
+    }
+
+    @Test
+    fun missingValues_stayMissing() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val partial = n0nbh.copy(kIndex = null, bands = mapOf(BandGroup.BANDS_30_20 to BandCondition(GOOD, null)))
+        val shown = shownPropagation(current(partial))
+        assertNull(shown.kIndex)
+        assertEquals(4, shown.bands.size)
+        assertEquals(listOf(null, null, null, null), shown.bands.map { it.now }) // night now, and no night value
+        assertEquals(GOOD, shown.bands[1].day)
     }
 }

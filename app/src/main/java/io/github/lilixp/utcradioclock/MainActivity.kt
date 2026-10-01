@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
                     clock = container.clockRepository,
                     settings = container.settingsRepository,
                     positions = container.positionRepository,
+                    propagation = container.propagationRepository.updates(),
                 ) { Locale.getDefault() }
             }
             initializer { SettingsViewModel(container.settingsRepository) }

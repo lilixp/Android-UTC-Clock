@@ -19,7 +19,10 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertTextEquals
 import androidx.lifecycle.ViewModelProvider
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithText
 import io.github.lilixp.utcradioclock.testing.FixedTimeApplication
+import io.github.lilixp.utcradioclock.testing.OfflineFixedTimeApplication
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
@@ -93,6 +96,45 @@ class MainActivityTest {
             compose.onNodeWithText(line).assertIsDisplayed()
         }
         compose.onNodeWithText("Locația nu este disponibilă.").assertDoesNotExist()
+    }
+
+    /**
+     * Scrolls to the PROPAGATION card (the last one: a list draws only what is on screen) and waits for
+     * [text], which arrives from another thread (the fake Internet).
+     */
+    private fun waitForText(text: String) {
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+        compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
+    }
+
+    @Test
+    fun propagationCardShowsTheN0nbhData() {
+        waitForText("SFI 93") // the real feed of 1 October 2026, served by the fake Internet
+        compose.onNodeWithText("K 0").assertIsDisplayed()
+        compose.onNodeWithText("A 3").assertIsDisplayed()
+        val source = "N0NBH (hamqsl.com) · actualizat 1 oct. 05:29 UTC" // N0NBH's time, another UTC day
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(source))
+        compose.onNodeWithText(source).assertIsDisplayed()
+
+        // No locator: 18:42 local is night by the clock; the feed has the same values day and night
+        compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
+        compose.onNodeWithText("Ziua: Mediu • Noaptea: Mediu").assertIsDisplayed()
+        compose.onNodeWithText("Condiții calculate de N0NBH (hamqsl.com).").assertIsDisplayed()
+        compose.onNodeWithText("OK").performClick()
+    }
+
+    @Test
+    @Config(qualifiers = "ro", application = OfflineFixedTimeApplication::class)
+    fun noInternetAndNothingSaved_dataUnavailable() {
+        waitForText("Date indisponibile")
+        compose.onNodeWithText("SFI", substring = true).assertDoesNotExist()
+        onDashboardStillWorks()
+    }
+
+    private fun onDashboardStillWorks() {
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(DashboardTags.UTC_TIME))
+        compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31")
     }
 
     @Test

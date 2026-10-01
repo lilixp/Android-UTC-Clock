@@ -5,7 +5,7 @@ locația (locator Maidenhead), activitatea solară și geomagnetică și condiț
 
 Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e pe branch-ul `main`).
 
-## Stare (30 septembrie 2026)
+## Stare (1 octombrie 2026)
 
 | Faza | Ce | Commit |
 |------|----|--------|
@@ -15,6 +15,7 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | – | Audit și curățenie | `6f0293f` |
 | 2 | UTC și ora locală (`TimeProvider`, `java.time.Clock`) | `98c0d8a` |
 | 3 | Soarele: răsărit, apus, amiază solară, durata zilei, crepuscul civil | `6a6aa1e` |
+| 4 | Propagarea HF și datele geomagnetice de la N0NBH (hamqsl.com) | (acest commit) |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
@@ -69,6 +70,34 @@ Cardul **SOARE** arată, în ora locală a telefonului, rotunjite la minut:
 - **Recalculare** doar când se schimbă ziua locală, fusul orar sau locatorul (verificate o dată pe
   minut, separat de ceasul de o secundă), nu la fiecare secundă.
 
+## Faza 4: Propagarea HF (N0NBH)
+
+Cardul **PROPAGARE** arată datele reale publicate de Paul Herrman, **N0NBH**, pe hamqsl.com:
+
+```
+[ SFI 93 ] [ K 0 ] [ A 3 ]
+[ 80-40m ] [ 30-20m ] [ 17-15m ] [ 12-10m ]
+N0NBH (hamqsl.com) · actualizat 05:29 UTC
+```
+
+- **Sursa:** fișierul XML `https://www.hamqsl.com/solarxml.php`, oferit de N0NBH pentru alte
+  programe; cere actualizare de cel mult o dată pe oră și mențiunea sursei. Din el se folosesc
+  `solarflux` (SFI), `kindex` (K, număr întreg), `aindex` (A), `updated` (ora datelor, UTC) și
+  `calculatedconditions` (cele 4 grupuri de benzi, ziua și noaptea).
+- **Benzile:** culoarea vine din clasificarea N0NBH: Good = verde (Bun), Fair = galben (Mediu),
+  Poor = roșu (Slab). N0NBH dă valori separate pentru zi și noapte; se arată cea care se aplică
+  acum la stație (între răsărit și apus, din faza 3; fără locator, 06:00–18:00 ora locală).
+- **Apăsarea unei benzi** deschide explicația: „80-40 m · Ziua: Mediu • Noaptea: Bun · Condiții
+  calculate de N0NBH (hamqsl.com).”, plus dacă acum e zi sau noapte la stație.
+- **SFI / K / A** au culori din scale publice: K după scara NOAA a furtunilor geomagnetice
+  (0–3 verde, 4 galben, ≥5 roșu), A după categoriile zilnice NOAA (<16 verde, 16–29 galben,
+  ≥30 roșu). Pentru SFI NOAA nu are scală: pragurile uzuale la radioamatori și din v1
+  (≥120 verde, 90–119 galben, <90 roșu). Vezi `IndexScales.kt`.
+- **Fără Internet:** se arată ultimele date valide salvate, cu „Date neactualizate · ultima
+  actualizare … UTC”; fără date salvate: „Date indisponibile”. Nicio valoare nu e inventată.
+- **Actualizare:** doar cât dashboard-ul e pe ecran: datele salvate imediat, o descărcare doar dacă
+  sunt mai vechi de o oră, apoi o dată pe oră; după o eroare, din nou după 15 minute.
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -109,13 +138,16 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 ├── data/
 │   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă, ziua locală)
 │   ├── settings/                SettingsRepository (tema, indicativul, locatorul, în SharedPreferences)
-│   └── location/                PositionRepository (poziția stației: acum din locator, mai târziu GPS)
+│   ├── location/                PositionRepository (poziția stației: acum din locator, mai târziu GPS)
+│   └── propagation/             HttpClient, PropagationCache, PropagationRepository (N0NBH + cache)
 ├── domain/
-│   ├── model/                   ClockReading, LocalDay, ThemeMode, StationIdentity, GeoPosition, SolarDay
+│   ├── model/                   ClockReading, LocalDay, ThemeMode, StationIdentity, GeoPosition,
+│   │                            SolarDay, SolarConditions, BandGroup, ConditionLevel
 │   ├── location/                Maidenhead (locator → latitudine/longitudine)
-│   └── solar/                   SolarCalculator (NOAA: răsărit, apus, amiază solară, crepuscul civil)
+│   ├── solar/                   SolarCalculator (NOAA: răsărit, apus, amiază solară, crepuscul civil)
+│   └── propagation/             HamQslParser (XML N0NBH), IndexScales (culorile SFI/K/A)
 ├── ui/
-│   ├── dashboard/               DashboardScreen, DashboardViewModel, DashboardUiState
+│   ├── dashboard/               DashboardScreen, PropagationCard, DashboardViewModel, DashboardUiState
 │   ├── settings/                SettingsScreen, SettingsViewModel
 │   └── theme/                   culorile Material 3 (luminos și întunecat)
 └── util/                        TimeFormatter (texte pentru ore, date, fus orar)
@@ -142,6 +174,11 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   înlocui mai târziu fără să se schimbe restul. **DashboardViewModel** cere calculul doar când se
   schimbă ziua locală, fusul sau poziția (`ClockRepository.localDays()`, verificat o dată pe minut),
   păstrează ultimul rezultat și trimite ecranului doar texte.
+- **Propagarea:** `UrlConnectionHttpClient` (HttpURLConnection din Android, timeout 10 s, fără
+  biblioteci noi) descarcă XML-ul, `HamQslParser` (XmlPullParser din Android) îl citește,
+  **PropagationRepository** îl păstrează în SharedPreferences (`propagation_cache`, în afara
+  backup-ului) și dă un `Flow<PropagationState>` (se încarcă / curent / neactualizat / indisponibil),
+  pe care **DashboardViewModel** îl transformă în texte și culori. Nimic din rețea nu e în ecran.
 - **Locatorul** ajunge pe ecran ca simplu text din DashboardViewModel; acum vine din Setări,
   iar mai târziu ViewModel-ul îl poate lua din GPS fără ca ecranul să se schimbe.
 - Nu există bibliotecă de navigare, Hilt sau mai multe module: două ecrane nu le cer încă.
@@ -246,11 +283,28 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   și engleză, în tema întunecată;
 - `SettingsScreenTest` (Robolectric): câmpurile, salvarea valorilor scrise, secțiunea ASPECT după
   STAȚIE, opțiunile Sistem / Luminos / Întunecat, butonul Înapoi, tema luminoasă și întunecată;
+- `HamQslParserTest` (Robolectric): răspunsul real N0NBH din 1 octombrie 2026
+  (`app/src/test/resources/hamqsl`), zi și noapte, zecimale, „No Report” și valori goale (rămân
+  lipsă, nu zero), benzi incomplete, răspunsuri invalide (HTML, XML tăiat, JSON, gol);
+- `IndexScalesTest`: pragurile K, A și SFI;
+- `UrlConnectionHttpClientTest`: clientul HTTP real față de un mic server pe PC (nu Internetul):
+  răspuns bun cu User-Agent-ul aplicației, erori HTTP, timeout, niciun server (ca fără Internet),
+  răspuns prea mare;
+- `SharedPreferencesPropagationCacheTest` (Robolectric): cache-ul gol, salvat și reîncărcat;
+- `PropagationRepositoryTest` (ceas virtual): prima pornire, cache recent fără descărcare, cache vechi
+  apoi date noi, fără Internet cu și fără cache, timeout, răspuns invalid (cache-ul rămâne),
+  reîncercare la 15 minute, fără pâlpâire între stări, actualizare orară;
+- `PropagationCardTest` (Robolectric, desen real): SFI/K/A, cele 4 benzi, culorile (verificate pe
+  pixeli), valori lipsă, dialogul unei benzi, zi/noapte după ceas fără locator, date neactualizate,
+  indisponibil, se încarcă, tema întunecată, engleza;
+- `DashboardViewModelTest` și `MainActivityTest` acoperă și propagarea: stări, valori, zi/noapte după
+  Soare la stație, aplicația reală cu răspunsul N0NBH și fără Internet.
 
 Teste care au nevoie de telefon sau emulator (`gradlew connectedDebugAndroidTest`), în
 `DashboardInstrumentedTest.kt`:
 
-- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT, cardul SOARE fără locator;
+- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT, cardul SOARE fără locator, cardul
+  PROPAGARE care se încarcă;
 - `AppInstrumentedTest`: aplicația reală care pornește și schimbă ora de la o secundă la alta,
   ecranul Setări cu ASPECT, deschis și închis.
 
