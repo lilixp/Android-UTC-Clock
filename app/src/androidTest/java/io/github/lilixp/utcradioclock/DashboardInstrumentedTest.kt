@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -55,10 +56,13 @@ class DashboardInstrumentedTest {
         }
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_TIME).assertTextEquals("18:42:31")
-        // No locator in this state: the SUN card says so instead of showing times
-        val noLocation = context.getString(R.string.sun_no_location)
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(noLocation))
-        compose.onNodeWithText(noLocation).assertIsDisplayed()
+        // No locator in this state: the SUN card says so instead of showing times. The LOCATION card says
+        // "not available" too, so the text is looked for next to the SUN title, in the SUN card only
+        val inSunCard = hasAnySibling(hasText(context.getString(R.string.section_sun)))
+        val noLocation = hasText(context.getString(R.string.sun_no_location)) and inSunCard
+        compose.onNode(hasScrollAction()).performScrollToNode(noLocation)
+        compose.onNode(noLocation).assertIsDisplayed()
+        compose.onNode(hasText(context.getString(R.string.sun_enter_locator)) and inSunCard).assertIsDisplayed()
         val latitude = context.getString(R.string.latitude, dash)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(latitude))
         compose.onNodeWithText(latitude).assertIsDisplayed()

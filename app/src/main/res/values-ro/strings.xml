@@ -67,6 +67,31 @@
     <string name="level_good">Bun</string>
     <string name="level_fair">Mediu</string>
     <string name="level_poor">Slab</string>
+    <string name="level_unknown">Necunoscut</string>
+
+    <string name="propagation_sfi_title">Solar Flux Index (SFI)</string>
+    <string name="propagation_sfi_dialog">Măsoară emisia radio solară la 10.7 cm. Un SFI &gt; 90/120 favorizează benzile înalte (15m–10m) în timpul zilei.</string>
+    <string name="propagation_k_title">Indicele K (Geomagnetic)</string>
+    <string name="propagation_k_dialog">Indice al activității geomagnetice (0–9). K 0–3: liniștit; K 4: activ; K 5 sau mai mult: furtună geomagnetică (scala NOAA), cu absorbție mai mare pe HF.</string>
+    <string name="propagation_a_title">Indicele A</string>
+    <string name="propagation_a_dialog">Media zilnică a activității geomagnetice (0–400). Valori peste 15 indică instabilitate ionosferică.</string>
+
+    <string name="estimate_title">Estimare offline · 10 benzi</string>
+    <string name="estimate_level">Estimare: %1$s</string>
+    <string name="band_now_twilight">Acum e crepuscul la stație.</string>
+    <string name="estimate_no_position">Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.</string>
+    <string name="estimate_no_data">N0NBH nu a dat SFI sau indicele K, deci nu există estimare.</string>
+    <string name="estimate_source">Estimare offline, calculată pe telefon din SFI și K (N0NBH) și din Soarele la stație. Nu este o valoare publicată de N0NBH.</string>
+    <string name="band_160m_dialog">Bandă de noapte și crepuscul. Absorbție D masivă în timpul zilei.</string>
+    <string name="band_80m_dialog">Bandă de noapte și crepuscul. Absorbție mare ziua, DX excelent noaptea.</string>
+    <string name="band_60m_dialog">Bandă de tranziție. Absorbție medie ziua, reflexie F2 stabilă noaptea.</string>
+    <string name="band_40m_dialog">Locală/NVIS ziua, regională și DX la apus și noaptea.</string>
+    <string name="band_30m_dialog">Deschisă aproape 24/7. Absorbție redusă, excelentă la crepuscul.</string>
+    <string name="band_20m_dialog">Banda principală HF. Deschisă ziua și la crepuscul; noaptea depinde de SFI.</string>
+    <string name="band_17m_dialog">Bandă de zi și crepuscul. Necesită ionizare F2 medie.</string>
+    <string name="band_15m_dialog">Bandă de zi. Puternic influențată de fluxul solar (SFI ≥ 90).</string>
+    <string name="band_12m_dialog">Bandă de zi. Se deschide la amiază când SFI ≥ 110.</string>
+    <string name="band_10m_dialog">Bandă de zi. Necesită ionizare solară puternică la amiază (SFI ≥ 120).</string>
 
     <string name="section_appearance">ASPECT</string>
     <string name="theme_system">Sistem</string>

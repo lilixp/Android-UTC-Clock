@@ -38,6 +38,9 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 | 01.10.2026 | **Faza A — locatorul:** sunt valide doar locatorii de **4, 6 sau 8 caractere** (`KN46`, `KN46dw`, `KN46dw12`), verificați de `Maidenhead.toPosition` / `isValid` (singurul loc). `KN`, `KN4`, `KN46d`, `KN46dwx`, caracterele nepermise și textul gol sunt invalide. Setările păstrează textul cât e scris, dar un locator invalid nu devine poziție, QTH, insignă, sursă pentru Soare sau propagare; dashboard-ul spune „Locatorul „KN4” nu este valid.” |
 | 01.10.2026 | **Faza A — GPS:** ordinea în `PositionRepository.locate()` este permisiune → locația pornită → abia apoi poziția recentă (regula de 10 minute rămâne). O poziție luată cu altă precizie (aproximativ ↔ exact) nu mai e folosită: se cere una nouă. |
 | 01.10.2026 | **Faza A — Soarele:** fără poziție, în modul Automat, cardul SOARE spune motivul din `GpsStatus`: fără permisiune, locația oprită, se caută poziția, poziție indisponibilă. |
+| 01.10.2026 | **Estimare offline pe 10 benzi** (lucrul lui Lilian din Android Studio, recuperat din Local History și integrat): regulile pe bandă păstrate; SFI și K vin numai din N0NBH (`PropagationState`, proaspăt sau cache), fără un al doilea depozit și fără valori implicite (SFI 100 / K 2 / A 7 din versiunea recuperată au fost scoase). Date lipsă → „Necunoscut” (`null`, nu `ConditionLevel.UNDEFINED`). Afișată sub datele N0NBH, cu titlul „Estimare offline · 10 benzi”. |
+| 01.10.2026 | Zi / crepuscul / noapte la stație: o singură funcție, `SolarDay.phaseAt()`, pentru grupele N0NBH și pentru estimare. |
+| 01.10.2026 | Explicații la SFI / K / A și la fiecare dintre cele 10 benzi (dialog la apăsare, starea în card). Textul pentru K urmează `IndexScales`: 4 activ, ≥ 5 furtună. |
 | 01.10.2026 | Rețea fără biblioteci noi: `HttpURLConnection` + `XmlPullParser` din Android; permisiunea `INTERNET`. Cache: ultimul XML valid în SharedPreferences (`propagation_cache`, în afara backup-ului). Descărcare doar cât dashboard-ul e pe ecran: cel mult o dată pe oră, după o eroare din nou peste 15 minute. |
 
 ## De verificat (încă nevăzut pe telefon)
@@ -58,7 +61,6 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 
 - **Semnarea versiunii Release**: acum `app-release-unsigned.apk`; pentru distribuire (Google Play
   sau APK dat altora) trebuie o cheie de semnare, păstrată în afara depozitului.
-- **Explicații la SFI / K / A** (ca la benzi): un dialog cu valoarea, pragurile și sursa scalei.
 - **Actualizare la cerere** (de ex. tragere în jos): ar trebui să respecte tot regula N0NBH de o oră.
   Cerută de Lilian după testarea fazei 5 (util la POTA / portabil, într-un loc nou): tragerea în jos
   actualizează tot: poziția GPS (fără regula de 10 minute), Soarele, datele N0NBH (tot cu limita
@@ -110,6 +112,18 @@ Rezolvate (detalii în `PHASE_A_REPORT.md`):
 
 De verificat pe telefon, cu Lilian: locația oprită cu o poziție recentă, schimbarea aproximativ ↔
 exact, `KN` / `KN4` în Setări, mesajul SOARE cu locația oprită.
+
+## Estimarea offline pe 10 benzi (1 octombrie 2026)
+
+Recuperată din Local History (lucrul din Android Studio, pierdut la un rollback accidental la 13:10)
+și integrată în arhitectura existentă. Ce nu s-a integrat rămâne în
+`C:\Users\Lilian\AndroidStudioProjects\UTCRadioClock-recuperare-1310\` (vezi `RECUPERARE.md` acolo):
+`SolarIndicesRepository` (dubla N0NBH), `ConditionLevel.UNDEFINED` (dubla `null`), starea dialogurilor
+în ViewModel și tot începutul de redesign (tab-uri, `ClockScreen` / `SunScreen` / `LocationScreen` /
+`PropagationScreen`, iconițe, pull-to-refresh, „ultima poziție salvată”) — material pentru Faza B.
+
+Tot acum: testul instrumentat `dashboardShowsClocksAndPlaceholders` caută „Locația nu este
+disponibilă.” doar în cardul SOARE (din faza 5 textul apare și în cardul LOCAȚIE).
 
 ## Ce urmează (fazele următoare, în ordinea din cerințele inițiale)
 

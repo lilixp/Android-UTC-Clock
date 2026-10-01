@@ -111,7 +111,31 @@ data class SolarDay(
             polar == PolarCondition.MIDNIGHT_SUN -> Duration.ofHours(24)
             else -> Duration.ZERO
         }
+
+    /**
+     * Day, civil twilight or night at the station at [instant] — the one place the app decides it
+     * (the N0NBH band conditions use "day", the offline estimate all three):
+     * - day: from sunrise to sunset (always under the midnight sun);
+     * - civil twilight: from civil dawn to sunrise and from sunset to civil dusk, the whole night of a
+     *   "white night" (no civil dawn or dusk), and from dawn to dusk on a polar-night day that has them;
+     * - night: before civil dawn and after civil dusk, and all day in a polar night without twilight.
+     *
+     * Null when it cannot be decided: a day with a sunrise but no sunset (or the other way round),
+     * which happens only very close to a polar day or night.
+     */
+    fun phaseAt(instant: Instant): DayPhase? = when {
+        polar == PolarCondition.MIDNIGHT_SUN -> DayPhase.DAY
+        sunrise != null && sunset != null && instant >= sunrise && instant < sunset -> DayPhase.DAY
+        polar == null && (sunrise == null || sunset == null) -> null
+        civilDawn != null && instant < civilDawn -> DayPhase.NIGHT
+        civilDusk != null && instant >= civilDusk -> DayPhase.NIGHT
+        polar == PolarCondition.POLAR_NIGHT && civilDawn == null && civilDusk == null -> DayPhase.NIGHT
+        else -> DayPhase.TWILIGHT
+    }
 }
+
+/** Where the Sun is for HF: above the horizon, up to 6° below it (civil twilight), or lower. */
+enum class DayPhase { DAY, TWILIGHT, NIGHT }
 
 /**
  * The station's callsign and Maidenhead locator, as entered in Settings; either may be empty.

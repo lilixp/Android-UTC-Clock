@@ -8,6 +8,7 @@ import io.github.lilixp.utcradioclock.data.settings.SettingsRepository
 import io.github.lilixp.utcradioclock.data.time.ClockRepository
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ClockReading
+import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
@@ -18,6 +19,7 @@ import io.github.lilixp.utcradioclock.domain.model.SolarDay
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.StationPosition
 import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
+import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.util.TimeFormatter
 import kotlinx.coroutines.flow.Flow
@@ -141,9 +143,11 @@ class DashboardViewModel(
     }
 
     /**
-     * The PROPAGATION card. Each band shows N0NBH's day or night condition, whichever applies now at
-     * the station: day between sunrise and sunset there (Phase 3), or, without a position, between
-     * 06:00 and 18:00 local time (the dialog says so).
+     * The PROPAGATION card. Each band group shows N0NBH's day or night condition, whichever applies now
+     * at the station: day between sunrise and sunset there (Phase 3), or, without a position, between
+     * 06:00 and 18:00 local time (the dialog says so). Below it, the offline estimate for the ten HF
+     * bands, from the same phase of the day and N0NBH's own SFI and K (fresh or saved); without N0NBH
+     * data there is no estimate at all.
      */
     private fun propagationState(
         state: PropagationState,
@@ -151,8 +155,12 @@ class DashboardViewModel(
         solarDay: SolarDay?,
         format: TimeFormatter,
     ): PropagationUiState {
-        val isDay = solarDay?.let { isDay(it, reading.instant) }
-            ?: (reading.instant.atZone(reading.zone).hour in DAY_START_HOUR until DAY_END_HOUR)
+        val phase = solarDay?.phaseAt(reading.instant)
+        val isDay = if (solarDay != null) {
+            phase == DayPhase.DAY
+        } else {
+            reading.instant.atZone(reading.zone).hour in DAY_START_HOUR until DAY_END_HOUR
+        }
         val conditions = state.conditions
         return PropagationUiState(
             status = state.status,
@@ -169,15 +177,13 @@ class DashboardViewModel(
             },
             isDay = isDay,
             dayNightByClock = solarDay == null,
+            estimate = conditions?.let {
+                OfflinePropagationCalculator.estimate(phase, it.solarFlux, it.kIndex)
+            }.orEmpty(),
+            phase = phase,
             // N0NBH's own "updated" time from the feed, in UTC (not when the phone downloaded it)
             updated = conditions?.updated?.let { format.utcStamp(it, reading.instant) },
         )
-    }
-
-    private fun isDay(day: SolarDay, now: Instant): Boolean = when (day.polar) {
-        PolarCondition.MIDNIGHT_SUN -> true
-        PolarCondition.POLAR_NIGHT -> false
-        null -> day.sunrise != null && day.sunset != null && now >= day.sunrise && now < day.sunset
     }
 
     private fun sunState(day: LocalDay, input: SunInput): Sun {

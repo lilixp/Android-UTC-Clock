@@ -24,6 +24,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
+import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.testing.BOGHICENI
 import io.github.lilixp.utcradioclock.testing.FixedTimeApplication
@@ -32,6 +33,7 @@ import io.github.lilixp.utcradioclock.testing.OfflineFixedTimeApplication
 import io.github.lilixp.utcradioclock.testing.fix
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
+import io.github.lilixp.utcradioclock.ui.dashboard.PropagationTags
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -131,6 +133,28 @@ class MainActivityTest {
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
         compose.onNodeWithText("Ziua: Mediu • Noaptea: Mediu").assertIsDisplayed()
         compose.onNodeWithText("Condiții calculate de N0NBH (hamqsl.com).").assertIsDisplayed()
+        compose.onNodeWithText("OK").performClick()
+    }
+
+    @Test
+    fun offlineEstimate_fromTheRealN0nbhFeed_unknownUntilThereIsAPosition() {
+        waitForText("SFI 93")
+        val list = compose.onNode(hasScrollAction())
+        list.performScrollToNode(hasTestTag(PropagationTags.estimate(HfBand.BAND_10M)))
+        compose.onNodeWithText("Estimare offline · 10 benzi").assertIsDisplayed()
+        compose.onNodeWithContentDescription("20m: Necunoscut").assertIsDisplayed() // no locator yet
+
+        openSettings()
+        compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
+        compose.onNodeWithContentDescription("Înapoi").performClick()
+
+        // 18:42 local, before sunset: day; the feed's SFI 93 and K 0
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(PropagationTags.estimate(HfBand.BAND_10M)))
+        compose.onNodeWithContentDescription("20m: Bun").assertIsDisplayed()
+        compose.onNodeWithContentDescription("160m: Slab").assertIsDisplayed()
+        compose.onNodeWithContentDescription("10m: Slab").assertIsDisplayed() // SFI 93 is below 95
+        compose.onNodeWithContentDescription("20m: Bun").performClick()
+        compose.onNodeWithText("Estimare: Bun").assertIsDisplayed()
         compose.onNodeWithText("OK").performClick()
     }
 

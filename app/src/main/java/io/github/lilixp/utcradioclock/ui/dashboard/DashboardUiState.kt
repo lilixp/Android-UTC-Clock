@@ -1,8 +1,10 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
+import io.github.lilixp.utcradioclock.domain.model.BandEstimate
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
+import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
 
@@ -69,6 +71,13 @@ data class PropagationUiState(
     val isDay: Boolean = true,
     /** True when day/night comes from the clock (06–18) because there is no position. */
     val dayNightByClock: Boolean = false,
+    /**
+     * The offline estimate for the ten HF bands (calculated on the phone, not N0NBH data); empty
+     * when there is no N0NBH data at all. A null level is "Unknown".
+     */
+    val estimate: List<BandEstimate> = emptyList(),
+    /** Day, twilight or night at the station now, for the estimate; null without a position. */
+    val phase: DayPhase? = null,
     /** When N0NBH updated the data (the feed's "updated"), in UTC, e.g. "05:29", or "30 sept. 05:29" for another day. */
     val updated: String? = null,
 )

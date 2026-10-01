@@ -8,11 +8,14 @@ import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.FAIR
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.GOOD
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
+import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
+import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.SolarConditions
+import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
 import io.github.lilixp.utcradioclock.testing.BOGHICENI
 import io.github.lilixp.utcradioclock.testing.FakeLastPositionStore
@@ -687,5 +690,98 @@ class DashboardViewModelTest {
         assertEquals(GpsStatus.LOCATION_OFF, viewModel.uiState.value.location.gps)
         assertEquals(SunStatus.NORMAL, viewModel.uiState.value.sun.status)
         assertEquals(calls, solarCalls.size)
+    }
+
+    // ---- The offline estimate for the ten HF bands ----
+
+    private val estimateAtDayWithN0nbh = listOf(POOR, POOR, FAIR, FAIR, GOOD, GOOD, GOOD, GOOD, FAIR, POOR) // SFI 93, K 0
+
+    @Test
+    fun estimate_fromN0nbhSfiAndK_andTheSunAtTheStation() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw") // 18:42 local, sunset 18:49: day
+        val shown = shownPropagation(current())
+        assertEquals(DayPhase.DAY, shown.phase)
+        assertEquals(HfBand.entries.toList(), shown.estimate.map { it.band })
+        assertEquals(estimateAtDayWithN0nbh, shown.estimate.map { it.level })
+    }
+
+    @Test
+    fun estimate_followsOtherN0nbhValues_nothingFixed() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 150.0, kIndex = 4.0)))
+        assertEquals(OfflinePropagationCalculator.estimate(DayPhase.DAY, 150.0, 4.0), shown.estimate)
+        assertEquals(listOf(POOR, POOR, POOR, POOR, FAIR, FAIR, FAIR, FAIR, FAIR, FAIR), shown.estimate.map { it.level })
+    }
+
+    @Test
+    fun estimate_fromTheSavedDataWhenOffline() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val shown = shownPropagation(PropagationState(PropagationState.Status.STALE, n0nbh, START.minus(Duration.ofHours(3))))
+        assertEquals(estimateAtDayWithN0nbh, shown.estimate.map { it.level })
+    }
+
+    @Test
+    fun noN0nbhData_noEstimate_noInventedValues() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        assertTrue(shownPropagation(PropagationState(PropagationState.Status.LOADING)).estimate.isEmpty())
+        assertTrue(shownPropagation(PropagationState(PropagationState.Status.UNAVAILABLE)).estimate.isEmpty())
+    }
+
+    @Test
+    fun n0nbhWithoutK_everyBandUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val shown = shownPropagation(current(n0nbh.copy(kIndex = null)))
+        assertEquals(10, shown.estimate.size)
+        assertTrue(shown.estimate.all { it.level == null })
+    }
+
+    @Test
+    fun n0nbhWithoutSfi_theBandsThatNeedItUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = null)))
+        assertEquals(listOf(POOR, POOR, FAIR, FAIR, null, GOOD, null, null, null, null), shown.estimate.map { it.level })
+    }
+
+    @Test
+    fun withoutAPosition_estimateUnknown_bandGroupsStillByTheClock() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current()) // no locator
+        assertNull(shown.phase)
+        assertTrue(shown.estimate.all { it.level == null })
+        assertTrue(shown.dayNightByClock) // the N0NBH groups keep the 06–18 rule, as before
+    }
+
+    @Test
+    fun estimate_dayThenTwilightThenNight_andTheGroupsTheSameAsBefore() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw") // 30 September: sunset 18:49, civil dusk 19:19 local
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        propagation.value = current()
+        runCurrent()
+        assertEquals(DayPhase.DAY, viewModel.uiState.value.propagation.phase)
+
+        advance(Duration.ofMinutes(10)) // 18:52: after sunset
+        val twilight = viewModel.uiState.value.propagation
+        assertEquals(DayPhase.TWILIGHT, twilight.phase)
+        assertEquals(false, twilight.isDay) // the N0NBH groups switch to night at sunset, as before
+        assertEquals(listOf(FAIR, GOOD, GOOD, GOOD, GOOD, GOOD, FAIR, POOR, POOR, POOR), twilight.estimate.map { it.level })
+
+        advance(Duration.ofMinutes(40)) // 19:32: after civil dusk
+        val night = viewModel.uiState.value.propagation
+        assertEquals(DayPhase.NIGHT, night.phase)
+        assertEquals(listOf(GOOD, GOOD, GOOD, GOOD, GOOD, FAIR, POOR, POOR, POOR, POOR), night.estimate.map { it.level })
+    }
+
+    @Test
+    fun estimate_usesTheGpsPositionLikeEverythingElse() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw") // day in Chișinău
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        locations.current = fix(GeoPosition(35.6895, 139.6917)) // Tokyo: 00:42, night
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        propagation.value = current()
+        runCurrent()
+        val shown = viewModel.uiState.value.propagation
+        assertEquals(DayPhase.NIGHT, shown.phase)
+        assertEquals(false, shown.isDay)
     }
 }
