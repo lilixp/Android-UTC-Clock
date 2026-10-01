@@ -31,11 +31,13 @@ import io.github.lilixp.utcradioclock.testing.FixedTimeApplication
 import io.github.lilixp.utcradioclock.testing.GpsFixedTimeApplication
 import io.github.lilixp.utcradioclock.testing.OfflineFixedTimeApplication
 import io.github.lilixp.utcradioclock.testing.fix
+import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
 import io.github.lilixp.utcradioclock.ui.dashboard.PropagationTags
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -67,6 +69,12 @@ class MainActivityTest {
 
     private fun onDashboard() = compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()
 
+    /** Taps a section in the bottom bar. */
+    private fun openTab(tab: AppTab) {
+        compose.onNodeWithTag(tab.testTag).performClick()
+        compose.waitForIdle()
+    }
+
     /** The color at the top-left corner of the screen (the top app bar, drawn in the theme's surface color). */
     private fun cornerColor(): Color = compose.onRoot().captureToImage().toPixelMap()[4, 4]
 
@@ -94,6 +102,7 @@ class MainActivityTest {
 
     @Test
     fun sunCardFollowsTheLocatorEnteredInSettings() {
+        openTab(AppTab.SUN)
         val list = compose.onNode(hasScrollAction())
         list.performScrollToNode(hasText("Locația nu este disponibilă."))
         compose.onNodeWithText("Locația nu este disponibilă.").assertIsDisplayed() // no locator yet
@@ -101,6 +110,7 @@ class MainActivityTest {
         openSettings()
         compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
         compose.onNodeWithContentDescription("Înapoi").performClick()
+        compose.onNodeWithTag(AppTab.SUN.testTag).assertIsSelected() // back on the section Settings was opened from
 
         // 30 September 2026, KN46dw, the phone's zone (Chișinău, UTC+3)
         for (line in listOf("Răsărit: 07:04", "Apus: 18:49", "Amiază solară: 12:57", "Durata zilei: 11h 45m")) {
@@ -111,10 +121,11 @@ class MainActivityTest {
     }
 
     /**
-     * Scrolls to the PROPAGATION card (the last one: a list draws only what is on screen) and waits for
-     * [text], which arrives from another thread (the fake Internet).
+     * Opens the PROPAGATION section and waits for [text], which arrives from another thread (the fake
+     * Internet).
      */
     private fun waitForText(text: String) {
+        openTab(AppTab.PROPAGATION)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
         compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
@@ -167,7 +178,7 @@ class MainActivityTest {
     }
 
     private fun onDashboardStillWorks() {
-        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(DashboardTags.UTC_TIME))
+        openTab(AppTab.CLOCK)
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31")
     }
 
@@ -191,6 +202,7 @@ class MainActivityTest {
     }
 
     private fun assertOnLocationCard(text: String) {
+        openTab(AppTab.LOCATION)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
         compose.onNodeWithText(text).assertIsDisplayed()
     }
@@ -287,12 +299,94 @@ class MainActivityTest {
 
     private fun FixedTimeApplication.settings() = container.settingsRepository
 
+    // ---- The four sections ----
+
+    @Test
+    fun back_fromAnotherSectionToTheClock_fromTheClockOut() {
+        for (tab in listOf(AppTab.SUN, AppTab.LOCATION, AppTab.PROPAGATION)) {
+            openTab(tab)
+            compose.onNodeWithTag(tab.testTag).assertIsSelected()
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.waitForIdle()
+            compose.onNodeWithTag(AppTab.CLOCK.testTag).assertIsSelected()
+            onDashboard()
+            assertFalse(compose.activity.isFinishing)
+        }
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        assertTrue(compose.activity.isFinishing) // from the Clock, Back leaves the app
+    }
+
+    @Test
+    fun theSectionSurvivesARotation() {
+        openTab(AppTab.PROPAGATION)
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
+        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+    }
+
+    @Test
+    fun settingsGoesBackToTheSectionItWasOpenedFrom() {
+        openTab(AppTab.LOCATION)
+        openSettings()
+        compose.onNodeWithContentDescription("Înapoi").performClick() // the arrow
+        compose.onNodeWithTag(AppTab.LOCATION.testTag).assertIsSelected()
+        compose.onNodeWithText("LOCAȚIE").assertIsDisplayed()
+
+        openTab(AppTab.PROPAGATION)
+        openSettings()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() } // the phone's button
+        compose.waitForIdle()
+        compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
+        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+    }
+
+    @Test
+    fun settingsAndRotation_stillBackToTheSameSection() {
+        openTab(AppTab.SUN)
+        openSettings()
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithTag(SettingsTags.CALLSIGN_FIELD).assertIsDisplayed() // still in Settings
+        compose.onNodeWithContentDescription("Înapoi").performClick()
+        compose.onNodeWithTag(AppTab.SUN.testTag).assertIsSelected()
+    }
+
+    @Test
+    fun switchingSections_oneViewModel_oneN0nbhDownload() {
+        waitForText("SFI 93")
+        val viewModel = dashboardViewModel()
+        val downloads = app().httpRequests.get()
+        assertEquals(1, downloads)
+        repeat(3) {
+            for (tab in AppTab.entries) openTab(tab)
+        }
+        assertSame(viewModel, dashboardViewModel()) // the same clock, GPS and N0NBH behind every section
+        assertEquals(downloads, app().httpRequests.get()) // no new download because of the sections
+        openTab(AppTab.PROPAGATION)
+        compose.onNodeWithText("SFI 93").assertIsDisplayed() // its data still there, not downloaded again
+    }
+
+    @Test
+    @Config(qualifiers = "ro", application = GpsFixedTimeApplication::class)
+    fun switchingSections_oneGpsReading() {
+        chooseAutomaticPosition()
+        backToDashboard()
+        assertOnLocationCard("QTH: KN46dx")
+        val readings = app().locations.requests
+        assertEquals(1, readings)
+        repeat(3) {
+            for (tab in AppTab.entries) openTab(tab)
+        }
+        assertEquals(readings, app().locations.requests) // the sections do not ask the phone again
+    }
+
     @Test
     fun startsOnTheDashboardWithDefaults() {
         onDashboard()
         compose.onNodeWithTag(DashboardTags.CALLSIGN).assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCATOR).assertDoesNotExist() // no locator until entered
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+        compose.onNodeWithTag(AppTab.CLOCK.testTag).assertIsSelected() // the Clock is the start section
+        openTab(AppTab.PROPAGATION)
+        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
         compose.onNodeWithText("ASPECT").assertDoesNotExist()
     }
 

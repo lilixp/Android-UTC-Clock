@@ -78,7 +78,7 @@ class PropagationCardTest {
         compose.setContent {
             UTCRadioClockTheme(darkTheme = dark) {
                 colors = LocalConditionColors.current
-                DashboardScreen(state) {}
+                DashboardScreen(state, selectedTab = AppTab.PROPAGATION) {}
             }
         }
         // The card is the last one: scrolling to its title brings all of it on the (tall) test screen

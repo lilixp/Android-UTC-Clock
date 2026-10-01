@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols (Google, Apache License 2.0); tinted by Compose Icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M480,880Q310,710 235,568.5T160,360q0,-146 109,-243T480,24q163,0 271.5,97T800,360q0,108.5 -75,251T480,880Zm0,-80q138,-133 209,-251t71,-189q0,-120 -86.5,-198T480,104q-117.5,0 -204,78T190,360q0,71 71,189t209,251Zm0,-320q42,0 71,-29t29,-71q0,-42 -29,-71t-71,-29q-42,0 -71,29t-29,71q0,42 29,71t71,29Z"/>
+</vector>

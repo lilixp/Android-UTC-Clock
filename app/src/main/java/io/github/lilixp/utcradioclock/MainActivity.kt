@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.lilixp.utcradioclock.domain.model.PositionSource
+import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.LocationAction
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardViewModel
@@ -110,8 +111,11 @@ class MainActivity : ComponentActivity() {
             val settings: SettingsViewModel = viewModel(factory = factory)
             val themeMode by settings.themeMode.collectAsStateWithLifecycle()
             val darkTheme = themeMode.isDark(isSystemInDarkTheme())
-            // Two screens only, so a flag is enough; a navigation library can come with more screens
+            // Settings over the four sections; a flag and the selected section are enough (no navigation
+            // library). Both are kept here, above the two screens, so the section survives Settings, a
+            // rotation and the app being stopped in the background.
             var showSettings by rememberSaveable { mutableStateOf(false) }
+            var selectedTab by rememberSaveable { mutableStateOf(AppTab.CLOCK) }
             // Status and navigation bar icons must follow the app theme, also when it overrides the system one
             DisposableEffect(darkTheme) {
                 val style = if (darkTheme) {
@@ -142,11 +146,16 @@ class MainActivity : ComponentActivity() {
                         },
                     )
                 } else {
-                    // Collected only while the dashboard is shown: the clock does not tick behind Settings
+                    // Back from Sun, Location or Propagation goes to the Clock; from the Clock it leaves the app
+                    BackHandler(enabled = selectedTab != AppTab.CLOCK) { selectedTab = AppTab.CLOCK }
+                    // One ViewModel for the four sections, collected only while they are shown: the clock,
+                    // GPS and N0NBH run once, whatever the section, and not behind Settings
                     val dashboard: DashboardViewModel = viewModel(factory = factory)
                     val state by dashboard.uiState.collectAsStateWithLifecycle()
                     DashboardScreen(
                         state = state,
+                        selectedTab = selectedTab,
+                        onSelectTab = { selectedTab = it },
                         onOpenSettings = { showSettings = true },
                         locationPermissionBlocked = locationBlocked,
                         onLocationAction = ::onLocationAction,

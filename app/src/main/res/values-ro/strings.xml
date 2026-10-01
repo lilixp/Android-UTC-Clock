@@ -2,6 +2,10 @@
 <resources>
     <string name="open_settings">Setări</string>
     <string name="back">Înapoi</string>
+    <string name="tab_clock">Ceas</string>
+    <string name="tab_sun">Soare</string>
+    <string name="tab_location">Locație</string>
+    <string name="tab_propagation">Propagare</string>
     <string name="settings_title">Setări</string>
     <string name="section_station">STAȚIE</string>
     <string name="callsign">Indicativ</string>

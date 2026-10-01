@@ -6,6 +6,7 @@ import io.github.lilixp.utcradioclock.data.propagation.HttpClient
 import io.github.lilixp.utcradioclock.data.time.TimeProvider
 import java.time.Clock
 import java.time.ZoneOffset
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The real app for Robolectric tests, with its clock stopped at [START] in Chișinău, so screens show
@@ -19,8 +20,15 @@ open class FixedTimeApplication : RadioClockApplication() {
     /** Kept, so a test can change it (e.g. allow the permission) while the app runs. */
     open val locations: FakeLocationProvider by lazy { FakeLocationProvider(permission = false) }
 
-    override fun createContainer() =
-        AppContainer(this, TimeProvider(Clock.fixed(START, ZoneOffset.UTC)) { CHISINAU }, http, locations)
+    /** How many times the app went to the Internet (N0NBH), to catch a second download. */
+    val httpRequests = AtomicInteger()
+
+    override fun createContainer() = AppContainer(
+        this,
+        TimeProvider(Clock.fixed(START, ZoneOffset.UTC)) { CHISINAU },
+        { url -> httpRequests.incrementAndGet(); http.get(url) },
+        locations,
+    )
 }
 
 /** The same app on a phone that allows location and is in Boghiceni (KN46dx). */

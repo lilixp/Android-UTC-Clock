@@ -19,7 +19,8 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | – | Sub benzi doar „Actualizat … UTC”; sursa în Setări → Despre aplicație | `a4b88f2` |
 | 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE (verificată pe S24+) | `38e55a4` |
 | A | Corecții după testarea autonomă: locator 4/6/8, ordinea GPS, aproximativ ↔ exact, mesajul SOARE | `3da0318` |
-| – | Estimare offline pe 10 benzi HF (din SFI/K N0NBH), explicații SFI/K/A și benzi | (acest commit) |
+| – | Estimare offline pe 10 benzi HF (din SFI/K N0NBH), explicații SFI/K/A și benzi | `bbf372a` |
+| R1 | Redesign, etapa 1: 4 tab-uri (Ceas → Propagare → Soare → Locație), stația în bara de sus | (acest commit) |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
@@ -183,6 +184,36 @@ secunde. Fără urmărire continuă, nimic în fundal, fără Google Play Servic
 poziție GPS se păstrează în `position.xml`, rotunjită la circa 100 m, ca aplicația să aibă o poziție
 și la pornire, în casă sau fără semnal. Fișierul nu intră în backup și se șterge la trecerea pe Manual.
 
+## Redesign, etapa 1: cele 4 tab-uri
+
+Dashboard-ul (o singură listă) a devenit 4 secțiuni, cu o bară jos:
+
+```
+UTC Radio Clock                         ⚙
+ER1PL  KN46dw
+…  conținutul tab-ului ales  …
+[ Ceas ] [ Propagare ] [ Soare ] [ Locație ]
+```
+
+- **Ordinea** (după importanța pentru radioamator): **Ceas → Propagare → Soare → Locație**
+  (EN: Clock → Propagation → Sun → Location). Tab-ul activ e marcat. **Ceasul** e ecranul de start.
+- **Bara de sus**, pe toate tab-urile: „UTC Radio Clock”, indicativul și locatorul real (din GPS sau
+  din Setări; un locator invalid nu apare) și rotița Setări.
+- **Conținutul:** Ceas = cardurile UTC (cu data UTC sub oră) și LOCAL; Propagare, Soare, Locație =
+  cardurile de până acum, neschimbate (aceleași texte, culori, butoane și dialoguri).
+- **Înapoi:** din Propagare / Soare / Locație duce la Ceas; din Ceas iese din aplicație. **Setările**
+  revin la tab-ul din care au fost deschise.
+- **Tab-ul ales se păstrează** la rotire și la oprirea procesului de către sistem (`rememberSaveable`
+  în `MainActivity`, deasupra ecranului Setări).
+- **Fără Navigation Compose și fără dependențe noi:** 4 secțiuni de același nivel și un ecran Setări
+  se descurcă cu tab-ul ales și un flag (`NavigationBar` din Material 3, `BackHandler` din Activity).
+  Un singur `DashboardViewModel` pentru toate: ceasul, GPS-ul și N0NBH rulează o singură dată,
+  oricare ar fi tab-ul (testele numără descărcările și citirile GPS).
+- **Etichetele tab-urilor** se micșorează doar când nu încap (`autoSize` din Material 3): pe S24+, la
+  textul telefonului 1,3, „Propagation” (engleză) avea nevoie de 342,5 px într-un tab de 338 px.
+  Verificarea e în testul instrumentat (fontul real al telefonului); pe PC, Robolectric folosește
+  fonturi mai înguste și nu poate prinde problema.
+
 Orele sunt mereu în format de 24 de ore, cu secunde. Textele sunt în engleză și română
 (după limba telefonului).
 
@@ -218,7 +249,7 @@ UI (Compose)  →  ViewModel (StateFlow)  →  Repository  →  surse de date
 
 ```
 app/src/main/java/io/github/lilixp/utcradioclock/
-├── MainActivity.kt              ecranele (dashboard / setări), tema, bara de stare
+├── MainActivity.kt              tab-ul ales, ecranul Setări, Înapoi, tema, bara de stare
 ├── AppContainer.kt              obiectele comune (injecție manuală, fără framework)
 ├── data/
 │   ├── time/                    TimeProvider (singura sursă de timp), ClockRepository (un tic pe secundă, ziua locală)
@@ -277,8 +308,9 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   dialogul de permisiune). Soarele și benzile primesc aceeași `GeoPosition` ca înainte, deci
   `SolarCalculator` și codul N0NBH nu s-au schimbat. Permisiunea și paginile de setări ale
   sistemului sunt în MainActivity; ecranul primește doar texte.
-- Nu există bibliotecă de navigare, Hilt sau mai multe module: două ecrane nu le cer încă.
-  Se adaugă când apar mai multe ecrane (de ex. widget).
+- **Navigarea:** `AppTab` (cele 4 secțiuni, în ordine) și tab-ul ales ținut în `MainActivity`; Setările
+  sunt un flag peste ele. Nu există bibliotecă de navigare, Hilt sau mai multe module: 4 tab-uri de
+  același nivel nu le cer. Navigation Compose se poate adăuga când apar ecrane cu adâncime.
 
 ## Rulare
 
@@ -406,6 +438,8 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   locator, fiecare dintre cele trei teme, sursa poziției) și valorile implicite;
 - `DashboardScreenTest` (Robolectric): titlul, data, ceasurile, indicativul și locatorul,
   iconița Setări, liniuțele, propagarea, lipsa cardului ASPECT, fundalul luminos și întunecat;
+  cele 4 tab-uri (ordinea, cel activ marcat, conținutul fiecăruia, stația și Setările pe toate,
+  română și engleză, tema întunecată);
   cardul SOARE cu date, fără locator, cu locator invalid, în zi polară, în noapte albă, în română
   și engleză, în tema întunecată; în modul Automat câte un mesaj pentru fiecare stare GPS (locația
   oprită nu mai cere permisiunea);
@@ -440,10 +474,11 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 Teste care au nevoie de telefon sau emulator (`gradlew connectedDebugAndroidTest`), în
 `DashboardInstrumentedTest.kt`:
 
-- `DashboardInstrumentedTest`: dashboard-ul fără ASPECT, cardul SOARE fără locator, cardul
-  PROPAGARE care se încarcă;
+- `DashboardInstrumentedTest`: tab-urile fără ASPECT, cardul SOARE fără locator (în cardul SOARE),
+  cardul PROPAGARE care se încarcă;
 - `AppInstrumentedTest`: aplicația reală care pornește și schimbă ora de la o secundă la alta,
-  ecranul Setări cu ASPECT, deschis și închis.
+  ecranul Setări cu ASPECT, deschis și închis, cele 4 tab-uri și Înapoi spre Ceas, etichetele
+  tab-urilor care încap cu fontul și mărimea textului de pe telefon.
 
 Robolectric imită Android 16 (API 36), cel mai nou pe care îl suportă complet
 (`app/src/test/resources/robolectric.properties`).

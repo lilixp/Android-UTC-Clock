@@ -41,6 +41,8 @@ Ce s-a hotărât pe parcurs, ce a rămas de verificat și ce urmează. Starea fa
 | 01.10.2026 | **Estimare offline pe 10 benzi** (lucrul lui Lilian din Android Studio, recuperat din Local History și integrat): regulile pe bandă păstrate; SFI și K vin numai din N0NBH (`PropagationState`, proaspăt sau cache), fără un al doilea depozit și fără valori implicite (SFI 100 / K 2 / A 7 din versiunea recuperată au fost scoase). Date lipsă → „Necunoscut” (`null`, nu `ConditionLevel.UNDEFINED`). Afișată sub datele N0NBH, cu titlul „Estimare offline · 10 benzi”. |
 | 01.10.2026 | Zi / crepuscul / noapte la stație: o singură funcție, `SolarDay.phaseAt()`, pentru grupele N0NBH și pentru estimare. |
 | 01.10.2026 | Explicații la SFI / K / A și la fiecare dintre cele 10 benzi (dialog la apăsare, starea în card). Textul pentru K urmează `IndexScales`: 4 activ, ≥ 5 furtună. |
+| 01.10.2026 | **Redesign, etapa 1:** 4 tab-uri în ordinea **Ceas → Propagare → Soare → Locație** (alegerea lui Lilian, după importanță), Ceasul ecran de start; stația (indicativ, locator) în bara de sus; Înapoi duce la Ceas, apoi iese; Setările revin la tab-ul de plecare; tab-ul păstrat la rotire și la oprirea procesului. Fără Navigation Compose, fără dependențe noi, un singur ViewModel. Testat pe S24+ de Lilian. |
+| 01.10.2026 | Etichetele tab-urilor: `autoSize` (se micșorează doar dacă nu încap). Pe S24+ la font 1,3, „Propagation” era tăiat (342,5 px în 338 px); verificarea e în testul instrumentat, pentru că Robolectric are alte fonturi. |
 | 01.10.2026 | Rețea fără biblioteci noi: `HttpURLConnection` + `XmlPullParser` din Android; permisiunea `INTERNET`. Cache: ultimul XML valid în SharedPreferences (`propagation_cache`, în afara backup-ului). Descărcare doar cât dashboard-ul e pe ecran: cel mult o dată pe oră, după o eroare din nou peste 15 minute. |
 
 ## De verificat (încă nevăzut pe telefon)
@@ -88,6 +90,7 @@ Observații (cele două corecții de logică sunt **rezolvate în Faza A**; indi
 
 ## Redesign UI/UX (stabilit, pentru o etapă ulterioară)
 
+- Etapa 1 (4 tab-uri, stația în bara de sus) e făcută; etapele 2–7 urmează, una câte una.
 - **Acasă** minimalist: data, `ER1PL / KN46dw`, UTC și LOCAL.
 - **Soare**, **Locație** și **Propagare HF** în ecrane separate.
 - Observațiile de mai sus despre GPS (indicatorul „ultima poziție”, „GPS oprit — se folosește ultima
