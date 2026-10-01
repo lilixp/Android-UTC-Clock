@@ -99,7 +99,23 @@ class PropagationCardTest {
         compose.onNodeWithText("K 0").assertIsDisplayed()
         compose.onNodeWithText("A 3").assertIsDisplayed()
         for (label in listOf("80-40m", "30-20m", "17-15m", "12-10m")) compose.onNodeWithText(label).assertIsDisplayed()
-        compose.onNodeWithText("N0NBH (hamqsl.com) · actualizat 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
+        // Under the bands only the update time: the source is in the band dialog and in Settings
+        compose.onNodeWithText("hamqsl.com", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutN0nbhTime_nothingUnderTheBands() {
+        show(data.copy(updated = null))
+        compose.onNodeWithText("12-10m").assertIsDisplayed()
+        compose.onNodeWithText("Actualizat", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("hamqsl.com", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun staleWithoutN0nbhTime_stillSaysNotUpdated() {
+        show(data.copy(status = PropagationState.Status.STALE, updated = null))
+        compose.onNodeWithText("Date neactualizate").assertIsDisplayed()
     }
 
     @Test
@@ -186,7 +202,7 @@ class PropagationCardTest {
     fun inEnglish() {
         show()
         compose.onNodeWithText("PROPAGATION").assertIsDisplayed()
-        compose.onNodeWithText("N0NBH (hamqsl.com) · updated 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("Updated 05:29 UTC").assertIsDisplayed()
         compose.onNodeWithContentDescription("80-40m: Fair").performClick()
         compose.onNodeWithText("Day: Fair • Night: Good").assertIsDisplayed()
         compose.onNodeWithText("It is daytime at the station now.").assertIsDisplayed()

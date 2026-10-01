@@ -41,10 +41,12 @@ import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 object SettingsTags {
     const val CALLSIGN_FIELD = "callsign_field"
     const val LOCATOR_FIELD = "locator_field"
+    const val ABOUT_PROPAGATION = "about_propagation"
 }
 
 /**
- * Station (callsign and Maidenhead locator) and appearance (theme). Every change is saved at once
+ * Station (callsign and Maidenhead locator), appearance (theme) and about the app (version, author,
+ * where the propagation data come from). Every change is saved at once
  * (the screen says so), so there is nothing to lose when going back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +58,8 @@ fun SettingsScreen(
     onLocatorChange: (String) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onBack: () -> Unit,
+    /** Shown in About the app, e.g. "2.0.0". */
+    appVersion: String = "",
 ) {
     Scaffold(
         topBar = {
@@ -118,6 +122,19 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            SettingsCard(R.string.section_about) {
+                Text(
+                    text = "${stringResource(R.string.app_name)} · ${stringResource(R.string.about_version, appVersion)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(stringResource(R.string.about_author), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = stringResource(R.string.about_propagation),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(SettingsTags.ABOUT_PROPAGATION),
+                )
+            }
         }
     }
 }
@@ -168,6 +185,6 @@ private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
 @Composable
 private fun SettingsPreview() {
     UTCRadioClockTheme(darkTheme = false) {
-        SettingsScreen(StationIdentity("ER1PL", "KN46dw"), ThemeMode.SYSTEM, {}, {}, {}, {})
+        SettingsScreen(StationIdentity("ER1PL", "KN46dw"), ThemeMode.SYSTEM, {}, {}, {}, {}, appVersion = "2.0.0")
     }
 }

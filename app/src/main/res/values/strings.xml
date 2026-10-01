@@ -14,6 +14,10 @@
     <string name="locator">Maidenhead locator</string>
     <string name="locator_hint">For example KN46dw: 4, 6 or 8 characters</string>
     <string name="settings_saved_automatically">Changes are saved automatically.</string>
+    <string name="section_about">ABOUT THE APP</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_author">Author: Lilian Putină, ER1PL</string>
+    <string name="about_propagation">Propagation data (SFI, K, A and the HF band conditions by day and by night) are calculated and published by Paul Herrman, N0NBH, at hamqsl.com. The app downloads them at most once an hour, as the author asks, and shows the time of the last N0NBH update in UTC.</string>
 
     <string name="label_utc" translatable="false">UTC</string>
     <string name="label_local" translatable="false">LOCAL</string>
@@ -42,8 +46,9 @@
     <string name="propagation_loading">Loading data…</string>
     <string name="propagation_unavailable">Data unavailable</string>
     <string name="propagation_unavailable_hint">No Internet connection and no saved data. The data will appear once the phone is online.</string>
-    <string name="propagation_source_updated">N0NBH (hamqsl.com) · updated %1$s UTC</string>
+    <string name="propagation_updated">Updated %1$s UTC</string>
     <string name="propagation_stale">Data not updated · last update %1$s UTC</string>
+    <string name="propagation_stale_no_time">Data not updated</string>
     <string name="propagation_source">Conditions calculated by N0NBH (hamqsl.com).</string>
     <string name="band_title" translatable="false">%1$s m</string>
     <string name="band_day_night">Day: %1$s • Night: %2$s</string>

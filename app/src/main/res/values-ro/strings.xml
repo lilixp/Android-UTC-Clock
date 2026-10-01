@@ -13,6 +13,10 @@
     <string name="locator">Locator Maidenhead</string>
     <string name="locator_hint">De exemplu KN46dw: 4, 6 sau 8 caractere</string>
     <string name="settings_saved_automatically">Modificările se salvează automat.</string>
+    <string name="section_about">DESPRE APLICAȚIE</string>
+    <string name="about_version">Versiunea %1$s</string>
+    <string name="about_author">Autor: Lilian Putină, ER1PL</string>
+    <string name="about_propagation">Datele de propagare (SFI, K, A și condițiile pe benzile HF, ziua și noaptea) sunt calculate și publicate de Paul Herrman, N0NBH, pe hamqsl.com. Aplicația le descarcă cel mult o dată pe oră, cum cere autorul, și arată ora ultimei actualizări N0NBH în UTC.</string>
 
     <string name="section_sun">SOARE</string>
     <string name="sunrise">Răsărit: %1$s</string>
@@ -34,8 +38,9 @@
     <string name="propagation_loading">Se încarcă datele…</string>
     <string name="propagation_unavailable">Date indisponibile</string>
     <string name="propagation_unavailable_hint">Fără conexiune la Internet și fără date salvate. Datele apar când telefonul e online.</string>
-    <string name="propagation_source_updated">N0NBH (hamqsl.com) · actualizat %1$s UTC</string>
+    <string name="propagation_updated">Actualizat %1$s UTC</string>
     <string name="propagation_stale">Date neactualizate · ultima actualizare %1$s UTC</string>
+    <string name="propagation_stale_no_time">Date neactualizate</string>
     <string name="propagation_source">Condiții calculate de N0NBH (hamqsl.com).</string>
     <string name="band_day_night">Ziua: %1$s • Noaptea: %2$s</string>
     <string name="band_now_day">Acum e zi la stație.</string>

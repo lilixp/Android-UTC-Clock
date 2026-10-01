@@ -83,20 +83,23 @@ private fun PropagationData(propagation: PropagationUiState) {
                 BandBox(band, Modifier.weight(1f)) { openBand = band.group.name }
             }
         }
+        // Only when N0NBH last updated the data (UTC); the source is named in the band dialog and in
+        // Settings → About the app
         val updated = propagation.updated
-        Text(
-            text = when {
-                updated == null -> stringResource(R.string.propagation_source)
-                propagation.status == PropagationState.Status.STALE -> stringResource(R.string.propagation_stale, updated)
-                else -> stringResource(R.string.propagation_source_updated, updated)
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = if (propagation.status == PropagationState.Status.STALE) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
+        val stale = propagation.status == PropagationState.Status.STALE
+        val footer = when {
+            stale && updated != null -> stringResource(R.string.propagation_stale, updated)
+            stale -> stringResource(R.string.propagation_stale_no_time)
+            updated != null -> stringResource(R.string.propagation_updated, updated)
+            else -> null
+        }
+        footer?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (stale) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
     propagation.bands.firstOrNull { it.group.name == openBand }?.let { band ->
         BandDialog(band, propagation.isDay, propagation.dayNightByClock) { openBand = null }

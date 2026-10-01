@@ -113,9 +113,9 @@ class MainActivityTest {
         waitForText("SFI 93") // the real feed of 1 October 2026, served by the fake Internet
         compose.onNodeWithText("K 0").assertIsDisplayed()
         compose.onNodeWithText("A 3").assertIsDisplayed()
-        val source = "N0NBH (hamqsl.com) · actualizat 1 oct. 05:29 UTC" // N0NBH's time, another UTC day
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(source))
-        compose.onNodeWithText(source).assertIsDisplayed()
+        val updated = "Actualizat 1 oct. 05:29 UTC" // the feed's "updated" (UTC), another UTC day than now
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(updated))
+        compose.onNodeWithText(updated).assertIsDisplayed()
 
         // No locator: 18:42 local is night by the clock; the feed has the same values day and night
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()

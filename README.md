@@ -77,7 +77,7 @@ Cardul **PROPAGARE** arată datele reale publicate de Paul Herrman, **N0NBH**, p
 ```
 [ SFI 93 ] [ K 0 ] [ A 3 ]
 [ 80-40m ] [ 30-20m ] [ 17-15m ] [ 12-10m ]
-N0NBH (hamqsl.com) · actualizat 05:29 UTC
+Actualizat 05:29 UTC
 ```
 
 - **Sursa:** fișierul XML `https://www.hamqsl.com/solarxml.php`, oferit de N0NBH pentru alte
@@ -87,6 +87,9 @@ N0NBH (hamqsl.com) · actualizat 05:29 UTC
 - **Benzile:** culoarea vine din clasificarea N0NBH: Good = verde (Bun), Fair = galben (Mediu),
   Poor = roșu (Slab). N0NBH dă valori separate pentru zi și noapte; se arată cea care se aplică
   acum la stație (între răsărit și apus, din faza 3; fără locator, 06:00–18:00 ora locală).
+- **Sub benzi** apare doar ora ultimei actualizări N0NBH (câmpul `updated` din XML), în UTC:
+  „Actualizat 05:29 UTC” / „Updated 05:29 UTC”. Sursa e numită în dialogul benzilor și în
+  **Setări → Despre aplicație** (versiunea, autorul și explicația datelor N0NBH).
 - **Apăsarea unei benzi** deschide explicația: „80-40 m · Ziua: Mediu • Noaptea: Bun · Condiții
   calculate de N0NBH (hamqsl.com).”, plus dacă acum e zi sau noapte la stație.
 - **SFI / K / A** au culori din scale publice: K după scara NOAA a furtunilor geomagnetice

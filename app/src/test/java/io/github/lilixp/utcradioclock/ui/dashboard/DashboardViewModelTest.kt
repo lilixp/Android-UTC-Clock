@@ -426,6 +426,12 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun updatedTimeComesOnlyFromTheFeed_notFromTheDownload() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(updated = null))) // the feed had no "updated"
+        assertNull(shown.updated) // the phone's download time is not shown as N0NBH's update time
+    }
+
+    @Test
     fun unavailable_nothingToShow() = runTest(mainDispatcher.dispatcher.scheduler) {
         val shown = shownPropagation(PropagationState(PropagationState.Status.UNAVAILABLE))
         assertEquals(PropagationState.Status.UNAVAILABLE, shown.status)

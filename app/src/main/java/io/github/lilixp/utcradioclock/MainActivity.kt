@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                         onLocatorChange = settings::setLocator,
                         onThemeModeChange = settings::setThemeMode,
                         onBack = { showSettings = false },
+                        appVersion = BuildConfig.VERSION_NAME,
                     )
                 } else {
                     // Collected only while the dashboard is shown: the clock does not tick behind Settings

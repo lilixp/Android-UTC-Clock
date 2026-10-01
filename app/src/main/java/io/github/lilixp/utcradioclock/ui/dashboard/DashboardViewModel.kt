@@ -128,7 +128,8 @@ class DashboardViewModel(
             },
             isDay = isDay,
             dayNightByClock = solarDay == null,
-            updated = (conditions?.updated ?: state.fetchedAt)?.let { format.utcStamp(it, reading.instant) },
+            // N0NBH's own "updated" time from the feed, in UTC (not when the phone downloaded it)
+            updated = conditions?.updated?.let { format.utcStamp(it, reading.instant) },
         )
     }
 

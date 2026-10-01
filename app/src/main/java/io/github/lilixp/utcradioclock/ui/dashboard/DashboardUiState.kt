@@ -48,7 +48,7 @@ data class PropagationUiState(
     val isDay: Boolean = true,
     /** True when day/night comes from the clock (06–18) because there is no position. */
     val dayNightByClock: Boolean = false,
-    /** When N0NBH updated the data, in UTC, e.g. "05:29" or "30 sep. 05:29" for another day. */
+    /** When N0NBH updated the data (the feed's "updated"), in UTC, e.g. "05:29", or "30 sept. 05:29" for another day. */
     val updated: String? = null,
 )
 

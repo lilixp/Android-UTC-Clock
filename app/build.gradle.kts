@@ -32,6 +32,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true // the version shown in Settings → About the app
     }
     testOptions {
         // Robolectric needs the merged resources to run Compose tests on the JVM
