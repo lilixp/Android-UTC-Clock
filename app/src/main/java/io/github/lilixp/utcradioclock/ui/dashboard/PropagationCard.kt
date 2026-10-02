@@ -466,14 +466,14 @@ private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modi
     }
 }
 
-/** "80-40m · Acum: Mediu · Acum e zi la stație.", then by day and by night, the one of now in bold. */
+/** "80-40m · Acum: Mediu", then by day and by night, the one of now (day or night at the station) in bold. */
 @Composable
 private fun GroupDetails(band: BandUi, isDay: Boolean, dayNightByClock: Boolean) {
     PanelHeader(
         value = band.group.label,
         level = band.now,
         title = stringResource(R.string.group_now, levelName(band.now)),
-        subtitle = stringResource(if (isDay) R.string.band_now_day else R.string.band_now_night),
+        subtitle = null,
         numeric = false,
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -490,8 +490,8 @@ private fun GroupDetails(band: BandUi, isDay: Boolean, dayNightByClock: Boolean)
 }
 
 /**
- * "15m · 15 m · 21.0–21.45 MHz · Estimare: Bun", day or night at the station (or why it is not known),
- * why there is no estimate when there is none, what the band is like, where the estimate comes from.
+ * "15m · 15 m · 21.0–21.45 MHz · Estimare: Bun", why there is no estimate when there is none (no position,
+ * or no SFI or K), what the band is like, where the estimate comes from. Day or night is not repeated here.
  */
 @Composable
 private fun EstimateDetails(estimate: BandEstimate, phase: DayPhase?) {
@@ -502,18 +502,9 @@ private fun EstimateDetails(estimate: BandEstimate, phase: DayPhase?) {
         subtitle = stringResource(R.string.estimate_level, estimateLevelName(estimate.level)),
         numeric = false,
     )
-    Text(
-        text = stringResource(
-            when (phase) {
-                DayPhase.DAY -> R.string.band_now_day
-                DayPhase.TWILIGHT -> R.string.band_now_twilight
-                DayPhase.NIGHT -> R.string.band_now_night
-                null -> R.string.estimate_no_position
-            },
-        ),
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    if (estimate.level == null && phase != null) {
+    if (phase == null) {
+        Text(stringResource(R.string.estimate_no_position), style = MaterialTheme.typography.bodyMedium)
+    } else if (estimate.level == null) {
         Text(stringResource(R.string.estimate_no_data), style = MaterialTheme.typography.bodyMedium)
     }
     Text(stringResource(bandExplanation(estimate.band)), style = MaterialTheme.typography.bodyMedium)

@@ -152,7 +152,8 @@ class MainActivityTest {
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
         compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Acum: Mediu")
-        compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertTextEquals("Acum e noapte la stație.")
+        compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertDoesNotExist() // no "Acum e noapte la stație."
+        compose.onNodeWithText("Noaptea").assertIsDisplayed()
         compose.onNodeWithText("OK").assertDoesNotExist() // no dialog: the panel under the card explains it
     }
 

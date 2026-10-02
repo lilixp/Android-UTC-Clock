@@ -80,8 +80,6 @@
     <string name="propagation_updated">Updated %1$s UTC</string>
     <string name="propagation_stale">Data not updated · last update %1$s UTC</string>
     <string name="propagation_stale_no_time">Data not updated</string>
-    <string name="band_now_day">It is daytime at the station now.</string>
-    <string name="band_now_night">It is night at the station now.</string>
     <string name="band_day_by_clock">Without a locator, day is 06:00–18:00 local time.</string>
     <string name="band_description" translatable="false">%1$s: %2$s</string>
     <string name="level_good">Good</string>
@@ -101,7 +99,6 @@
     <string name="estimate_title">Offline estimate · 10 bands</string>
     <string name="hf_band_title" translatable="false">%1$d m · %2$s</string>
     <string name="estimate_level">Estimate: %1$s</string>
-    <string name="band_now_twilight">It is twilight at the station now.</string>
     <string name="estimate_no_position">Without a position (locator or GPS), day and night at the station are not known, so there is no estimate.</string>
     <string name="estimate_no_data">SFI or the K index is missing, so there is no estimate.</string>
     <string name="estimate_source">Offline estimate, calculated on the phone from SFI, K and the Sun at the station.</string>

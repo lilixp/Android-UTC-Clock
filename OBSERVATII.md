@@ -132,6 +132,14 @@ Decizii (cerința lui Lilian pentru redesignul ecranului Propagare):
 - **Font 1,3 pe S24+:** SFI, K și A au nevoie de o derulare scurtă (~50 dp) ca să se vadă și
   „Valori orientative”. Nimic nu e tăiat; grupurile și benzile încap fără derulare.
 
+- **Fără „Acum e zi/noapte la stație.”** (decizia lui Lilian, 2 octombrie 2026): nici la benzi, nici
+  la grupuri. La grupuri, tabelul Ziua/Noaptea rămâne, iar rândul momentului (zi sau noapte la
+  stație) e îngroșat. La benzi rămân doar motivele pentru „Necunoscut” (fără poziție / lipsesc SFI
+  sau K).
+- **Idee pentru o etapă viitoare, neimplementată: banda de 6 m (50 MHz).** Tratată separat de
+  cele 10 benzi HF și afișată contextual doar când există condiții relevante de propagare pe 6 m.
+  Sursa și regula se decid atunci; acum nu există nimic pentru 6 m în cod.
+
 ## Faza A — corecții funcționale (1 octombrie 2026)
 
 Rezolvate (detalii în `PHASE_A_REPORT.md`):

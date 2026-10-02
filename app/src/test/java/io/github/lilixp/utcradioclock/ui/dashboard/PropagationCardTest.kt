@@ -378,7 +378,8 @@ class PropagationCardTest {
         compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsSelected()
         panelValue().assertTextEquals("80-40m")
         panelTitle().assertTextEquals("Acum: Mediu")
-        panelSubtitle().assertTextEquals("Acum e zi la stație.")
+        panelSubtitle().assertDoesNotExist() // day or night shows in the table, not in a sentence
+        compose.onNodeWithText("la stație", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Ziua").assertIsDisplayed()
         compose.onNodeWithText("Noaptea").assertIsDisplayed()
         assertColor(colors.fair.container, boxColor(PropagationTags.PANEL_VALUE))
@@ -396,7 +397,8 @@ class PropagationCardTest {
         show(data.copy(isDay = false, dayNightByClock = true))
         select(PropagationTags.band(BandGroup.BANDS_17_15))
         panelTitle().assertTextEquals("Acum: Mediu")
-        panelSubtitle().assertTextEquals("Acum e noapte la stație.")
+        panelSubtitle().assertDoesNotExist()
+        compose.onNodeWithText("Noaptea").assertIsDisplayed()
         compose.onNodeWithText("Fără locator, ziua este între 06:00 și 18:00 ora locală.").assertIsDisplayed()
     }
 
@@ -408,7 +410,7 @@ class PropagationCardTest {
         panelValue().assertTextEquals("15m")
         panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
         panelSubtitle().assertTextEquals("Estimare: Bun")
-        compose.onNodeWithText("Acum e zi la stație.").assertIsDisplayed()
+        compose.onNodeWithText("Acum e zi la stație.").assertDoesNotExist()
         compose.onNodeWithText("Bandă de zi. Puternic influențată de fluxul solar (SFI ≥ 90).").assertIsDisplayed()
         compose.onNodeWithText("Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.").assertIsDisplayed()
         assertColor(colors.good.container, boxColor(PropagationTags.PANEL_VALUE))
@@ -453,7 +455,7 @@ class PropagationCardTest {
             select(PropagationTags.estimate(band))
             panelTitle().assertTextEquals("${band.meters} m · ${band.frequencies}")
             panelSubtitle().assertTextEquals("Estimare: " + mapOf(GOOD to "Bun", FAIR to "Mediu", POOR to "Slab").getValue(level))
-            compose.onNodeWithText("Acum e crepuscul la stație.").assertIsDisplayed()
+            compose.onNodeWithText("crepuscul la stație", substring = true).assertDoesNotExist()
             compose.onNodeWithText(explanation.getValue(band)).assertIsDisplayed()
         }
     }
@@ -575,10 +577,11 @@ class PropagationCardTest {
         panelSubtitle().assertTextEquals("Fair")
         select(PropagationTags.band(BandGroup.BANDS_80_40))
         panelTitle().assertTextEquals("Now: Fair")
-        for (text in listOf("By day", "At night", "It is daytime at the station now.")) compose.onNodeWithText(text).assertIsDisplayed()
+        for (text in listOf("By day", "At night")) compose.onNodeWithText(text).assertIsDisplayed()
+        compose.onNodeWithText("It is daytime at the station now.").assertDoesNotExist()
         select(PropagationTags.estimate(HfBand.BAND_160M))
         panelSubtitle().assertTextEquals("Estimate: Poor")
-        compose.onNodeWithText("It is night at the station now.").assertIsDisplayed()
+        compose.onNodeWithText("It is night at the station now.").assertDoesNotExist()
         compose.onNodeWithText("Offline estimate, calculated on the phone from SFI, K and the Sun at the station.").assertIsDisplayed()
         assertNoN0nbh()
     }

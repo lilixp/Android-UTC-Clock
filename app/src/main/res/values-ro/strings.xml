@@ -70,8 +70,6 @@
     <string name="propagation_updated">Actualizat %1$s UTC</string>
     <string name="propagation_stale">Date neactualizate · ultima actualizare %1$s UTC</string>
     <string name="propagation_stale_no_time">Date neactualizate</string>
-    <string name="band_now_day">Acum e zi la stație.</string>
-    <string name="band_now_night">Acum e noapte la stație.</string>
     <string name="band_day_by_clock">Fără locator, ziua este între 06:00 și 18:00 ora locală.</string>
     <string name="level_good">Bun</string>
     <string name="level_fair">Mediu</string>
@@ -87,7 +85,6 @@
 
     <string name="estimate_title">Estimare offline · 10 benzi</string>
     <string name="estimate_level">Estimare: %1$s</string>
-    <string name="band_now_twilight">Acum e crepuscul la stație.</string>
     <string name="estimate_no_position">Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.</string>
     <string name="estimate_no_data">Lipsesc SFI sau indicele K, deci nu există estimare.</string>
     <string name="estimate_source">Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.</string>
