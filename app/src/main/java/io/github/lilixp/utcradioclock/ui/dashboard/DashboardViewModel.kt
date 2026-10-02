@@ -11,6 +11,7 @@ import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
+import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
 import io.github.lilixp.utcradioclock.domain.model.PolarCondition
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
@@ -193,18 +194,45 @@ class DashboardViewModel(
             } else {
                 BandGroup.entries.map { group ->
                     val band = conditions.bands[group]
-                    BandUi(group, now = if (isDay) band?.day else band?.night, day = band?.day, night = band?.night)
+                    // N0NBH's data, online or saved, is used as it is; the estimate only stands in for a
+                    // group N0NBH reported nothing for, and only when N0NBH gave both SFI and K
+                    val reported = band != null && (band.day != null || band.night != null)
+                    val estimate = if (!reported && conditions.solarFlux != null && conditions.kIndex != null) {
+                        groupEstimate(group, conditions.solarFlux, conditions.kIndex)
+                    } else {
+                        null
+                    }
+                    BandUi(group, now = if (isDay) band?.day else band?.night, day = band?.day, night = band?.night, estimate)
                 }
             },
             isDay = isDay,
             dayNightByClock = solarDay == null,
-            estimate = conditions?.let {
-                OfflinePropagationCalculator.estimate(phase, it.solarFlux, it.kIndex)
-            }.orEmpty(),
             phase = phase,
             // N0NBH's own "updated" time from the feed, in UTC (not when the phone downloaded it)
             updated = conditions?.updated?.let { format.utcStamp(it, reading.instant) },
         )
+    }
+
+    /**
+     * The fallback for a group without N0NBH data: each of its bands by day, at twilight and at night, from
+     * [OfflinePropagationCalculator] with N0NBH's SFI and K as numbers (never read back from the shown text).
+     */
+    private fun groupEstimate(group: BandGroup, solarFlux: Double, kIndex: Double): List<BandPhasesUi> =
+        group.hfBands().map { band ->
+            BandPhasesUi(
+                band = band,
+                day = OfflinePropagationCalculator.level(band, DayPhase.DAY, solarFlux, kIndex),
+                twilight = OfflinePropagationCalculator.level(band, DayPhase.TWILIGHT, solarFlux, kIndex),
+                night = OfflinePropagationCalculator.level(band, DayPhase.NIGHT, solarFlux, kIndex),
+            )
+        }
+
+    /** The HF bands of each N0NBH group, as the offline estimate has them; 160 m belongs to none. */
+    private fun BandGroup.hfBands(): List<HfBand> = when (this) {
+        BandGroup.BANDS_80_40 -> listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M)
+        BandGroup.BANDS_30_20 -> listOf(HfBand.BAND_30M, HfBand.BAND_20M)
+        BandGroup.BANDS_17_15 -> listOf(HfBand.BAND_17M, HfBand.BAND_15M)
+        BandGroup.BANDS_12_10 -> listOf(HfBand.BAND_12M, HfBand.BAND_10M)
     }
 
     private fun sunState(day: LocalDay, input: SunInput): Sun {

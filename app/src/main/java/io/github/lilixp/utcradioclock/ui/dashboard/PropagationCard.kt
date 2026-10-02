@@ -49,7 +49,6 @@ import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
-import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.ui.theme.LocalConditionColors
 
 /** Test tags of the PROPAGATION card and of the details panel under it. */
@@ -422,7 +421,8 @@ private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modi
 
 /**
  * A band group: N0NBH's level now, by day and by night (the one of now, day or night at the station, in
- * bold), then the offline estimate for the group's own bands.
+ * bold). Only when N0NBH reported nothing for the group: the offline estimate for its own bands, as the
+ * state brings it (the fallback), or why there is none.
  */
 @Composable
 private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
@@ -445,42 +445,37 @@ private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    EstimateTable(band.group, propagation)
+    val estimate = band.estimate
+    if (estimate != null) {
+        EstimateTable(estimate, propagation.phase)
+    } else if (band.day == null && band.night == null) {
+        // Nothing from N0NBH for this group, and neither SFI nor K for an estimate
+        Text(
+            text = stringResource(R.string.estimate_no_data),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
-/** The HF bands of each N0NBH group, as the offline estimate has them; 160 m belongs to none. */
-private fun BandGroup.hfBands(): List<HfBand> = when (this) {
-    BandGroup.BANDS_80_40 -> listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M)
-    BandGroup.BANDS_30_20 -> listOf(HfBand.BAND_30M, HfBand.BAND_20M)
-    BandGroup.BANDS_17_15 -> listOf(HfBand.BAND_17M, HfBand.BAND_15M)
-    BandGroup.BANDS_12_10 -> listOf(HfBand.BAND_12M, HfBand.BAND_10M)
-}
-
-/** The table's columns: the three phases the calculator knows, in the order of the day. */
+/** The table's columns: the three phases of the estimate, in the order of the day. */
 private val PHASES = listOf(DayPhase.DAY, DayPhase.TWILIGHT, DayPhase.NIGHT)
 
-/**
- * The estimated level of [band] at [phase], null when unknown. For the phase of now it is the estimate the
- * app already made ([PropagationUiState.estimate]); for the other phases the same
- * [OfflinePropagationCalculator] with the same SFI and K. Those are read back from the boxes' values, which
- * are N0NBH's numbers as given ("93", "152.4"), so nothing is recalculated differently here.
- */
-private fun PropagationUiState.estimateAt(band: HfBand, phase: DayPhase): ConditionLevel? =
-    if (phase == this.phase) {
-        estimate.firstOrNull { it.band == band }?.level
-    } else {
-        OfflinePropagationCalculator.level(band, phase, solarFlux?.value?.toDoubleOrNull(), kIndex?.value?.toDoubleOrNull())
-    }
+/** A band's level at [phase], as the state brings it. */
+private fun BandPhasesUi.at(phase: DayPhase): ConditionLevel? = when (phase) {
+    DayPhase.DAY -> day
+    DayPhase.TWILIGHT -> twilight
+    DayPhase.NIGHT -> night
+}
 
 /**
  * "Estimare offline": a compact table, Bandă | Zi | Amurg | Noapte, each level in its colour ("Necunoscut"
- * in the neutral one); the phase of now at the station in bold, when it is known. Then why some levels are
- * unknown, if any, and where the estimate comes from.
+ * in the neutral one), exactly as the state brings it (calculated in the ViewModel, nothing here); the
+ * phase of now at the station ([phase]) in bold, when it is known. Then why some levels are unknown, if
+ * any, and where the estimate comes from.
  */
 @Composable
-private fun EstimateTable(group: BandGroup, propagation: PropagationUiState) {
-    val bands = group.hfBands()
-    val levels = bands.associateWith { band -> PHASES.map { propagation.estimateAt(band, it) } }
+private fun EstimateTable(estimate: List<BandPhasesUi>, phase: DayPhase?) {
     Column(
         modifier = Modifier.padding(top = 4.dp).testTag(PropagationTags.ESTIMATE_TABLE),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -493,11 +488,12 @@ private fun EstimateTable(group: BandGroup, propagation: PropagationUiState) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(TABLE_GAP), verticalAlignment = Alignment.CenterVertically) {
             TableHeader(stringResource(R.string.estimate_band), current = false, TextAlign.Start, Modifier.weight(BAND_COLUMN))
-            for (phase in PHASES) {
-                TableHeader(phaseName(phase), current = phase == propagation.phase, TextAlign.Center, Modifier.weight(1f))
+            for (column in PHASES) {
+                TableHeader(phaseName(column), current = column == phase, TextAlign.Center, Modifier.weight(1f))
             }
         }
-        for (band in bands) {
+        for (row in estimate) {
+            val band = row.band
             Row(
                 modifier = Modifier.testTag(PropagationTags.estimateRow(band)),
                 horizontalArrangement = Arrangement.spacedBy(TABLE_GAP),
@@ -511,17 +507,17 @@ private fun EstimateTable(group: BandGroup, propagation: PropagationUiState) {
                     softWrap = false,
                     modifier = Modifier.weight(BAND_COLUMN),
                 )
-                for ((column, phase) in PHASES.withIndex()) {
+                for (column in PHASES) {
                     EstimateCell(
-                        level = levels.getValue(band)[column],
-                        current = phase == propagation.phase,
-                        tag = PropagationTags.estimateCell(band, phase),
+                        level = row.at(column),
+                        current = column == phase,
+                        tag = PropagationTags.estimateCell(band, column),
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
-        if (levels.values.any { row -> row.any { it == null } }) {
+        if (estimate.any { row -> PHASES.any { row.at(it) == null } }) {
             Text(
                 text = stringResource(R.string.estimate_no_data),
                 style = MaterialTheme.typography.bodySmall,

@@ -1,11 +1,11 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
-import io.github.lilixp.utcradioclock.domain.model.BandEstimate
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
+import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
 
 /**
@@ -84,6 +84,23 @@ data class BandUi(
     val now: ConditionLevel?,
     val day: ConditionLevel?,
     val night: ConditionLevel?,
+    /**
+     * Only when N0NBH reported nothing for this group ("No Report" or missing): the offline estimate for
+     * the group's own bands, the fallback, calculated from N0NBH's SFI and K (online or saved). Null when
+     * N0NBH has the group (its data is used as it is, nothing is estimated) or when SFI or K is missing.
+     */
+    val estimate: List<BandPhasesUi>? = null,
+)
+
+/**
+ * One band of a group's offline estimate (fallback): its level by day, at twilight and at night, as
+ * [io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator] gives it; null is "Unknown".
+ */
+data class BandPhasesUi(
+    val band: HfBand,
+    val day: ConditionLevel?,
+    val twilight: ConditionLevel?,
+    val night: ConditionLevel?,
 )
 
 /** The PROPAGATION card (N0NBH, hamqsl.com). Null values were not in the data and are shown as "—". */
@@ -98,12 +115,7 @@ data class PropagationUiState(
     val isDay: Boolean = true,
     /** True when day/night comes from the clock (06–18) because there is no position. */
     val dayNightByClock: Boolean = false,
-    /**
-     * The offline estimate for the ten HF bands (calculated on the phone, not N0NBH data); empty
-     * when there is no N0NBH data at all. A null level is "Unknown".
-     */
-    val estimate: List<BandEstimate> = emptyList(),
-    /** Day, twilight or night at the station now, for the estimate; null without a position. */
+    /** Day, twilight or night at the station now (marks the column of now in an estimate); null without a position. */
     val phase: DayPhase? = null,
     /** When N0NBH updated the data (the feed's "updated"), in UTC, e.g. "05:29", or "30 sept. 05:29" for another day. */
     val updated: String? = null,

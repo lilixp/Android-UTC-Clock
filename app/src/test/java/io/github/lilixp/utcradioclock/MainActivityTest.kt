@@ -160,27 +160,30 @@ class MainActivityTest {
     }
 
     @Test
-    fun offlineEstimate_fromTheRealN0nbhFeed_perGroup_dayTwilightNight() {
+    fun realN0nbhFeed_everyGroupReported_soNothingIsEstimated() {
         waitForText("SFI 93")
         compose.onNodeWithText("Estimare offline · 10 benzi").assertDoesNotExist() // no more ten boxes on the card
         compose.onNodeWithText("160m").assertDoesNotExist()
 
-        // The feed's SFI 93 and K 0, through the same calculator, for each phase (no locator needed for that)
-        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_30_20)).performClick()
-        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
-        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_20M, DayPhase.DAY)).assertTextEquals("Bun")
-        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_20M, DayPhase.NIGHT)).assertTextEquals("Mediu") // SFI 93 ≥ 90
+        // The feed of 1 October 2026 has all four groups: N0NBH's data only, no offline estimate beside it
+        for (group in BandGroup.entries) {
+            compose.onNodeWithTag(PropagationTags.band(group)).performClick()
+            compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
+            compose.onNodeWithText("Ziua").assertIsDisplayed()
+            compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
+            compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+        }
 
         openSettings()
         compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
         compose.onNodeWithContentDescription("Înapoi").performClick()
 
-        // 18:42 local, before sunset: day at the station; the same values, from the ViewModel's estimate
+        // 18:42 local, before sunset: day at the station; still N0NBH's own data for the groups
         waitForText("SFI 93")
-        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_12_10)).performClick()
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_17_15)).performClick()
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
-        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_10M, DayPhase.DAY)).assertTextEquals("Slab") // SFI 93 is below 95
-        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_12M, DayPhase.DAY)).assertTextEquals("Mediu")
+        compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Mediu")
+        compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
     }
 
     @Test

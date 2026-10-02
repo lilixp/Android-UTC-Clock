@@ -754,66 +754,175 @@ class DashboardViewModelTest {
         assertEquals(calls, solarCalls.size)
     }
 
-    // ---- The offline estimate for the ten HF bands ----
+    // ---- N0NBH first; the offline estimate only stands in for a group N0NBH reported nothing for ----
 
-    private val estimateAtDayWithN0nbh = listOf(POOR, POOR, FAIR, FAIR, GOOD, GOOD, GOOD, GOOD, FAIR, POOR) // SFI 93, K 0
+    /** What the calculator itself gives for a band by day, at twilight and at night: the reference. */
+    private fun calculated(band: HfBand, sfi: Double?, k: Double?) = BandPhasesUi(
+        band,
+        day = OfflinePropagationCalculator.level(band, DayPhase.DAY, sfi, k),
+        twilight = OfflinePropagationCalculator.level(band, DayPhase.TWILIGHT, sfi, k),
+        night = OfflinePropagationCalculator.level(band, DayPhase.NIGHT, sfi, k),
+    )
+
+    private val groupBands = mapOf(
+        BandGroup.BANDS_80_40 to listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M),
+        BandGroup.BANDS_30_20 to listOf(HfBand.BAND_30M, HfBand.BAND_20M),
+        BandGroup.BANDS_17_15 to listOf(HfBand.BAND_17M, HfBand.BAND_15M),
+        BandGroup.BANDS_12_10 to listOf(HfBand.BAND_12M, HfBand.BAND_10M),
+    )
 
     @Test
-    fun estimate_fromN0nbhSfiAndK_andTheSunAtTheStation() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun n0nbhComplete_groupsAndDayNightAsPublished_nothingEstimated() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw") // 18:42 local, sunset 18:49: day
         val shown = shownPropagation(current())
-        assertEquals(DayPhase.DAY, shown.phase)
-        assertEquals(HfBand.entries.toList(), shown.estimate.map { it.band })
-        assertEquals(estimateAtDayWithN0nbh, shown.estimate.map { it.level })
+        assertEquals(
+            listOf(
+                BandUi(BandGroup.BANDS_80_40, now = FAIR, day = FAIR, night = GOOD),
+                BandUi(BandGroup.BANDS_30_20, now = GOOD, day = GOOD, night = GOOD),
+                BandUi(BandGroup.BANDS_17_15, now = FAIR, day = FAIR, night = POOR),
+                BandUi(BandGroup.BANDS_12_10, now = POOR, day = POOR, night = POOR),
+            ),
+            shown.bands,
+        )
+        assertTrue(shown.bands.all { it.estimate == null }) // no estimate beside N0NBH's own data
     }
 
     @Test
-    fun estimate_followsOtherN0nbhValues_nothingFixed() = runTest(mainDispatcher.dispatcher.scheduler) {
-        settings.setLocator("KN46dw")
-        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 150.0, kIndex = 4.0)))
-        assertEquals(OfflinePropagationCalculator.estimate(DayPhase.DAY, 150.0, 4.0), shown.estimate)
-        assertEquals(listOf(POOR, POOR, POOR, POOR, FAIR, FAIR, FAIR, FAIR, FAIR, FAIR), shown.estimate.map { it.level })
-    }
-
-    @Test
-    fun estimate_fromTheSavedDataWhenOffline() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun n0nbhFromTheCache_stillN0nbhData_nothingEstimated() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw")
         val shown = shownPropagation(PropagationState(PropagationState.Status.STALE, n0nbh, START.minus(Duration.ofHours(3))))
-        assertEquals(estimateAtDayWithN0nbh, shown.estimate.map { it.level })
+        assertEquals(PropagationState.Status.STALE, shown.status)
+        assertEquals(IndexUi("93", FAIR), shown.solarFlux)
+        assertEquals(BandUi(BandGroup.BANDS_80_40, now = FAIR, day = FAIR, night = GOOD), shown.bands.first())
+        assertTrue(shown.bands.all { it.estimate == null })
     }
 
     @Test
-    fun noN0nbhData_noEstimate_noInventedValues() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun oneGroupNotReported_onlyThatGroupFallsBackToTheEstimate() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw")
-        assertTrue(shownPropagation(PropagationState(PropagationState.Status.LOADING)).estimate.isEmpty())
-        assertTrue(shownPropagation(PropagationState(PropagationState.Status.UNAVAILABLE)).estimate.isEmpty())
+        val shown = shownPropagation(current(n0nbh.copy(bands = n0nbh.bands - BandGroup.BANDS_12_10)))
+        val missing = shown.bands.single { it.group == BandGroup.BANDS_12_10 }
+        assertNull(missing.now) // the box stays neutral: no rule makes one level of several bands
+        assertNull(missing.day)
+        assertNull(missing.night)
+        assertEquals(groupBands.getValue(BandGroup.BANDS_12_10).map { calculated(it, 93.0, 0.0) }, missing.estimate)
+        assertTrue(shown.bands.filter { it.group != BandGroup.BANDS_12_10 }.all { it.estimate == null })
     }
 
     @Test
-    fun n0nbhWithoutK_everyBandUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun noReportByDayAndByNight_isLikeAMissingGroup() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val noReport = n0nbh.copy(bands = n0nbh.bands + (BandGroup.BANDS_30_20 to BandCondition(null, null)))
+        val group = shownPropagation(current(noReport)).bands.single { it.group == BandGroup.BANDS_30_20 }
+        assertEquals(groupBands.getValue(BandGroup.BANDS_30_20).map { calculated(it, 93.0, 0.0) }, group.estimate)
+    }
+
+    @Test
+    fun onlyDayReported_isN0nbhData_notEstimated() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val dayOnly = n0nbh.copy(bands = n0nbh.bands + (BandGroup.BANDS_17_15 to BandCondition(FAIR, null)))
+        val group = shownPropagation(current(dayOnly)).bands.single { it.group == BandGroup.BANDS_17_15 }
+        assertEquals(FAIR, group.day)
+        assertNull(group.night) // "—", not replaced by an estimate
+        assertNull(group.estimate)
+    }
+
+    @Test
+    fun noBandsAtAll_everyGroupFallsBack_withItsOwnBands_never160m() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(bands = emptyMap())))
+        for ((group, bands) in groupBands) {
+            assertEquals(bands, shown.bands.single { it.group == group }.estimate?.map { it.band })
+        }
+        assertTrue(shown.bands.none { band -> band.estimate.orEmpty().any { it.band == HfBand.BAND_160M } })
+    }
+
+    @Test
+    fun noN0nbhNorCache_unavailable_nothingInvented() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw")
-        val shown = shownPropagation(current(n0nbh.copy(kIndex = null)))
-        assertEquals(10, shown.estimate.size)
-        assertTrue(shown.estimate.all { it.level == null })
+        for (status in listOf(PropagationState.Status.LOADING, PropagationState.Status.UNAVAILABLE)) {
+            val shown = shownPropagation(PropagationState(status))
+            assertEquals(status, shown.status)
+            assertNull(shown.solarFlux)
+            assertNull(shown.kIndex)
+            assertNull(shown.aIndex)
+            assertTrue(shown.bands.isEmpty()) // no groups, so no estimate either
+        }
     }
 
     @Test
-    fun n0nbhWithoutSfi_theBandsThatNeedItUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
-        settings.setLocator("KN46dw")
-        val shown = shownPropagation(current(n0nbh.copy(solarFlux = null)))
-        assertEquals(listOf(POOR, POOR, FAIR, FAIR, null, GOOD, null, null, null, null), shown.estimate.map { it.level })
+    fun theEstimateUsesN0nbhsNumbersAsTheyAre_notTheShownText() = runTest(mainDispatcher.dispatcher.scheduler) {
+        // SFI 89.6: below 90 for the calculator (17 m by day: Fair); a rounded 90 would make it Good
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 89.6, bands = emptyMap())))
+        assertEquals(IndexUi("89.6", POOR), shown.solarFlux) // shown as published
+        val band17 = shown.bands.single { it.group == BandGroup.BANDS_17_15 }.estimate!!.first()
+        assertEquals(calculated(HfBand.BAND_17M, 89.6, 0.0), band17)
+        assertEquals(FAIR, band17.day)
     }
 
     @Test
-    fun withoutAPosition_estimateUnknown_bandGroupsStillByTheClock() = runTest(mainDispatcher.dispatcher.scheduler) {
-        val shown = shownPropagation(current()) // no locator
+    fun fallback_sfiAndK_both_theEstimateIsMade() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 93.0, kIndex = 0.0, bands = emptyMap())))
+        for ((group, bands) in groupBands) {
+            assertEquals(bands.map { calculated(it, 93.0, 0.0) }, shown.bands.single { it.group == group }.estimate)
+        }
+    }
+
+    @Test
+    fun fallback_noSfi_kPresent_noEstimate_theGroupStaysUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = null, kIndex = 0.0, bands = emptyMap())))
+        assertEquals(4, shown.bands.size)
+        assertTrue(shown.bands.all { it.now == null && it.estimate == null })
+    }
+
+    @Test
+    fun fallback_sfiPresent_noK_noEstimate_theGroupStaysUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 93.0, kIndex = null, bands = emptyMap())))
+        assertEquals(4, shown.bands.size)
+        assertTrue(shown.bands.all { it.now == null && it.estimate == null })
+    }
+
+    @Test
+    fun fallback_noSfiNorK_noEstimate_theGroupStaysUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = null, kIndex = null, bands = emptyMap())))
+        assertEquals(4, shown.bands.size)
+        assertTrue(shown.bands.all { it.now == null && it.estimate == null })
+    }
+
+    @Test
+    fun fallback_missingSfi_onlyTheUnreportedGroupIsUnknown_theOthersStayN0nbh() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = null, bands = n0nbh.bands - BandGroup.BANDS_12_10)))
+        assertNull(shown.bands.single { it.group == BandGroup.BANDS_12_10 }.estimate)
+        assertEquals(BandUi(BandGroup.BANDS_80_40, now = GOOD, day = FAIR, night = GOOD), shown.bands.first()) // no locator: night by the clock
+    }
+
+    @Test
+    fun fallbackInAStrongStorm_k7_everythingPoor_asTheCalculator() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(kIndex = 7.0, bands = emptyMap())))
+        for (band in shown.bands) {
+            assertTrue(band.estimate!!.all { it.day == POOR && it.twilight == POOR && it.night == POOR })
+        }
+    }
+
+    @Test
+    fun fallbackFollowsOtherN0nbhValues_nothingFixed() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(solarFlux = 150.0, kIndex = 4.0, bands = emptyMap())))
+        for ((group, bands) in groupBands) {
+            assertEquals(bands.map { calculated(it, 150.0, 4.0) }, shown.bands.single { it.group == group }.estimate)
+        }
+    }
+
+    @Test
+    fun withoutAPosition_noPhase_groupsByTheClock_fallbackStillByPhase() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val shown = shownPropagation(current(n0nbh.copy(bands = n0nbh.bands - BandGroup.BANDS_80_40))) // no locator
         assertNull(shown.phase)
-        assertTrue(shown.estimate.all { it.level == null })
         assertTrue(shown.dayNightByClock) // the N0NBH groups keep the 06–18 rule, as before
+        // The table gives each phase, so it does not need the station's position
+        assertEquals(
+            groupBands.getValue(BandGroup.BANDS_80_40).map { calculated(it, 93.0, 0.0) },
+            shown.bands.single { it.group == BandGroup.BANDS_80_40 }.estimate,
+        )
     }
 
     @Test
-    fun estimate_dayThenTwilightThenNight_andTheGroupsTheSameAsBefore() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun phase_dayThenTwilightThenNight_andTheGroupsTheSameAsBefore() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw") // 30 September: sunset 18:49, civil dusk 19:19 local
         val viewModel = createViewModel()
         subscribe(viewModel)
@@ -824,17 +933,15 @@ class DashboardViewModelTest {
         advance(Duration.ofMinutes(10)) // 18:52: after sunset
         val twilight = viewModel.uiState.value.propagation
         assertEquals(DayPhase.TWILIGHT, twilight.phase)
-        assertEquals(false, twilight.isDay) // the N0NBH groups switch to night at sunset, as before
-        assertEquals(listOf(FAIR, GOOD, GOOD, GOOD, GOOD, GOOD, FAIR, POOR, POOR, POOR), twilight.estimate.map { it.level })
+        assertEquals(false, twilight.isDay) // N0NBH has no twilight: its groups switch to night at sunset
+        assertEquals(GOOD, twilight.bands.first().now) // 80-40m by night
 
         advance(Duration.ofMinutes(40)) // 19:32: after civil dusk
-        val night = viewModel.uiState.value.propagation
-        assertEquals(DayPhase.NIGHT, night.phase)
-        assertEquals(listOf(GOOD, GOOD, GOOD, GOOD, GOOD, FAIR, POOR, POOR, POOR, POOR), night.estimate.map { it.level })
+        assertEquals(DayPhase.NIGHT, viewModel.uiState.value.propagation.phase)
     }
 
     @Test
-    fun estimate_usesTheGpsPositionLikeEverythingElse() = runTest(mainDispatcher.dispatcher.scheduler) {
+    fun phase_usesTheGpsPositionLikeEverythingElse() = runTest(mainDispatcher.dispatcher.scheduler) {
         settings.setLocator("KN46dw") // day in Chișinău
         settings.setPositionSource(PositionSource.AUTOMATIC)
         locations.current = fix(GeoPosition(35.6895, 139.6917)) // Tokyo: 00:42, night
