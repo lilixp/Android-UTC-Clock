@@ -31,6 +31,13 @@
 
     <string name="label_utc" translatable="false">UTC</string>
     <string name="label_local" translatable="false">LOCAL</string>
+    <string name="tile_time_zone">Time zone</string>
+    <string name="tile_clock_change">Clock change</string>
+    <string name="clock_change_times" translatable="false">%1$s → %2$s</string>
+    <string name="clock_change_to_winter">(winter time)</string>
+    <string name="clock_change_to_summer">(summer time)</string>
+    <string name="no_clock_change">No clock change</string>
+    <string name="no_clock_change_detail">None planned in this time zone.</string>
 
     <string name="section_sun">SUN</string>
     <string name="sunrise">Sunrise: %1$s</string>

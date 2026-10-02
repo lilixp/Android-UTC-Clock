@@ -26,6 +26,7 @@ import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardUiState
+import io.github.lilixp.utcradioclock.ui.dashboard.ZoneUi
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 import androidx.compose.ui.text.TextLayoutResult
@@ -56,11 +57,11 @@ class DashboardInstrumentedTest {
             UTCRadioClockTheme(darkTheme = false) {
                 DashboardScreen(
                     DashboardUiState(
-                        utcDate = "30 septembrie 2026",
+                        utcDate = "Miercuri, 30 septembrie 2026",
                         utcTime = "15:42:31",
                         localTime = "18:42:31",
                         localDate = null,
-                        timeZone = "Europe/Chisinau · UTC+03:00",
+                        zone = ZoneUi(name = "Europe/Chisinau", abbreviation = "EEST", offset = "UTC+03:00"),
                     ),
                     selectedTab = tab,
                     onSelectTab = { tab = it },
@@ -145,6 +146,23 @@ class AppInstrumentedTest {
                 .config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
             val needed = layouts.single().multiParagraph.maxIntrinsicWidth
             assertTrue("$label needs $needed px, its tab has $tabWidth px", needed <= tabWidth)
+        }
+    }
+
+    /**
+     * On the real phone, with its font and text size: the clock's texts are shown whole (the width each
+     * needs is within the width it has), the UTC time and date first of all.
+     */
+    @Test
+    fun theClockTexts_fit_withThePhonesFontAndTextSize() {
+        compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()
+        for (tag in listOf(DashboardTags.UTC_TIME, DashboardTags.DATE, DashboardTags.LOCAL_TIME, DashboardTags.LOCAL_LABEL, DashboardTags.ZONE_VALUE)) {
+            val node = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            // (didOverflowWidth is no help here: it says true even when the text fits exactly)
+            val needed = layouts.single().multiParagraph.maxIntrinsicWidth
+            assertTrue("$tag needs $needed px, has ${node.size.width} px", needed <= node.size.width + 1)
         }
     }
 

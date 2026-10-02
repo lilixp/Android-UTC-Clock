@@ -44,6 +44,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 
 /** The dashboard state on a virtual clock: nothing here depends on the PC's real time or time zone. */
@@ -113,11 +114,11 @@ class DashboardViewModelTest {
     fun initialState_showsTimesAndDateAndNothingUnknown() = runTest(mainDispatcher.dispatcher.scheduler) {
         val state = createViewModel().uiState.value
 
-        assertEquals("30 septembrie 2026", state.utcDate)
+        assertEquals("Miercuri, 30 septembrie 2026", state.utcDate)
         assertEquals("15:42:31", state.utcTime)
         assertEquals("18:42:31", state.localTime) // Chișinău, summer time: UTC+3
         assertNull(state.localDate) // same day in UTC and locally
-        assertEquals("Europe/Chisinau · UTC+03:00", state.timeZone)
+        assertEquals(chisinauSummer, state.zone)
         assertEquals(SunUiState(SunStatus.NO_LOCATOR), state.sun) // no locator, so no position
         assertEquals(LocationUiState(), state.location) // no position: dashes, "not available"
         assertEquals("ER1PL", state.callsign) // default callsign
@@ -284,8 +285,8 @@ class DashboardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("21:00:00", state.utcTime)
         assertEquals("00:00:00", state.localTime)
-        assertEquals("30 septembrie 2026", state.utcDate)
-        assertEquals("1 octombrie 2026", state.localDate)
+        assertEquals("Miercuri, 30 septembrie 2026", state.utcDate)
+        assertEquals("Joi, 1 octombrie 2026", state.localDate) // shown: another date than UTC
     }
 
     @Test
@@ -293,15 +294,15 @@ class DashboardViewModelTest {
         zone.zone = ZoneId.of("America/New_York") // UTC-4 in September
         val viewModel = createViewModel(start = Instant.parse("2026-09-30T23:59:59Z"))
         subscribe(viewModel)
-        assertEquals("30 septembrie 2026", viewModel.uiState.value.utcDate)
-        assertNull(viewModel.uiState.value.localDate)
+        assertEquals("Miercuri, 30 septembrie 2026", viewModel.uiState.value.utcDate)
+        assertNull(viewModel.uiState.value.localDate) // the same date: not shown
 
         advance(Duration.ofSeconds(1))
         val state = viewModel.uiState.value
         assertEquals("00:00:00", state.utcTime)
-        assertEquals("1 octombrie 2026", state.utcDate) // the date comes from the same instant as the time
+        assertEquals("Joi, 1 octombrie 2026", state.utcDate) // the date comes from the same instant as the time
         assertEquals("20:00:00", state.localTime)
-        assertEquals("30 septembrie 2026", state.localDate) // local is still the day before
+        assertEquals("Miercuri, 30 septembrie 2026", state.localDate) // local is still the day before
     }
 
     @Test
@@ -315,7 +316,7 @@ class DashboardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("15:42:32", state.utcTime) // UTC does not change with the time zone
         assertEquals("21:12:32", state.localTime)
-        assertEquals("Asia/Kolkata · UTC+05:30", state.timeZone)
+        assertEquals(ZoneUi(name = "Asia/Kolkata", abbreviation = "IST", offset = "UTC+05:30", nextChange = null), state.zone)
     }
 
     @Test
@@ -325,13 +326,18 @@ class DashboardViewModelTest {
         val viewModel = createViewModel(start = Instant.parse("2026-10-25T00:59:59Z"))
         subscribe(viewModel)
         assertEquals("03:59:59", viewModel.uiState.value.localTime)
-        assertEquals("Europe/Chisinau · UTC+03:00", viewModel.uiState.value.timeZone)
+        assertEquals("UTC+03:00", viewModel.uiState.value.zone.offset)
+        assertEquals(ClockChangeUi("25 oct. 2026", "04:00", "03:00", toWinter = true), viewModel.uiState.value.zone.nextChange)
 
         advance(Duration.ofSeconds(1))
         val state = viewModel.uiState.value
         assertEquals("01:00:00", state.utcTime) // UTC simply goes on
         assertEquals("03:00:00", state.localTime) // the local clock goes back one hour
-        assertEquals("Europe/Chisinau · UTC+02:00", state.timeZone)
+        // Winter time now; the next change is the one back to summer time, in March, from the same rules
+        assertEquals(
+            ZoneUi("Europe/Chisinau", "EET", "UTC+02:00", ClockChangeUi("28 mar. 2027", "03:00", "04:00", toWinter = false)),
+            state.zone,
+        )
     }
 
     @Test
@@ -368,7 +374,63 @@ class DashboardViewModelTest {
     @Test
     fun textsFollowTheLanguage() = runTest(mainDispatcher.dispatcher.scheduler) {
         val state = createViewModel(locale = Locale.ENGLISH).uiState.value
-        assertEquals("30 September 2026", state.utcDate)
+        assertEquals("Wednesday, 30 September 2026", state.utcDate)
+        assertEquals("25 Oct 2026", state.zone.nextChange?.date)
+    }
+
+    // ---- The Clock: the time zone tiles ----
+
+    /** Chișinău in summer: EEST, UTC+3, back to winter time on 25 October 2026 at 04:00. */
+    private val chisinauSummer = ZoneUi(
+        name = "Europe/Chisinau",
+        abbreviation = "EEST",
+        offset = "UTC+03:00",
+        nextChange = ClockChangeUi(date = "25 oct. 2026", from = "04:00", to = "03:00", toWinter = true),
+    )
+
+    @Test
+    fun zone_fromThePhonesZoneAndItsRules() = runTest(mainDispatcher.dispatcher.scheduler) {
+        assertEquals(chisinauSummer, createViewModel().uiState.value.zone)
+    }
+
+    @Test
+    fun zone_otherZoneOtherRules_nothingFixed() = runTest(mainDispatcher.dispatcher.scheduler) {
+        zone.zone = ZoneId.of("America/New_York") // EDT, back to EST on 1 November 2026 at 02:00
+        val state = createViewModel().uiState.value
+        assertEquals("America/New_York", state.zone.name)
+        assertEquals("UTC-04:00", state.zone.offset)
+        assertEquals(ClockChangeUi("1 nov. 2026", "02:00", "01:00", toWinter = true), state.zone.nextChange)
+    }
+
+    @Test
+    fun zone_southernHemisphere_summerStartsInOctober() = runTest(mainDispatcher.dispatcher.scheduler) {
+        zone.zone = ZoneId.of("Australia/Sydney") // winter now; summer time from 4 October 2026, 02:00 → 03:00
+        val change = createViewModel().uiState.value.zone.nextChange
+        assertEquals(ClockChangeUi("4 oct. 2026", "02:00", "03:00", toWinter = false), change)
+    }
+
+    @Test
+    fun zone_withoutSummerTime_saysThereIsNoChange() = runTest(mainDispatcher.dispatcher.scheduler) {
+        zone.zone = ZoneId.of("Asia/Tokyo")
+        assertNull(createViewModel().uiState.value.zone.nextChange)
+    }
+
+    @Test
+    fun zone_onlyAnOffset_noNameNoAbbreviation() = runTest(mainDispatcher.dispatcher.scheduler) {
+        zone.zone = ZoneOffset.ofHours(2)
+        assertEquals(ZoneUi(name = null, abbreviation = null, offset = "UTC+02:00", nextChange = null), createViewModel().uiState.value.zone)
+        zone.zone = ZoneOffset.UTC
+        assertEquals(ZoneUi(name = null, abbreviation = null, offset = "UTC", nextChange = null), createViewModel().uiState.value.zone)
+    }
+
+    @Test
+    fun zone_followsThePhoneAtTheNextTick() = runTest(mainDispatcher.dispatcher.scheduler) {
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        zone.zone = ZoneId.of("Asia/Tokyo")
+        advance(Duration.ofSeconds(1)) // no second ticker: the same one gives the zone
+        assertEquals("Asia/Tokyo", viewModel.uiState.value.zone.name)
+        assertEquals("Joi, 1 octombrie 2026", viewModel.uiState.value.localDate) // 00:42 in Tokyo, UTC still 30 September
     }
 
     // ---- The PROPAGATION card ----

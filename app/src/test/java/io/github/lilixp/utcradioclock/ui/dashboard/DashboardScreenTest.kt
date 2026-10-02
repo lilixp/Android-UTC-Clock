@@ -22,6 +22,7 @@ import androidx.compose.ui.test.performScrollToNode
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,11 +38,16 @@ class DashboardScreenTest {
     val compose = createComposeRule()
 
     private val state = DashboardUiState(
-        utcDate = "30 septembrie 2026",
+        utcDate = "Miercuri, 30 septembrie 2026",
         utcTime = "15:42:31",
         localTime = "18:42:31",
         localDate = null,
-        timeZone = "Europe/Chisinau · UTC+03:00",
+        zone = ZoneUi(
+            name = "Europe/Chisinau",
+            abbreviation = "EEST",
+            offset = "UTC+03:00",
+            nextChange = ClockChangeUi(date = "25 oct. 2026", from = "04:00", to = "03:00", toWinter = true),
+        ),
     )
 
     private var settingsOpened = false
@@ -71,12 +77,13 @@ class DashboardScreenTest {
     fun showsTitleDateAndBothClocks() {
         show()
         compose.onNodeWithText("UTC Radio Clock").assertIsDisplayed()
-        compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("30 septembrie 2026")
+        compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Miercuri, 30 septembrie 2026")
         compose.onNodeWithText("UTC").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31").assertIsDisplayed()
-        compose.onNodeWithText("LOCAL").assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_TIME).assertTextEquals("18:42:31")
-        compose.onNodeWithText("Europe/Chisinau · UTC+03:00").assertExists()
+        compose.onNodeWithText("EEST · UTC+03:00").assertExists()
+        compose.onNodeWithText("Europe/Chisinau").assertExists()
     }
 
     @Test
@@ -349,6 +356,88 @@ class DashboardScreenTest {
     fun darkTheme_tabsToo() {
         show(dark = true)
         compose.onNodeWithText("Propagare").assertIsDisplayed()
+        assertTrue(background.luminance() < 0.1f)
+    }
+
+    // ---- The Clock (redesign stage 2) ----
+
+    @Test
+    fun clock_utcDateWithTheDayOfTheWeek_andLocalWithoutTheZonesAbbreviation() {
+        show() // the zone has an abbreviation (EEST): it is shown on the time zone tile only
+        compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Miercuri, 30 septembrie 2026")
+        compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL")
+        compose.onNodeWithText("LOCAL · EEST").assertDoesNotExist()
+        compose.onNodeWithTag(DashboardTags.ZONE_VALUE, useUnmergedTree = true).assertTextEquals("EEST · UTC+03:00")
+    }
+
+    @Test
+    fun clock_sameDate_theLocalDateIsNotShown() {
+        show() // localDate = null: the same date as UTC
+        compose.onNodeWithTag(DashboardTags.LOCAL_DATE).assertDoesNotExist()
+    }
+
+    @Test
+    fun clock_otherDate_theLocalDateIsShown() {
+        show(state.copy(utcTime = "23:30:00", localTime = "02:30:00", localDate = "Joi, 1 octombrie 2026"))
+        compose.onNodeWithTag(DashboardTags.LOCAL_DATE).assertTextEquals("Joi, 1 octombrie 2026")
+        compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Miercuri, 30 septembrie 2026")
+    }
+
+    @Test
+    fun clock_tiles_timeZoneAndNextClockChange() {
+        show()
+        compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
+        for (text in listOf("Fus orar", "EEST · UTC+03:00", "Europe/Chisinau", "Schimbarea orei", "25 oct. 2026", "04:00 → 03:00", "(iarnă)")) {
+            compose.onNodeWithText(text).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun clock_changeToSummerTime() {
+        show(state.copy(zone = state.zone.copy(nextChange = ClockChangeUi("28 mar. 2027", "03:00", "04:00", toWinter = false))))
+        compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
+        compose.onNodeWithText("03:00 → 04:00").assertIsDisplayed()
+        compose.onNodeWithText("(vară)").assertIsDisplayed()
+    }
+
+    @Test
+    fun clock_zoneWithoutAChange_saysSo_notEmpty() {
+        show(state.copy(zone = ZoneUi(name = "Asia/Tokyo", abbreviation = "JST", offset = "UTC+09:00", nextChange = null)))
+        compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
+        compose.onNodeWithText("Fără schimbarea orei").assertIsDisplayed()
+        compose.onNodeWithText("Nu este prevăzută în acest fus orar.").assertIsDisplayed()
+    }
+
+    @Test
+    fun clock_zoneWithoutAbbreviationOrName_onlyTheOffset() {
+        show(state.copy(zone = ZoneUi(name = null, abbreviation = null, offset = "UTC+05:45", nextChange = null)))
+        compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL")
+        compose.onNodeWithTag(DashboardTags.ZONE_TILE).performScrollTo()
+        compose.onNodeWithText("UTC+05:45").assertIsDisplayed()
+    }
+
+    @Test
+    fun clock_noNoteAboutUtc() {
+        show()
+        compose.onNodeWithText("timpul comun", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("radioamatorilor", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun clock_inEnglish() {
+        show(state.copy(utcDate = "Wednesday, 30 September 2026",
+            zone = state.zone.copy(nextChange = ClockChangeUi("25 Oct 2026", "04:00", "03:00", toWinter = true))))
+        compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Wednesday, 30 September 2026")
+        compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
+        for (text in listOf("Time zone", "Clock change", "25 Oct 2026", "(winter time)")) compose.onNodeWithText(text).assertIsDisplayed()
+    }
+
+    @Test
+    fun clock_darkTheme() {
+        show(dark = true)
+        compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.ZONE_TILE).performScrollTo().assertIsDisplayed()
         assertTrue(background.luminance() < 0.1f)
     }
 }

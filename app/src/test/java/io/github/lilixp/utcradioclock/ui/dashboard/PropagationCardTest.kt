@@ -72,7 +72,7 @@ class PropagationCardTest {
             utcTime = "05:42:31",
             localTime = "08:42:31",
             localDate = null,
-            timeZone = "Europe/Chisinau · UTC+03:00",
+            zone = ZoneUi(name = "Europe/Chisinau", abbreviation = "EEST", offset = "UTC+03:00"),
             propagation = propagation,
         )
         compose.setContent {

@@ -27,6 +27,13 @@
     <string name="about_author">Autor: Lilian Putină, ER1PL</string>
     <string name="about_propagation">Datele de propagare (SFI, K, A și condițiile pe benzile HF, ziua și noaptea) sunt calculate și publicate de Paul Herrman, N0NBH, pe hamqsl.com. Aplicația le descarcă cel mult o dată pe oră, cum cere autorul, și arată ora ultimei actualizări N0NBH în UTC.</string>
 
+    <string name="tile_time_zone">Fus orar</string>
+    <string name="tile_clock_change">Schimbarea orei</string>
+    <string name="clock_change_to_winter">(iarnă)</string>
+    <string name="clock_change_to_summer">(vară)</string>
+    <string name="no_clock_change">Fără schimbarea orei</string>
+    <string name="no_clock_change_detail">Nu este prevăzută în acest fus orar.</string>
+
     <string name="section_sun">SOARE</string>
     <string name="sunrise">Răsărit: %1$s</string>
     <string name="sunset">Apus: %1$s</string>

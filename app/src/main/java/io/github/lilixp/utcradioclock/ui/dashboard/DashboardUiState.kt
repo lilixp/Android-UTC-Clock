@@ -13,12 +13,17 @@ import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
  * as a dash.
  */
 data class DashboardUiState(
+    /** With the day of the week: "Vineri, 2 octombrie 2026". */
     val utcDate: String,
     val utcTime: String,
     val localTime: String,
-    /** Only when the local date differs from the UTC date (e.g. just after local midnight). */
+    /**
+     * Only when the local date differs from the UTC date (e.g. just after local midnight), with the day
+     * of the week; null on the same date (as in the Windows version).
+     */
     val localDate: String?,
-    val timeZone: String,
+    /** The phone's time zone now (Fus orar) and its next clock change. */
+    val zone: ZoneUi,
     /** From Settings; null when empty. */
     val callsign: String? = null,
     val sun: SunUiState = SunUiState(),
@@ -26,6 +31,28 @@ data class DashboardUiState(
     val location: LocationUiState = LocationUiState(),
     /** The station's locator: from GPS (6 characters) or as entered in Settings; null when there is none. */
     val locator: String? = null,
+)
+
+/** The phone's time zone, from the phone itself (nothing fixed in the code). */
+data class ZoneUi(
+    /** "Europe/Chisinau"; null for a zone that is only an offset. */
+    val name: String?,
+    /** "EEST" (summer) or "EET" (winter); null when the zone has no common abbreviation. */
+    val abbreviation: String?,
+    /** "UTC+03:00", or "UTC". */
+    val offset: String,
+    /** The next summer/winter time change from the zone's rules; null when the zone has none. */
+    val nextChange: ClockChangeUi? = null,
+)
+
+/** A clock change: on [date], the clocks go from [from] to [to] (wall time), e.g. 04:00 → 03:00. */
+data class ClockChangeUi(
+    /** "25 oct. 2026". */
+    val date: String,
+    val from: String,
+    val to: String,
+    /** The clocks go back (to standard, "winter" time); otherwise forward (to summer time). */
+    val toWinter: Boolean,
 )
 
 /** The LOCATION card (the locator itself is [DashboardUiState.locator]). */

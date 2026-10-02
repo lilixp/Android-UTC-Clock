@@ -1,12 +1,17 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import androidx.annotation.StringRes
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +48,11 @@ object DashboardTags {
     const val DATE = "utc_date"
     const val UTC_TIME = "utc_time"
     const val LOCAL_TIME = "local_time"
+    const val LOCAL_LABEL = "local_label"
+    const val LOCAL_DATE = "local_date"
+    const val ZONE_TILE = "zone_tile"
+    const val ZONE_VALUE = "zone_value"
+    const val CLOCK_CHANGE_TILE = "clock_change_tile"
     const val CALLSIGN = "callsign"
     const val LOCATOR = "locator"
     const val LOCATION_SOURCE = "location_source"
@@ -96,6 +107,7 @@ fun DashboardScreen(
                 AppTab.CLOCK -> {
                     UtcCard(state)
                     LocalCard(state)
+                    ZoneTiles(state.zone)
                 }
                 AppTab.SUN -> SunCard(state.sun)
                 AppTab.LOCATION -> LocationCard(state.location, state.locator, locationPermissionBlocked, onLocationAction)
@@ -215,6 +227,7 @@ private fun TopBarTitle(callsign: String?, locator: String?) {
 }
 
 /** The most visible element: the UTC time, large, in a highlighted card. */
+/** UTC, the main element: the time, large, and the UTC date with the day of the week under it. */
 @Composable
 private fun UtcCard(state: DashboardUiState) {
     Card(
@@ -228,23 +241,28 @@ private fun UtcCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SectionLabel(stringResource(R.string.label_utc))
+            ClockLabel(R.drawable.ic_globe, stringResource(R.string.label_utc))
             Text(
                 text = state.utcTime,
                 style = TextStyle(fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = TABULAR_DIGITS),
                 maxLines = 1,
                 modifier = Modifier.testTag(DashboardTags.UTC_TIME),
             )
-            // The UTC date, under the UTC time (it was above the cards, next to the station)
             Text(
                 text = state.utcDate,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.testTag(DashboardTags.DATE),
             )
         }
     }
 }
 
+/**
+ * The local time, smaller, under "LOCAL" (the zone's abbreviation is on the time zone tile, not here);
+ * the local date only when it is not the UTC date
+ * (e.g. between local midnight and UTC midnight), as in the Windows version.
+ */
 @Composable
 private fun LocalCard(state: DashboardUiState) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -252,7 +270,11 @@ private fun LocalCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SectionLabel(stringResource(R.string.label_local))
+            ClockLabel(
+                R.drawable.ic_clock,
+                stringResource(R.string.label_local),
+                Modifier.testTag(DashboardTags.LOCAL_LABEL),
+            )
             Text(
                 text = state.localTime,
                 style = TextStyle(
@@ -263,12 +285,87 @@ private fun LocalCard(state: DashboardUiState) {
                 maxLines = 1,
                 modifier = Modifier.testTag(DashboardTags.LOCAL_TIME),
             )
-            state.localDate?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            state.localDate?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.testTag(DashboardTags.LOCAL_DATE),
+                )
+            }
+        }
+    }
+}
+
+/** "UTC" or "LOCAL" with its icon, in the section label style; [modifier] goes on the text, not on the row. */
+@Composable
+private fun ClockLabel(@DrawableRes icon: Int, text: String, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(18.dp),
+        )
+        SectionLabel(text, modifier)
+    }
+}
+
+/** Two small tiles under the clocks: the time zone, and the next summer/winter time change. */
+@Composable
+private fun ZoneTiles(zone: ZoneUi) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Tile(
+            title = stringResource(R.string.tile_time_zone),
+            value = listOfNotNull(zone.abbreviation, zone.offset).joinToString(" · "),
+            details = listOfNotNull(zone.name),
+            modifier = Modifier.weight(1f).testTag(DashboardTags.ZONE_TILE),
+            valueModifier = Modifier.testTag(DashboardTags.ZONE_VALUE),
+        )
+        val change = zone.nextChange
+        Tile(
+            title = stringResource(R.string.tile_clock_change),
+            value = change?.date ?: stringResource(R.string.no_clock_change),
+            details = if (change != null) {
+                listOf(
+                    stringResource(R.string.clock_change_times, change.from, change.to),
+                    stringResource(if (change.toWinter) R.string.clock_change_to_winter else R.string.clock_change_to_summer),
+                )
+            } else {
+                listOf(stringResource(R.string.no_clock_change_detail))
+            },
+            modifier = Modifier.weight(1f).testTag(DashboardTags.CLOCK_CHANGE_TILE),
+        )
+    }
+}
+
+/**
+ * A small card: a title, one value, and smaller lines under it. The value stays on one line (e.g.
+ * "EEST · UTC+03:00") and shrinks only when it does not fit (large text, narrow phone).
+ */
+@Composable
+private fun Tile(title: String, value: String, details: List<String>, modifier: Modifier, valueModifier: Modifier = Modifier) {
+    Card(modifier = modifier.fillMaxHeight()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
-                text = state.timeZone,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                modifier = valueModifier,
             )
+            for (line in details) {
+                Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -287,9 +384,10 @@ internal fun InfoCard(@StringRes title: Int, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
+        modifier = modifier,
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.secondary,
@@ -306,11 +404,16 @@ internal fun InfoLine(@StringRes format: Int, value: String?) {
 }
 
 private val PreviewState = DashboardUiState(
-    utcDate = "30 septembrie 2026",
+    utcDate = "Miercuri, 30 septembrie 2026",
     utcTime = "15:42:31",
     localTime = "18:42:31",
     localDate = null,
-    timeZone = "Europe/Chisinau · UTC+03:00",
+    zone = ZoneUi(
+        name = "Europe/Chisinau",
+        abbreviation = "EEST",
+        offset = "UTC+03:00",
+        nextChange = ClockChangeUi(date = "25 oct. 2026", from = "04:00", to = "03:00", toWinter = true),
+    ),
     callsign = "ER1PL",
     sun = SunUiState(
         status = SunStatus.NORMAL,

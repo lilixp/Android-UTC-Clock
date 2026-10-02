@@ -116,13 +116,34 @@ class DashboardViewModel(
             utcTime = format.utcTime(instant),
             localTime = format.localTime(instant, zone),
             localDate = localDate.takeIf { it != utcDate },
-            timeZone = format.timeZone(instant, zone),
+            zone = zoneState(reading, format),
             callsign = station.callsign.ifEmpty { null },
             sun = sun.ui,
             propagation = propagationState(propagation, reading, sun.day, format),
             location = locationState(position, reading, format),
             // From GPS in automatic mode, otherwise as entered in Settings
             locator = position.locator,
+        )
+    }
+
+    /**
+     * The time zone of the phone at this tick (so a zone change or a summer/winter change shows at once),
+     * and its next clock change from the zone's own rules (java.time), nothing fixed in the code.
+     */
+    private fun zoneState(reading: ClockReading, format: TimeFormatter): ZoneUi {
+        val (instant, zone) = reading
+        return ZoneUi(
+            name = format.zoneName(zone),
+            abbreviation = format.zoneAbbreviation(instant, zone),
+            offset = format.zoneOffset(instant, zone),
+            nextChange = zone.rules.nextTransition(instant)?.let { change ->
+                ClockChangeUi(
+                    date = format.shortDate(change.dateTimeBefore.toLocalDate()),
+                    from = format.hoursMinutes(change.dateTimeBefore),
+                    to = format.hoursMinutes(change.dateTimeAfter),
+                    toWinter = change.isOverlap, // the clocks go back
+                )
+            },
         )
     }
 

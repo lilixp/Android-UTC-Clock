@@ -91,6 +91,11 @@ Observații (cele două corecții de logică sunt **rezolvate în Faza A**; indi
 ## Redesign UI/UX (stabilit, pentru o etapă ulterioară)
 
 - Etapa 1 (4 tab-uri, stația în bara de sus) e făcută; etapele 2–7 urmează, una câte una.
+- **Indicatorul de concurs** (cifrele UTC roșii cât ține un concurs, ora LOCAL neschimbată) e o
+  funcție **planificată pentru o etapă ulterioară**, nu pentru etapa 2 (decizia lui Lilian,
+  1 octombrie 2026). Modelul (`Contest`, `ContestCalendar`) se decide atunci; sursa listei de
+  concursuri se analizează separat, înainte de implementare. Acum nu există nicio listă de concursuri
+  în cod și nu trebuie introdusă una.
 - **Acasă** minimalist: data, `ER1PL / KN46dw`, UTC și LOCAL.
 - **Soare**, **Locație** și **Propagare HF** în ecrane separate.
 - Observațiile de mai sus despre GPS (indicatorul „ultima poziție”, „GPS oprit — se folosește ultima

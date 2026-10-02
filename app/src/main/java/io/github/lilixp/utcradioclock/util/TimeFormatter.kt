@@ -2,8 +2,11 @@ package io.github.lilixp.utcradioclock.util
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -16,25 +19,57 @@ import kotlin.math.roundToInt
  */
 class TimeFormatter(val locale: Locale) {
 
-    private val dateFormat = DateTimeFormatter.ofPattern("d MMMM yyyy", locale)
+    /** With the day of the week: "Vineri, 2 octombrie 2026" / "Friday, 2 October 2026". */
+    private val dateFormat = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", locale)
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss", locale)
     private val shortTimeFormat = DateTimeFormatter.ofPattern("HH:mm", locale)
+    private val shortDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
+
+    /**
+     * Where the phone's own time zone data keeps the common abbreviations: Android has "EEST" and
+     * "CEST" only in British English and "EDT" only in American English (checked on the S24+), so
+     * both are tried, in that order; plain English gives "GMT+03:00" for Europe.
+     */
+    private val abbreviationFormats = listOf(Locale.UK, Locale.US).map { DateTimeFormatter.ofPattern("zzz", it) }
 
     fun utcTime(instant: Instant): String = timeFormat.format(instant.atZone(ZoneOffset.UTC))
 
-    fun utcDate(instant: Instant): String = dateFormat.format(instant.atZone(ZoneOffset.UTC))
+    fun utcDate(instant: Instant): String = date(instant.atZone(ZoneOffset.UTC))
 
     fun localTime(instant: Instant, zone: ZoneId): String = timeFormat.format(instant.atZone(zone))
 
-    fun localDate(instant: Instant, zone: ZoneId): String = dateFormat.format(instant.atZone(zone))
+    fun localDate(instant: Instant, zone: ZoneId): String = date(instant.atZone(zone))
 
-    /** E.g. "Europe/Chisinau · UTC+03:00" (the offset follows daylight saving time), or just "UTC+02:00"
-     *  for a zone that is only an offset. */
-    fun timeZone(instant: Instant, zone: ZoneId): String {
+    /** "UTC+03:00" (the offset at [instant], so it follows summer and winter time), or "UTC". */
+    fun zoneOffset(instant: Instant, zone: ZoneId): String {
         val offset = zone.rules.getOffset(instant)
-        val offsetText = if (offset == ZoneOffset.UTC) "UTC" else "UTC${offset.id}"
-        return if (zone is ZoneOffset) offsetText else "${zone.id} · $offsetText"
+        return if (offset == ZoneOffset.UTC) "UTC" else "UTC${offset.id}"
     }
+
+    /**
+     * The zone's common abbreviation at [instant], e.g. "EEST" in summer and "EET" in winter, from the
+     * phone's time zone data; null when it has none (it then only knows "GMT+05:30"-like names, e.g. for
+     * India or Japan).
+     */
+    fun zoneAbbreviation(instant: Instant, zone: ZoneId): String? {
+        if (zone is ZoneOffset) return null // only an offset ("Z", "+02:00"): the offset says it all
+        val time = instant.atZone(zone)
+        return abbreviationFormats.asSequence()
+            .map { it.format(time) }
+            .firstOrNull { name -> !name.startsWith("GMT") && !name.startsWith("UTC") && name.none { it == '+' || it == '-' } }
+    }
+
+    /** The zone's name, e.g. "Europe/Chisinau"; null for a zone that is only an offset. */
+    fun zoneName(zone: ZoneId): String? = zone.id.takeUnless { zone is ZoneOffset }
+
+    /** A date without the day of the week, short: "25 oct. 2026" / "25 Oct 2026". */
+    fun shortDate(date: LocalDate): String = shortDateFormat.format(date)
+
+    /** A wall-clock time without seconds: "04:00". */
+    fun hoursMinutes(time: LocalDateTime): String = shortTimeFormat.format(time)
+
+    private fun date(time: ZonedDateTime): String =
+        dateFormat.format(time).replaceFirstChar { it.titlecase(locale) } // "vineri, …" → "Vineri, …"
 
     /**
      * Local time of an event (sunrise, sunset) rounded to the nearest minute, as sunrise tables do

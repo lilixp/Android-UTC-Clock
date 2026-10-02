@@ -38,14 +38,28 @@ class TimeFormatterTest {
         assertEquals("11:42:31", formatter.localTime(instant, ZoneId.of("America/New_York"))) // UTC-4
         assertEquals("21:12:31", formatter.localTime(instant, ZoneId.of("Asia/Kolkata"))) // UTC+5:30
         assertEquals("00:42:31", formatter.localTime(instant, ZoneId.of("Asia/Tokyo"))) // UTC+9, next day
-        assertEquals("1 octombrie 2026", formatter.localDate(instant, ZoneId.of("Asia/Tokyo")))
-        assertEquals("30 septembrie 2026", formatter.utcDate(instant))
+        assertEquals("Joi, 1 octombrie 2026", formatter.localDate(instant, ZoneId.of("Asia/Tokyo")))
+        assertEquals("Miercuri, 30 septembrie 2026", formatter.utcDate(instant))
     }
 
     @Test
-    fun timeZoneShowsNameAndCurrentOffset() {
-        assertEquals("Europe/Chisinau · UTC+02:00", formatter.timeZone(winter, chisinau))
-        assertEquals("UTC", formatter.timeZone(winter, ZoneOffset.UTC))
+    fun timeZoneNameOffsetAndAbbreviation() {
+        assertEquals("Europe/Chisinau", formatter.zoneName(chisinau))
+        assertEquals("UTC+02:00", formatter.zoneOffset(winter, chisinau)) // winter: EET
+        assertEquals("EET", formatter.zoneAbbreviation(winter, chisinau))
+        assertEquals("UTC+03:00", formatter.zoneOffset(Instant.parse("2026-07-01T12:00:00Z"), chisinau))
+        assertEquals("EEST", formatter.zoneAbbreviation(Instant.parse("2026-07-01T12:00:00Z"), chisinau))
+        assertEquals("UTC", formatter.zoneOffset(winter, ZoneOffset.UTC))
+        assertNull(formatter.zoneName(ZoneOffset.ofHours(2))) // only an offset: no name
+        assertNull(formatter.zoneAbbreviation(winter, ZoneOffset.ofHours(2))) // nor an abbreviation
+    }
+
+    @Test
+    fun datesWithTheDayOfTheWeek_capitalisedInRomanian() {
+        assertEquals("Vineri, 2 octombrie 2026", formatter.utcDate(Instant.parse("2026-10-02T05:12:35Z")))
+        assertEquals("Friday, 2 October 2026", TimeFormatter(Locale.ENGLISH).utcDate(Instant.parse("2026-10-02T05:12:35Z")))
+        assertEquals("25 oct. 2026", formatter.shortDate(java.time.LocalDate.parse("2026-10-25")))
+        assertEquals("04:00", formatter.hoursMinutes(java.time.LocalDateTime.parse("2026-10-25T04:00:00")))
     }
 
     @Test
