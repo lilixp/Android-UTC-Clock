@@ -24,6 +24,8 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
+import io.github.lilixp.utcradioclock.domain.model.BandGroup
+import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.testing.BOGHICENI
@@ -151,32 +153,34 @@ class MainActivityTest {
         // No locator: 18:42 local is night by the clock; the feed has the same values day and night
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
-        compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Acum: Mediu")
+        compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Mediu")
         compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertDoesNotExist() // no "Acum e noapte la stație."
         compose.onNodeWithText("Noaptea").assertIsDisplayed()
         compose.onNodeWithText("OK").assertDoesNotExist() // no dialog: the panel under the card explains it
     }
 
     @Test
-    fun offlineEstimate_fromTheRealN0nbhFeed_unknownUntilThereIsAPosition() {
+    fun offlineEstimate_fromTheRealN0nbhFeed_perGroup_dayTwilightNight() {
         waitForText("SFI 93")
-        val list = compose.onNode(hasScrollAction())
-        list.performScrollToNode(hasTestTag(PropagationTags.estimate(HfBand.BAND_10M)))
-        compose.onNodeWithText("Estimare offline · 10 benzi").assertIsDisplayed()
-        compose.onNodeWithContentDescription("20m: Necunoscut").assertIsDisplayed() // no locator yet
+        compose.onNodeWithText("Estimare offline · 10 benzi").assertDoesNotExist() // no more ten boxes on the card
+        compose.onNodeWithText("160m").assertDoesNotExist()
+
+        // The feed's SFI 93 and K 0, through the same calculator, for each phase (no locator needed for that)
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_30_20)).performClick()
+        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
+        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_20M, DayPhase.DAY)).assertTextEquals("Bun")
+        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_20M, DayPhase.NIGHT)).assertTextEquals("Mediu") // SFI 93 ≥ 90
 
         openSettings()
         compose.onNodeWithTag(SettingsTags.LOCATOR_FIELD).performTextInput("kn46dw")
         compose.onNodeWithContentDescription("Înapoi").performClick()
 
-        // 18:42 local, before sunset: day; the feed's SFI 93 and K 0
-        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(PropagationTags.estimate(HfBand.BAND_10M)))
-        compose.onNodeWithContentDescription("20m: Bun").assertIsDisplayed()
-        compose.onNodeWithContentDescription("160m: Slab").assertIsDisplayed()
-        compose.onNodeWithContentDescription("10m: Slab").assertIsDisplayed() // SFI 93 is below 95
-        compose.onNodeWithContentDescription("20m: Bun").performClick()
+        // 18:42 local, before sunset: day at the station; the same values, from the ViewModel's estimate
+        waitForText("SFI 93")
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_12_10)).performClick()
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
-        compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertTextEquals("Estimare: Bun")
+        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_10M, DayPhase.DAY)).assertTextEquals("Slab") // SFI 93 is below 95
+        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_12M, DayPhase.DAY)).assertTextEquals("Mediu")
     }
 
     @Test

@@ -96,10 +96,12 @@
     <string name="propagation_a_dialog">Daily average geomagnetic activity index (0–400). Values above 15 indicate geomagnetic instability.</string>
 
     <!-- The offline estimate for the ten HF bands: calculated on the phone, not N0NBH data -->
-    <string name="estimate_title">Offline estimate · 10 bands</string>
-    <string name="hf_band_title" translatable="false">%1$d m · %2$s</string>
-    <string name="estimate_level">Estimate: %1$s</string>
-    <string name="estimate_no_position">Without a position (locator or GPS), day and night at the station are not known, so there is no estimate.</string>
+    <string name="estimate_title">Offline estimate</string>
+    <string name="estimate_band">Band</string>
+    <string name="band_meters" translatable="false">%1$d m</string>
+    <string name="phase_day">Day</string>
+    <string name="phase_twilight">Twilight</string>
+    <string name="phase_night">Night</string>
     <string name="estimate_no_data">SFI or the K index is missing, so there is no estimate.</string>
     <string name="estimate_source">Offline estimate, calculated on the phone from SFI, K and the Sun at the station.</string>
     <!-- The panel under the PROPAGATION card: it explains the box last tapped -->
@@ -110,19 +112,8 @@
     <string name="index_a_quiet">Quiet or unsettled</string>
     <string name="index_active">Active</string>
     <string name="index_storm">Storm</string>
-    <string name="group_now">Now: %1$s</string>
     <string name="group_day">By day</string>
     <string name="group_night">At night</string>
-    <string name="band_160m_dialog">Night and twilight band. Severe daytime D-layer absorption.</string>
-    <string name="band_80m_dialog">Night and twilight band. Heavy daytime absorption, excellent night DX.</string>
-    <string name="band_60m_dialog">Transition band. Moderate daytime absorption, reliable night F2 reflection.</string>
-    <string name="band_40m_dialog">Local/NVIS by day, regional and DX by night and twilight.</string>
-    <string name="band_30m_dialog">Open nearly 24/7. Low D-layer absorption, excellent at twilight.</string>
-    <string name="band_20m_dialog">Primary workhorse HF band. Open daytime and twilight; night depends on SFI.</string>
-    <string name="band_17m_dialog">Daytime and twilight band. Requires moderate F2 ionization.</string>
-    <string name="band_15m_dialog">Daytime band. Highly responsive to solar flux (SFI ≥ 90).</string>
-    <string name="band_12m_dialog">Daytime band. Opens near solar noon when SFI ≥ 110.</string>
-    <string name="band_10m_dialog">Daytime band. Requires strong solar ionization near solar noon (SFI ≥ 120).</string>
 
     <string name="section_appearance">APPEARANCE</string>
     <string name="theme_system">System</string>

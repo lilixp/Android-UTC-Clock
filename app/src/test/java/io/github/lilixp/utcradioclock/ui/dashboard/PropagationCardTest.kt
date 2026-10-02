@@ -36,6 +36,7 @@ import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
+import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.ui.theme.ConditionColors
 import io.github.lilixp.utcradioclock.ui.theme.LocalConditionColors
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
@@ -217,46 +218,13 @@ class PropagationCardTest {
         assertColor(colors.poor.container, boxColor(PropagationTags.A))
     }
 
-    // ---- The offline estimate for the ten HF bands, and the explanations ----
+    // ---- The offline estimate: calculated by OfflinePropagationCalculator, shown per group in the panel ----
 
-    //                       160m  80m   60m   40m   30m   20m   17m   15m   12m   10m
-    private val dayLevels = listOf(POOR, POOR, FAIR, FAIR, GOOD, GOOD, GOOD, GOOD, FAIR, POOR)
+    /** Now day, SFI 93 and K 0, as the ViewModel would give it: the calculator's estimate for the phase of now. */
     private val withEstimate = data.copy(
-        estimate = HfBand.entries.zip(dayLevels) { band, level -> BandEstimate(band, level) },
+        estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, 93.0, 0.0),
         phase = DayPhase.DAY,
     )
-
-    private fun scrollTo(tag: String) {
-        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(tag))
-    }
-
-    @Test
-    fun estimate_tenBands_underTheirOwnTitle_afterTheN0nbhData() {
-        show(withEstimate)
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        compose.onNodeWithTag(PropagationTags.ESTIMATE_TITLE).assertTextEquals("Estimare offline · 10 benzi")
-        for (band in HfBand.entries) compose.onNodeWithTag(PropagationTags.estimate(band)).assertIsDisplayed()
-        compose.onNodeWithText("160m").assertIsDisplayed()
-        // Below N0NBH's own data, which ends with the update time
-        val updated = compose.onNodeWithText("Actualizat 05:29 UTC").fetchSemanticsNode().positionInRoot.y
-        val title = compose.onNodeWithTag(PropagationTags.ESTIMATE_TITLE).fetchSemanticsNode().positionInRoot.y
-        assertTrue(title > updated)
-    }
-
-    @Test
-    fun estimate_coloursFromTheEstimatedLevels() {
-        show(withEstimate)
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        assertColor(colors.poor.container, boxColor(PropagationTags.estimate(HfBand.BAND_160M)))
-        assertColor(colors.good.container, boxColor(PropagationTags.estimate(HfBand.BAND_20M)))
-        assertColor(colors.fair.container, boxColor(PropagationTags.estimate(HfBand.BAND_12M)))
-    }
-
-    @Test
-    fun noEstimate_noTitle() {
-        show() // N0NBH data only (as before this phase)
-        compose.onNodeWithTag(PropagationTags.ESTIMATE_TITLE).assertDoesNotExist()
-    }
 
     // ---- The details panel under the card (no dialog: the panel explains the box last tapped) ----
 
@@ -289,7 +257,7 @@ class PropagationCardTest {
         compose.onNodeWithTag(PropagationTags.PANEL_HINT).assertTextEquals("Apasă pe un indice sau pe o bandă pentru detalii.")
         panelTitle().assertDoesNotExist()
         for (tag in listOf(PropagationTags.SFI, PropagationTags.K, PropagationTags.A)) compose.onNodeWithTag(tag).assertIsNotSelected()
-        for (band in HfBand.entries) compose.onNodeWithTag(PropagationTags.estimate(band)).assertIsNotSelected()
+        for (group in BandGroup.entries) compose.onNodeWithTag(PropagationTags.band(group)).assertIsNotSelected()
         assertNoDialogNorButtons()
         assertNoN0nbh()
     }
@@ -372,121 +340,264 @@ class PropagationCardTest {
     }
 
     @Test
-    fun panel_bandGroup_nowByDayAndByNight() {
-        show()
+    fun panel_bandGroup_n0nbhNowByDayAndByNight_noSentenceAboutTheStation() {
+        show(withEstimate)
         select(PropagationTags.band(BandGroup.BANDS_80_40))
         compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsSelected()
         panelValue().assertTextEquals("80-40m")
-        panelTitle().assertTextEquals("Acum: Mediu")
-        panelSubtitle().assertDoesNotExist() // day or night shows in the table, not in a sentence
-        compose.onNodeWithText("la stație", substring = true).assertDoesNotExist()
+        panelTitle().assertTextEquals("Mediu")
+        compose.onNodeWithText("Acum:", substring = true).assertDoesNotExist()
+        panelSubtitle().assertDoesNotExist()
         compose.onNodeWithText("Ziua").assertIsDisplayed()
         compose.onNodeWithText("Noaptea").assertIsDisplayed()
         assertColor(colors.fair.container, boxColor(PropagationTags.PANEL_VALUE))
+        for (text in listOf("Acum e zi la stație", "Acum e noapte la stație", "Acum e crepuscul la stație")) {
+            compose.onNodeWithText(text, substring = true).assertDoesNotExist()
+        }
         assertNoDialogNorButtons()
         assertNoN0nbh()
 
         select(PropagationTags.band(BandGroup.BANDS_12_10)) // another group, its own values
         panelValue().assertTextEquals("12-10m")
-        panelTitle().assertTextEquals("Acum: Slab")
+        panelTitle().assertTextEquals("Slab")
         compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsNotSelected()
     }
 
     @Test
     fun panel_bandGroup_withoutLocator_dayIsByTheClock() {
-        show(data.copy(isDay = false, dayNightByClock = true))
+        show(withEstimate.copy(isDay = false, dayNightByClock = true, phase = null))
         select(PropagationTags.band(BandGroup.BANDS_17_15))
-        panelTitle().assertTextEquals("Acum: Mediu")
+        panelTitle().assertTextEquals("Mediu")
         panelSubtitle().assertDoesNotExist()
         compose.onNodeWithText("Noaptea").assertIsDisplayed()
         compose.onNodeWithText("Fără locator, ziua este între 06:00 și 18:00 ora locală.").assertIsDisplayed()
     }
 
+    // ---- The offline estimate, per group, in the panel ----
+
+    /** What the calculator itself gives, the reference for every cell of the table. */
+    private fun calculated(band: HfBand, phase: DayPhase, sfi: Double?, k: Double?) =
+        when (OfflinePropagationCalculator.level(band, phase, sfi, k)) {
+            GOOD -> "Bun"
+            FAIR -> "Mediu"
+            POOR -> "Slab"
+            null -> "Necunoscut"
+        }
+
+    private fun cell(band: HfBand, phase: DayPhase) = compose.onNodeWithTag(PropagationTags.estimateCell(band, phase))
+
+    private val groupBands = mapOf(
+        BandGroup.BANDS_80_40 to listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M),
+        BandGroup.BANDS_30_20 to listOf(HfBand.BAND_30M, HfBand.BAND_20M),
+        BandGroup.BANDS_17_15 to listOf(HfBand.BAND_17M, HfBand.BAND_15M),
+        BandGroup.BANDS_12_10 to listOf(HfBand.BAND_12M, HfBand.BAND_10M),
+    )
+
     @Test
-    fun panel_band_theCalculatorsEstimate_andTheBandsExplanation() {
+    fun card_onlyTheIndicesTheFourGroupsAndTheUpdate_noTenBandBoxes() {
         show(withEstimate)
-        select(PropagationTags.estimate(HfBand.BAND_15M))
-        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
-        panelValue().assertTextEquals("15m")
-        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
-        panelSubtitle().assertTextEquals("Estimare: Bun")
-        compose.onNodeWithText("Acum e zi la stație.").assertDoesNotExist()
-        compose.onNodeWithText("Bandă de zi. Puternic influențată de fluxul solar (SFI ≥ 90).").assertIsDisplayed()
-        compose.onNodeWithText("Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.").assertIsDisplayed()
-        assertColor(colors.good.container, boxColor(PropagationTags.PANEL_VALUE))
-        assertNoDialogNorButtons()
-        assertNoN0nbh()
+        for (tag in listOf(PropagationTags.SFI, PropagationTags.K, PropagationTags.A)) compose.onNodeWithTag(tag).assertIsDisplayed()
+        for (group in BandGroup.entries) compose.onNodeWithTag(PropagationTags.band(group)).assertIsDisplayed()
+        compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("Estimare offline · 10 benzi").assertDoesNotExist()
+        compose.onNodeWithText("Estimare offline").assertDoesNotExist() // only in a group's panel
+        for (band in HfBand.entries) {
+            compose.onNodeWithText(band.label).assertDoesNotExist() // "160m", "80m" … "10m"
+            compose.onNodeWithText("${band.meters} m").assertDoesNotExist()
+        }
+        compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
     }
 
     @Test
-    fun panel_band_unknown_saysWhy() {
-        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }))
-        select(PropagationTags.estimate(HfBand.BAND_20M))
-        assertColor(colors.unknown.container, boxColor(PropagationTags.estimate(HfBand.BAND_20M)))
-        panelSubtitle().assertTextEquals("Estimare: Necunoscut")
-        compose.onNodeWithText("Lipsesc SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
-        assertColor(colors.unknown.container, boxColor(PropagationTags.PANEL_VALUE))
-    }
-
-    @Test
-    fun panel_band_withoutAPosition_saysWhy() {
-        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }, phase = null))
-        select(PropagationTags.estimate(HfBand.BAND_40M))
-        panelSubtitle().assertTextEquals("Estimare: Necunoscut")
-        compose.onNodeWithText(
-            "Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.",
-        ).assertIsDisplayed()
-        compose.onNodeWithText("Lipsesc SFI", substring = true).assertDoesNotExist()
-    }
-
-    @Test
-    fun panel_everyBand_itsOwnFrequenciesAndExplanation() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val explanation = mapOf(
-            HfBand.BAND_160M to R.string.band_160m_dialog, HfBand.BAND_80M to R.string.band_80m_dialog,
-            HfBand.BAND_60M to R.string.band_60m_dialog, HfBand.BAND_40M to R.string.band_40m_dialog,
-            HfBand.BAND_30M to R.string.band_30m_dialog, HfBand.BAND_20M to R.string.band_20m_dialog,
-            HfBand.BAND_17M to R.string.band_17m_dialog, HfBand.BAND_15M to R.string.band_15m_dialog,
-            HfBand.BAND_12M to R.string.band_12m_dialog, HfBand.BAND_10M to R.string.band_10m_dialog,
-        ).mapValues { context.getString(it.value) }
-        assertEquals(10, explanation.values.toSet().size) // ten different texts
-        show(withEstimate.copy(phase = DayPhase.TWILIGHT))
-        for ((band, level) in HfBand.entries.zip(dayLevels)) {
-            select(PropagationTags.estimate(band))
-            panelTitle().assertTextEquals("${band.meters} m · ${band.frequencies}")
-            panelSubtitle().assertTextEquals("Estimare: " + mapOf(GOOD to "Bun", FAIR to "Mediu", POOR to "Slab").getValue(level))
-            compose.onNodeWithText("crepuscul la stație", substring = true).assertDoesNotExist()
-            compose.onNodeWithText(explanation.getValue(band)).assertIsDisplayed()
+    fun group_showsItsOwnBands_andNever160m() {
+        show(withEstimate)
+        for ((group, bands) in groupBands) {
+            select(PropagationTags.band(group))
+            compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertIsDisplayed()
+            for (band in HfBand.entries) {
+                if (band in bands) {
+                    compose.onNodeWithTag(PropagationTags.estimateRow(band)).assertIsDisplayed()
+                    compose.onNodeWithText("${band.meters} m").assertIsDisplayed()
+                } else {
+                    compose.onNodeWithTag(PropagationTags.estimateRow(band)).assertDoesNotExist()
+                }
+            }
+            compose.onNodeWithText("160 m").assertDoesNotExist()
+            compose.onNodeWithText("160m").assertDoesNotExist()
         }
     }
 
     @Test
-    fun panel_sfiThenKThenABand_followsTheSelection_oneSelectedAtATime() {
+    fun group_8040_is80_60_40() {
+        show(withEstimate)
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
+        val rows = compose.onAllNodes(hasTestTagStartingWith("estimate_row_")).fetchSemanticsNodes()
+            .map { it.config[androidx.compose.ui.semantics.SemanticsProperties.TestTag] }
+        assertEquals(listOf("estimate_row_80", "estimate_row_60", "estimate_row_40"), rows)
+    }
+
+    @Test
+    fun group_otherGroups_theirBandsInOrder() {
+        show(withEstimate)
+        for ((group, expected) in mapOf(
+            BandGroup.BANDS_30_20 to listOf("estimate_row_30", "estimate_row_20"),
+            BandGroup.BANDS_17_15 to listOf("estimate_row_17", "estimate_row_15"),
+            BandGroup.BANDS_12_10 to listOf("estimate_row_12", "estimate_row_10"),
+        )) {
+            select(PropagationTags.band(group))
+            val rows = compose.onAllNodes(hasTestTagStartingWith("estimate_row_")).fetchSemanticsNodes()
+                .map { it.config[androidx.compose.ui.semantics.SemanticsProperties.TestTag] }
+            assertEquals(expected, rows)
+        }
+    }
+
+    @Test
+    fun table_dayTwilightNight_exactlyTheCalculator_lowFlux() {
+        show(withEstimate) // SFI 93, K 0, now day
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+        for ((group, bands) in groupBands) {
+            select(PropagationTags.band(group))
+            for (text in listOf("Bandă", "Zi", "Amurg", "Noapte")) compose.onNodeWithText(text).assertIsDisplayed()
+            for (band in bands) for (phase in DayPhase.entries) {
+                cell(band, phase).assertTextEquals(calculated(band, phase, 93.0, 0.0))
+            }
+        }
+    }
+
+    @Test
+    fun table_highFluxAndActiveK_exactlyTheCalculator() {
+        val sfi = 152.4
+        val k = 4.0 // active: every band one level lower
+        show(
+            data.copy(
+                solarFlux = IndexUi("152.4", GOOD),
+                kIndex = IndexUi("4", FAIR),
+                estimate = OfflinePropagationCalculator.estimate(DayPhase.NIGHT, sfi, k),
+                phase = DayPhase.NIGHT,
+                isDay = false,
+            ),
+        )
+        for ((group, bands) in groupBands) {
+            select(PropagationTags.band(group))
+            for (band in bands) for (phase in DayPhase.entries) cell(band, phase).assertTextEquals(calculated(band, phase, sfi, k))
+        }
+    }
+
+    @Test
+    fun table_twilightNow_itsColumnIsTheAppsEstimate() {
+        // The column of now comes from PropagationUiState.estimate (the ViewModel's), the others from the calculator
+        val twilight = OfflinePropagationCalculator.estimate(DayPhase.TWILIGHT, 93.0, 0.0)
+        show(withEstimate.copy(estimate = twilight, phase = DayPhase.TWILIGHT))
+        select(PropagationTags.band(BandGroup.BANDS_17_15))
+        cell(HfBand.BAND_15M, DayPhase.TWILIGHT).assertTextEquals(calculated(HfBand.BAND_15M, DayPhase.TWILIGHT, 93.0, 0.0))
+        cell(HfBand.BAND_15M, DayPhase.DAY).assertTextEquals("Bun")
+        cell(HfBand.BAND_15M, DayPhase.NIGHT).assertTextEquals("Slab")
+        cell(HfBand.BAND_17M, DayPhase.TWILIGHT).assertTextEquals("Mediu")
+    }
+
+    @Test
+    fun table_columnOfNow_readFromTheStatesEstimate() {
+        // A state whose estimate differs from the calculator at night: the night column shows the state's values
+        val allGood = HfBand.entries.map { BandEstimate(it, GOOD) }
+        show(withEstimate.copy(estimate = allGood, phase = DayPhase.NIGHT, isDay = false))
+        select(PropagationTags.band(BandGroup.BANDS_12_10))
+        cell(HfBand.BAND_10M, DayPhase.NIGHT).assertTextEquals("Bun")
+        cell(HfBand.BAND_10M, DayPhase.DAY).assertTextEquals(calculated(HfBand.BAND_10M, DayPhase.DAY, 93.0, 0.0))
+    }
+
+    @Test
+    fun table_withoutSfi_unknownWhereTheCalculatorNeedsIt_andSaysWhy() {
+        show(
+            withEstimate.copy(
+                solarFlux = null,
+                estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, null, 0.0),
+            ),
+        )
+        select(PropagationTags.band(BandGroup.BANDS_30_20))
+        cell(HfBand.BAND_30M, DayPhase.DAY).assertTextEquals("Necunoscut") // needs SFI by day
+        cell(HfBand.BAND_30M, DayPhase.NIGHT).assertTextEquals("Bun") // never needs SFI at night
+        cell(HfBand.BAND_20M, DayPhase.NIGHT).assertTextEquals("Necunoscut")
+        cell(HfBand.BAND_20M, DayPhase.DAY).assertTextEquals("Bun")
+        compose.onNodeWithText("Lipsesc SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
+        assertColor(colors.unknown.container, boxColor(PropagationTags.estimateCell(HfBand.BAND_30M, DayPhase.DAY)))
+    }
+
+    @Test
+    fun table_withoutK_everythingUnknown_nothingInvented() {
+        show(withEstimate.copy(kIndex = null, estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, 93.0, null)))
+        for ((group, bands) in groupBands) {
+            select(PropagationTags.band(group))
+            for (band in bands) for (phase in DayPhase.entries) cell(band, phase).assertTextEquals("Necunoscut")
+            compose.onNodeWithText("Lipsesc SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun table_strongStorm_k7_everythingPoor_asTheCalculator() {
+        show(
+            withEstimate.copy(
+                kIndex = IndexUi("7", POOR),
+                estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, 93.0, 7.0),
+            ),
+        )
+        for ((group, bands) in groupBands) {
+            select(PropagationTags.band(group))
+            for (band in bands) for (phase in DayPhase.entries) {
+                cell(band, phase).assertTextEquals("Slab")
+                assertEquals("Slab", calculated(band, phase, 93.0, 7.0))
+            }
+        }
+        compose.onNodeWithText("Lipsesc SFI", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun table_coloursOfTheLevels() {
+        show(withEstimate)
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
+        assertColor(colors.poor.container, boxColor(PropagationTags.estimateCell(HfBand.BAND_80M, DayPhase.DAY)))
+        assertColor(colors.good.container, boxColor(PropagationTags.estimateCell(HfBand.BAND_80M, DayPhase.NIGHT)))
+        assertColor(colors.fair.container, boxColor(PropagationTags.estimateCell(HfBand.BAND_40M, DayPhase.DAY)))
+    }
+
+    @Test
+    fun table_sourceNote_andNoN0nbh() {
+        show(withEstimate)
+        select(PropagationTags.band(BandGroup.BANDS_30_20))
+        compose.onNodeWithText("Estimare offline").assertIsDisplayed()
+        compose.onNodeWithText("Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.").assertIsDisplayed()
+        compose.onNodeWithText("Lipsesc SFI", substring = true).assertDoesNotExist()
+        assertNoN0nbh()
+    }
+
+    @Test
+    fun panel_sfiThenKThenAGroup_followsTheSelection_oneSelectedAtATime() {
         show(withEstimate)
         select(PropagationTags.SFI)
         panelTitle().assertTextEquals("Solar Flux Index (SFI)")
         select(PropagationTags.K)
         panelTitle().assertTextEquals("Indice K")
         compose.onNodeWithTag(PropagationTags.SFI).assertIsNotSelected()
-        select(PropagationTags.estimate(HfBand.BAND_40M))
-        panelTitle().assertTextEquals("40 m · ${HfBand.BAND_40M.frequencies}")
-        select(PropagationTags.estimate(HfBand.BAND_15M))
-        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
+        panelValue().assertTextEquals("80-40m")
+        select(PropagationTags.band(BandGroup.BANDS_17_15))
+        panelValue().assertTextEquals("17-15m")
         compose.onNodeWithTag(PropagationTags.K).assertIsNotSelected()
-        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_40M)).assertIsNotSelected()
-        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsNotSelected()
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_17_15)).assertIsSelected()
         // A second tap on the same box keeps it: nothing to close
-        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).performClick()
-        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_17_15)).performClick()
+        panelValue().assertTextEquals("17-15m")
         assertNoDialogNorButtons()
     }
 
     @Test
     fun panel_selectingKeepsTheBoxesSize() {
         show()
-        val before = compose.onNodeWithTag(PropagationTags.K).fetchSemanticsNode().size
-        select(PropagationTags.K)
-        assertEquals(before, compose.onNodeWithTag(PropagationTags.K).fetchSemanticsNode().size)
+        for (tag in listOf(PropagationTags.K, PropagationTags.band(BandGroup.BANDS_12_10))) {
+            val before = compose.onNodeWithTag(tag).fetchSemanticsNode().size
+            select(tag)
+            assertEquals(before, compose.onNodeWithTag(tag).fetchSemanticsNode().size)
+        }
     }
 
     @Test
@@ -498,13 +609,15 @@ class PropagationCardTest {
                 DashboardScreen(dashboard(propagation), selectedTab = AppTab.PROPAGATION) {}
             }
         }
-        select(PropagationTags.K)
-        panelValue().assertTextEquals("0")
-        propagation = withEstimate.copy(kIndex = IndexUi("4", FAIR)) // the next N0NBH update
+        select(PropagationTags.band(BandGroup.BANDS_30_20))
+        cell(HfBand.BAND_20M, DayPhase.NIGHT).assertTextEquals(calculated(HfBand.BAND_20M, DayPhase.NIGHT, 93.0, 0.0))
+        propagation = withEstimate.copy( // the next N0NBH update: more flux
+            solarFlux = IndexUi("125", GOOD),
+            estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, 125.0, 0.0),
+        )
         compose.waitForIdle()
-        panelValue().assertTextEquals("4")
-        panelSubtitle().assertTextEquals("Activ")
-        compose.onNodeWithTag(PropagationTags.K).assertIsSelected()
+        cell(HfBand.BAND_20M, DayPhase.NIGHT).assertTextEquals(calculated(HfBand.BAND_20M, DayPhase.NIGHT, 125.0, 0.0))
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_30_20)).assertIsSelected()
     }
 
     @Test
@@ -515,10 +628,11 @@ class PropagationCardTest {
                 DashboardScreen(dashboard(withEstimate), selectedTab = AppTab.PROPAGATION) {}
             }
         }
-        select(PropagationTags.estimate(HfBand.BAND_15M))
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
-        panelValue().assertTextEquals("15m")
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsSelected()
+        panelValue().assertTextEquals("80-40m")
+        compose.onNodeWithTag(PropagationTags.estimateRow(HfBand.BAND_60M)).assertExists()
     }
 
     @Test
@@ -535,9 +649,11 @@ class PropagationCardTest {
 
     @Test
     fun panel_staleData_stillExplained() {
-        show(data.copy(status = PropagationState.Status.STALE, updated = "30 sept. 21:00"))
+        show(withEstimate.copy(status = PropagationState.Status.STALE, updated = "30 sept. 21:00"))
         select(PropagationTags.SFI)
         panelValue().assertTextEquals("93")
+        select(PropagationTags.band(BandGroup.BANDS_30_20))
+        compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertIsDisplayed()
     }
 
     @Test
@@ -545,7 +661,7 @@ class PropagationCardTest {
         show(withEstimate)
         compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
         compose.onNodeWithText("Propagare HF", substring = true, ignoreCase = true).assertDoesNotExist()
-        for (tag in listOf(PropagationTags.SFI, PropagationTags.band(BandGroup.BANDS_30_20), PropagationTags.estimate(HfBand.BAND_20M))) {
+        for (tag in listOf(PropagationTags.SFI, PropagationTags.band(BandGroup.BANDS_30_20))) {
             select(tag)
             assertNoN0nbh()
         }
@@ -557,14 +673,15 @@ class PropagationCardTest {
         select(PropagationTags.K)
         panelTitle().assertTextEquals("Indice K")
         assertColor(colors.good.container, boxColor(PropagationTags.PANEL_VALUE))
-        select(PropagationTags.estimate(HfBand.BAND_10M))
+        select(PropagationTags.band(BandGroup.BANDS_12_10))
         assertColor(colors.poor.container, boxColor(PropagationTags.PANEL_VALUE))
+        assertColor(colors.poor.container, boxColor(PropagationTags.estimateCell(HfBand.BAND_10M, DayPhase.NIGHT)))
     }
 
     @Test
     @Config(qualifiers = "en-w411dp-h891dp")
     fun panel_inEnglish() {
-        show(withEstimate.copy(phase = DayPhase.NIGHT))
+        show(withEstimate.copy(kIndex = IndexUi("0", GOOD), solarFlux = null, estimate = OfflinePropagationCalculator.estimate(DayPhase.DAY, null, 0.0)))
         compose.onNodeWithTag(PropagationTags.PANEL_HINT).performScrollTo().assertTextEquals("Tap an index or a band for details.")
         select(PropagationTags.K)
         panelTitle().assertTextEquals("K index")
@@ -573,16 +690,16 @@ class PropagationCardTest {
         select(PropagationTags.A)
         panelTitle().assertTextEquals("A index")
         panelSubtitle().assertTextEquals("Quiet or unsettled")
-        select(PropagationTags.SFI)
-        panelSubtitle().assertTextEquals("Fair")
-        select(PropagationTags.band(BandGroup.BANDS_80_40))
-        panelTitle().assertTextEquals("Now: Fair")
-        for (text in listOf("By day", "At night")) compose.onNodeWithText(text).assertIsDisplayed()
-        compose.onNodeWithText("It is daytime at the station now.").assertDoesNotExist()
-        select(PropagationTags.estimate(HfBand.BAND_160M))
-        panelSubtitle().assertTextEquals("Estimate: Poor")
-        compose.onNodeWithText("It is night at the station now.").assertDoesNotExist()
+        select(PropagationTags.band(BandGroup.BANDS_30_20))
+        panelTitle().assertTextEquals("Good")
+        for (text in listOf("By day", "At night", "Offline estimate", "Band", "Day", "Twilight", "Night", "30 m", "20 m")) {
+            compose.onNodeWithText(text).assertIsDisplayed()
+        }
+        cell(HfBand.BAND_30M, DayPhase.DAY).assertTextEquals("Unknown")
+        cell(HfBand.BAND_30M, DayPhase.NIGHT).assertTextEquals("Good")
+        compose.onNodeWithText("SFI or the K index is missing, so there is no estimate.").assertIsDisplayed()
         compose.onNodeWithText("Offline estimate, calculated on the phone from SFI, K and the Sun at the station.").assertIsDisplayed()
+        compose.onNodeWithText("daytime at the station", substring = true).assertDoesNotExist()
         assertNoN0nbh()
     }
 
@@ -596,4 +713,9 @@ class PropagationCardTest {
     )
 
     private fun hasAnyAncestorTag(tag: String) = androidx.compose.ui.test.hasAnyAncestor(hasTestTag(tag))
+
+    private fun hasTestTagStartingWith(prefix: String) = androidx.compose.ui.test.SemanticsMatcher("test tag starts with $prefix") {
+        androidx.compose.ui.semantics.SemanticsProperties.TestTag in it.config &&
+            it.config[androidx.compose.ui.semantics.SemanticsProperties.TestTag].startsWith(prefix)
+    }
 }

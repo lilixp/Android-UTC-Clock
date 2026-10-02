@@ -15,13 +15,13 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
-import io.github.lilixp.utcradioclock.domain.model.BandEstimate
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.FAIR
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.GOOD
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
+import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.BandUi
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
@@ -39,8 +39,9 @@ import org.junit.runner.RunWith
 
 /**
  * The Propagation screen's details panel on the real phone, with its font and text size (the S24+ at
- * 1.3): every box opens its explanation under the card, and every text there is whole (no line wider than
- * its place, no word broken in two), in the phone's language, Light and Dark.
+ * 1.3): every box (SFI, K, A, the four groups) opens its explanation under the card, the groups with their
+ * offline estimate table, and every text there is whole (no line wider than its place, no word broken in
+ * two), in the phone's language, Light and Dark.
  */
 @RunWith(AndroidJUnit4::class)
 class PropagationPanelInstrumentedTest {
@@ -60,12 +61,18 @@ class PropagationPanelInstrumentedTest {
             BandUi(BandGroup.BANDS_12_10, now = POOR, day = POOR, night = POOR),
         ),
         dayNightByClock = true,
-        estimate = HfBand.entries.map { BandEstimate(it, if (it == HfBand.BAND_160M) null else FAIR) },
+        estimate = OfflinePropagationCalculator.estimate(DayPhase.TWILIGHT, 152.4, 5.0),
         phase = DayPhase.TWILIGHT,
         updated = "05:29",
     )
 
-    private fun show(dark: Boolean) {
+    /** Without SFI: many levels are "Necunoscut", the longest word of the estimate table. */
+    private val withoutSfi = propagation.copy(
+        solarFlux = null,
+        estimate = OfflinePropagationCalculator.estimate(DayPhase.TWILIGHT, null, 5.0),
+    )
+
+    private fun show(dark: Boolean, propagation: PropagationUiState = this.propagation) {
         compose.setContent {
             UTCRadioClockTheme(darkTheme = dark) {
                 DashboardScreen(
@@ -117,19 +124,19 @@ class PropagationPanelInstrumentedTest {
         assertPanelTextsWhole(tag)
     }
 
-    private fun everyKindOfBox(dark: Boolean) {
-        show(dark)
+    private fun everyKindOfBox(dark: Boolean, propagation: PropagationUiState = this.propagation) {
+        show(dark, propagation)
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
         compose.onNodeWithTag(PropagationTags.PANEL_HINT).assertIsDisplayed()
         assertPanelTextsWhole("hint")
         for (tag in listOf(
             PropagationTags.SFI, PropagationTags.K, PropagationTags.A,
-            PropagationTags.band(BandGroup.BANDS_80_40), PropagationTags.band(BandGroup.BANDS_12_10),
-            PropagationTags.estimate(HfBand.BAND_160M), PropagationTags.estimate(HfBand.BAND_15M),
-            PropagationTags.estimate(HfBand.BAND_17M),
-        )) {
+        ) + BandGroup.entries.map { PropagationTags.band(it) }) {
             tapAndCheck(tag)
         }
+        // A group's estimate table: on the screen, under the card, none of it cut
+        compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_10M, DayPhase.NIGHT)).assertIsDisplayed()
     }
 
     @Test
@@ -137,4 +144,7 @@ class PropagationPanelInstrumentedTest {
 
     @Test
     fun everyKindOfBox_explainedUnderTheCard_textsWhole_dark() = everyKindOfBox(dark = true)
+
+    @Test
+    fun withoutSfi_unknownLevelsFitTheTable() = everyKindOfBox(dark = false, propagation = withoutSfi)
 }
