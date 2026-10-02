@@ -150,9 +150,10 @@ class MainActivityTest {
 
         // No locator: 18:42 local is night by the clock; the feed has the same values day and night
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
-        compose.onNodeWithText("Ziua: Mediu • Noaptea: Mediu").assertIsDisplayed()
-        compose.onNodeWithText("Condiții calculate de N0NBH (hamqsl.com).").assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
+        compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Acum: Mediu")
+        compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertTextEquals("Acum e noapte la stație.")
+        compose.onNodeWithText("OK").assertDoesNotExist() // no dialog: the panel under the card explains it
     }
 
     @Test
@@ -173,8 +174,8 @@ class MainActivityTest {
         compose.onNodeWithContentDescription("160m: Slab").assertIsDisplayed()
         compose.onNodeWithContentDescription("10m: Slab").assertIsDisplayed() // SFI 93 is below 95
         compose.onNodeWithContentDescription("20m: Bun").performClick()
-        compose.onNodeWithText("Estimare: Bun").assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
+        compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertTextEquals("Estimare: Bun")
     }
 
     @Test

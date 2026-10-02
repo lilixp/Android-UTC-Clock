@@ -97,7 +97,7 @@ Observații (cele două corecții de logică sunt **rezolvate în Faza A**; indi
   concursuri se analizează separat, înainte de implementare. Acum nu există nicio listă de concursuri
   în cod și nu trebuie introdusă una.
 - **Acasă** minimalist: data, `ER1PL / KN46dw`, UTC și LOCAL.
-- **Soare**, **Locație** și **Propagare HF** în ecrane separate.
+- **Soare**, **Locație** și **Propagare** în ecrane separate.
 - Observațiile de mai sus despre GPS (indicatorul „ultima poziție”, „GPS oprit — se folosește ultima
   poziție”) și tragerea în jos se fac odată cu redesignul.
 - Din testarea autonomă pe S24+ (`PHONE_TEST_REPORT.md`, `NEXT_STAGE_ANALYSIS.md`), tot pentru
@@ -105,6 +105,32 @@ Observații (cele două corecții de logică sunt **rezolvate în Faza A**; indi
   lângă dată; etichetele benzilor și „Întunecat” la limită; data lângă orele Soarelui care cad în altă
   zi (locator departe de fusul telefonului); eroarea afișată chiar la câmpul locator din Setări;
   peisaj; testarea la mai multe dimensiuni de font.
+
+## Ecranul Propagare: panoul de detalii (2 octombrie 2026)
+
+Decizii (cerința lui Lilian pentru redesignul ecranului Propagare):
+
+- **Cardul de sus rămâne neschimbat:** SFI, K, A, cele 4 grupuri, „Actualizat … UTC”,
+  „Estimare offline · 10 benzi” și cele 10 benzi, cu aceleași culori și niveluri. Titlul rămâne
+  „PROPAGARE”; nu „Propagare HF”. N0NBH nu apare în ecranul principal; sursa e în Setări → Despre.
+- **Fără dialoguri:** apăsarea unei căsuțe afișează explicația în panoul de sub card (doar contur,
+  pe culoarea paginii). Fără OK, X, popup sau Snackbar. Explicația rămâne până la altă căsuță sau
+  până la ieșirea din ecran; a doua apăsare pe aceeași căsuță o păstrează. La intrare:
+  „Apasă pe un indice sau pe o bandă pentru detalii.”
+- **Selecția:** un inel subțire chiar în afara căsuței, în culoarea textului temei. Căsuța își păstrează
+  mărimea și culoarea. O singură selecție, ținută în UI (`rememberSaveable`, păstrată la rotire);
+  fără ViewModel nou. Panoul citește aceeași stare ca restul ecranului, deci urmează orice actualizare
+  N0NBH fără ticker sau flux nou.
+- **SFI, K, A:** valoarea mare, în culoarea nivelului; titlul („Indice K”); nivelul de acum;
+  explicația; „Valori orientative” = exact scara `IndexScales` care colorează căsuțele (pragurile au
+  devenit constante publice, logica e aceeași). K: 0–3 liniștit, 4 activ, ≥ 5 furtună.
+- **Grupuri:** nivelul de acum, zi/noapte la stație, ziua și noaptea (N0NBH), „fără locator, după ceas”.
+- **Benzi:** estimarea din `OfflinePropagationCalculator`, faza zilei (`SolarDay.phaseAt`), motivul
+  pentru „Necunoscut” (fără poziție / lipsesc SFI sau K), explicația benzii.
+- **Texte schimbate:** explicația lui K nu mai repetă scara, care e acum în „Valori orientative”;
+  „Estimare offline…” și „Lipsesc SFI sau indicele K…” nu mai pomenesc N0NBH.
+- **Font 1,3 pe S24+:** SFI, K și A au nevoie de o derulare scurtă (~50 dp) ca să se vadă și
+  „Valori orientative”. Nimic nu e tăiat; grupurile și benzile încap fără derulare.
 
 ## Faza A — corecții funcționale (1 octombrie 2026)
 

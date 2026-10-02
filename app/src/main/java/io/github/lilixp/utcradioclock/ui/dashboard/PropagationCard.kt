@@ -1,27 +1,41 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,9 +47,10 @@ import io.github.lilixp.utcradioclock.domain.model.BandGroup
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
+import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
 import io.github.lilixp.utcradioclock.ui.theme.LocalConditionColors
 
-/** Test tags of the PROPAGATION card. */
+/** Test tags of the PROPAGATION card and of the details panel under it. */
 object PropagationTags {
     const val SFI = "propagation_sfi"
     const val K = "propagation_k"
@@ -43,22 +58,48 @@ object PropagationTags {
     const val ESTIMATE_TITLE = "estimate_title"
     fun band(group: BandGroup) = "propagation_band_${group.range}"
     fun estimate(band: HfBand) = "estimate_band_${band.meters}"
+
+    /** The panel under the card, which explains the selected box. */
+    const val PANEL = "propagation_panel"
+
+    /** "Tap an index or a band for details.", while nothing is selected. */
+    const val PANEL_HINT = "propagation_panel_hint"
+
+    /** The selected box's value, large ("1" for K 1, "15m" for 15 m). */
+    const val PANEL_VALUE = "propagation_panel_value"
+    const val PANEL_TITLE = "propagation_panel_title"
+    const val PANEL_SUBTITLE = "propagation_panel_subtitle"
+
+    /** The reference values of SFI, K or A. */
+    const val REFERENCE_VALUES = "propagation_reference_values"
 }
 
-/** What the card's one dialog shows: an index (SFI, K, A), a N0NBH band group or an estimated band. */
-private const val DIALOG_SFI = "SFI"
-private const val DIALOG_K = "K"
-private const val DIALOG_A = "A"
+/** What the panel explains: an index (SFI, K, A), a band group or an estimated band (by its name). */
+private const val SELECTED_SFI = "SFI"
+private const val SELECTED_K = "K"
+private const val SELECTED_A = "A"
 
-private val BoxShape = RoundedCornerShape(8.dp)
+/** The boxes' corners, and the selection ring around them: 2 dp wide, 1.5 dp away (inside the 4 dp gaps). */
+private val BOX_CORNER = 8.dp
+private val SELECTION_RING_WIDTH = 2.dp
+private val SELECTION_RING_GAP = 1.5.dp
+
+private val BoxShape = RoundedCornerShape(BOX_CORNER)
 
 /**
  * N0NBH's data first: SFI, K and A on the first row, the four band groups on the second, each in its
  * colour, and when N0NBH updated them. Then, apart and marked as such, the offline estimate for the ten
- * HF bands. A tap on an index or a band explains it. Without data: a clear message, never invented values.
+ * HF bands. Without data: a clear message, never invented values.
+ *
+ * Under the card, a panel explains the box last tapped (no dialog, nothing to close): it stays until
+ * another box is tapped or the screen is left, and shows the current data, so it follows every update.
  */
 @Composable
 internal fun PropagationCard(propagation: PropagationUiState) {
+    // The one selection of this screen: kept through a rotation, forgotten when another section is opened
+    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    val hasData = propagation.status == PropagationState.Status.CURRENT ||
+        propagation.status == PropagationState.Status.STALE
     InfoCard(R.string.section_propagation) {
         when (propagation.status) {
             PropagationState.Status.LOADING ->
@@ -75,34 +116,31 @@ internal fun PropagationCard(propagation: PropagationUiState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            PropagationState.Status.CURRENT, PropagationState.Status.STALE -> PropagationData(propagation)
+            PropagationState.Status.CURRENT, PropagationState.Status.STALE ->
+                PropagationData(propagation, selected) { selected = it }
         }
     }
+    if (hasData) DetailsPanel(propagation, selected)
 }
 
 @Composable
-private fun PropagationData(propagation: PropagationUiState) {
-    // One dialog at a time, kept through a rotation: an index, a band group (its name) or a band (its name)
-    var openDialog by rememberSaveable { mutableStateOf<String?>(null) }
+private fun PropagationData(propagation: PropagationUiState, selected: String?, onSelect: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            IndexBox(R.string.index_sfi, propagation.solarFlux, PropagationTags.SFI, Modifier.weight(1f)) {
-                openDialog = DIALOG_SFI
-            }
-            IndexBox(R.string.index_k, propagation.kIndex, PropagationTags.K, Modifier.weight(1f)) {
-                openDialog = DIALOG_K
-            }
-            IndexBox(R.string.index_a, propagation.aIndex, PropagationTags.A, Modifier.weight(1f)) {
-                openDialog = DIALOG_A
+            for ((key, format, index, tag) in listOf(
+                IndexBoxData(SELECTED_SFI, R.string.index_sfi, propagation.solarFlux, PropagationTags.SFI),
+                IndexBoxData(SELECTED_K, R.string.index_k, propagation.kIndex, PropagationTags.K),
+                IndexBoxData(SELECTED_A, R.string.index_a, propagation.aIndex, PropagationTags.A),
+            )) {
+                IndexBox(format, index, tag, selected == key, Modifier.weight(1f)) { onSelect(key) }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (band in propagation.bands) {
-                BandBox(band, Modifier.weight(1f)) { openDialog = band.group.name }
+                BandBox(band, selected == band.group.name, Modifier.weight(1f)) { onSelect(band.group.name) }
             }
         }
-        // Only when N0NBH last updated the data (UTC); the source is named in the band dialog and in
-        // Settings → About the app
+        // Only when N0NBH last updated the data (UTC); the source is named in Settings → About the app
         val updated = propagation.updated
         val stale = propagation.status == PropagationState.Status.STALE
         val footer = when {
@@ -119,32 +157,19 @@ private fun PropagationData(propagation: PropagationUiState) {
             )
         }
         if (propagation.estimate.isNotEmpty()) {
-            Estimate(propagation.estimate, Modifier.padding(top = 10.dp)) { openDialog = it.name }
-        }
-    }
-    val close = { openDialog = null }
-    when (openDialog) {
-        null -> Unit
-        DIALOG_SFI -> InfoDialog(R.string.propagation_sfi_title, R.string.propagation_sfi_dialog, close)
-        DIALOG_K -> InfoDialog(R.string.propagation_k_title, R.string.propagation_k_dialog, close)
-        DIALOG_A -> InfoDialog(R.string.propagation_a_title, R.string.propagation_a_dialog, close)
-        else -> {
-            propagation.bands.firstOrNull { it.group.name == openDialog }?.let { band ->
-                BandDialog(band, propagation.isDay, propagation.dayNightByClock, close)
-            }
-            propagation.estimate.firstOrNull { it.band.name == openDialog }?.let { estimate ->
-                EstimateDialog(estimate, propagation.phase, close)
-            }
+            Estimate(propagation.estimate, selected, Modifier.padding(top = 10.dp)) { onSelect(it.name) }
         }
     }
 }
+
+private data class IndexBoxData(val key: String, @StringRes val format: Int, val index: IndexUi?, val tag: String)
 
 /**
  * The offline estimate, under its own title so it is not taken for N0NBH data: the ten bands in two
  * rows of five, each in the colour of its estimated level (neutral when unknown).
  */
 @Composable
-private fun Estimate(estimate: List<BandEstimate>, modifier: Modifier, onOpen: (HfBand) -> Unit) {
+private fun Estimate(estimate: List<BandEstimate>, selected: String?, modifier: Modifier, onSelect: (HfBand) -> Unit) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = stringResource(R.string.estimate_title),
@@ -155,21 +180,50 @@ private fun Estimate(estimate: List<BandEstimate>, modifier: Modifier, onOpen: (
         )
         for (row in estimate.chunked(BANDS_PER_ROW)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (item in row) EstimateBox(item, Modifier.weight(1f)) { onOpen(item.band) }
+                for (item in row) {
+                    EstimateBox(item, selected == item.band.name, Modifier.weight(1f)) { onSelect(item.band) }
+                }
             }
         }
     }
 }
 
+/**
+ * The selected box: a thin ring just outside it, in the text colour of the theme (dark in Light, light in
+ * Dark), so it shows on green, yellow and red alike; the box itself keeps its size and colour.
+ */
+private fun Modifier.selectionRing(selected: Boolean, color: Color): Modifier =
+    if (!selected) this else drawBehind {
+        val width = SELECTION_RING_WIDTH.toPx()
+        val outset = SELECTION_RING_GAP.toPx() + width / 2
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(-outset, -outset),
+            size = Size(size.width + 2 * outset, size.height + 2 * outset),
+            cornerRadius = CornerRadius(BOX_CORNER.toPx() + outset),
+            style = Stroke(width),
+        )
+    }
+
 /** A box such as "SFI 93", coloured by its level; "SFI —" in the neutral colour when not reported. A tap explains it. */
 @Composable
-private fun IndexBox(@StringRes format: Int, index: IndexUi?, tag: String, modifier: Modifier, onClick: () -> Unit) {
+private fun IndexBox(
+    @StringRes format: Int,
+    index: IndexUi?,
+    tag: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalConditionColors.current.of(index?.level)
     Surface(
         shape = BoxShape,
         color = colors.container,
         contentColor = colors.content,
-        modifier = modifier.testTag(tag).clickable(role = Role.Button, onClick = onClick),
+        modifier = modifier
+            .selectionRing(selected, MaterialTheme.colorScheme.onSurface)
+            .testTag(tag)
+            .selectable(selected = selected, role = Role.Button, onClick = onClick),
     ) {
         Text(
             text = stringResource(format, index?.value ?: stringResource(R.string.not_available)),
@@ -182,9 +236,9 @@ private fun IndexBox(@StringRes format: Int, index: IndexUi?, tag: String, modif
     }
 }
 
-/** A band group box ("80-40m") in the colour of its condition now; a tap opens the explanation. */
+/** A band group box ("80-40m") in the colour of its condition now; a tap explains it. */
 @Composable
-private fun BandBox(band: BandUi, modifier: Modifier, onClick: () -> Unit) {
+private fun BandBox(band: BandUi, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = LocalConditionColors.current.of(band.now)
     val description = stringResource(R.string.band_description, band.group.label, levelName(band.now))
     Surface(
@@ -192,8 +246,9 @@ private fun BandBox(band: BandUi, modifier: Modifier, onClick: () -> Unit) {
         color = colors.container,
         contentColor = colors.content,
         modifier = modifier
+            .selectionRing(selected, MaterialTheme.colorScheme.onSurface)
             .testTag(PropagationTags.band(band.group))
-            .clickable(role = Role.Button, onClick = onClick)
+            .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
     ) {
         Text(
@@ -207,9 +262,9 @@ private fun BandBox(band: BandUi, modifier: Modifier, onClick: () -> Unit) {
     }
 }
 
-/** An estimated band box ("20m") in the colour of its estimated level; a tap opens the explanation. */
+/** An estimated band box ("20m") in the colour of its estimated level; a tap explains it. */
 @Composable
-private fun EstimateBox(item: BandEstimate, modifier: Modifier, onClick: () -> Unit) {
+private fun EstimateBox(item: BandEstimate, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = LocalConditionColors.current.of(item.level)
     val description = stringResource(R.string.band_description, item.band.label, estimateLevelName(item.level))
     Surface(
@@ -217,8 +272,9 @@ private fun EstimateBox(item: BandEstimate, modifier: Modifier, onClick: () -> U
         color = colors.container,
         contentColor = colors.content,
         modifier = modifier
+            .selectionRing(selected, MaterialTheme.colorScheme.onSurface)
             .testTag(PropagationTags.estimate(item.band))
-            .clickable(role = Role.Button, onClick = onClick)
+            .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
     ) {
         Text(
@@ -232,75 +288,260 @@ private fun EstimateBox(item: BandEstimate, modifier: Modifier, onClick: () -> U
     }
 }
 
-/** What SFI, K or A means. */
+/**
+ * The panel under the card: what the selected box means, from the same data as the box (so it follows
+ * every update), or a short hint while nothing is selected. Only an outline, on the page's own colour:
+ * part of the screen, not a second card; it grows with its text (large font), nothing is cut.
+ */
 @Composable
-private fun InfoDialog(@StringRes title: Int, @StringRes text: Int, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
-        title = { Text(stringResource(title)) },
-        text = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },
-    )
+private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(PropagationTags.PANEL)
+            // TalkBack reads the new explanation after a tap
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val group = propagation.bands.firstOrNull { it.group.name == selected }
+            val estimate = propagation.estimate.firstOrNull { it.band.name == selected }
+            when {
+                selected == SELECTED_SFI -> IndexDetails(IndexKind.SFI, propagation.solarFlux)
+                selected == SELECTED_K -> IndexDetails(IndexKind.K, propagation.kIndex)
+                selected == SELECTED_A -> IndexDetails(IndexKind.A, propagation.aIndex)
+                group != null -> GroupDetails(group, propagation.isDay, propagation.dayNightByClock)
+                estimate != null -> EstimateDetails(estimate, propagation.phase)
+                else -> Text(
+                    text = stringResource(R.string.propagation_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                        .testTag(PropagationTags.PANEL_HINT),
+                )
+            }
+        }
+    }
 }
 
 /**
- * "20 m · 14.0–14.35 MHz / Estimare: Bun / Acum e zi la stație. / what the band is like / where the
- * estimate comes from" — or why there is none.
+ * The value of the selected box, large, in its colour ("1" for K 1), beside what it is ("Indice K") and,
+ * under that, what it means now ("Liniștit").
  */
 @Composable
-private fun EstimateDialog(estimate: BandEstimate, phase: DayPhase?, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
-        title = { Text(stringResource(R.string.hf_band_title, estimate.band.meters, estimate.band.frequencies)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun PanelHeader(value: String, level: ConditionLevel?, title: String, subtitle: String?, numeric: Boolean) {
+    val colors = LocalConditionColors.current.of(level)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(shape = RoundedCornerShape(10.dp), color = colors.container, contentColor = colors.content) {
+            Text(
+                text = value,
+                style = (if (numeric) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge)
+                    .copy(fontFeatureSettings = TABULAR_DIGITS),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .testTag(PropagationTags.PANEL_VALUE)
+                    .widthIn(min = 56.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.testTag(PropagationTags.PANEL_TITLE),
+            )
+            subtitle?.let {
                 Text(
-                    text = stringResource(R.string.estimate_level, estimateLevelName(estimate.level)),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    stringResource(
-                        when (phase) {
-                            DayPhase.DAY -> R.string.band_now_day
-                            DayPhase.TWILIGHT -> R.string.band_now_twilight
-                            DayPhase.NIGHT -> R.string.band_now_night
-                            null -> R.string.estimate_no_position
-                        },
-                    ),
-                )
-                if (estimate.level == null && phase != null) Text(stringResource(R.string.estimate_no_data))
-                Text(stringResource(bandExplanation(estimate.band)), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = stringResource(R.string.estimate_source),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(PropagationTags.PANEL_SUBTITLE),
                 )
             }
-        },
+        }
+    }
+}
+
+/** One step of an index's scale: its values ("0–3"), the level (colour) it gives and what it means. */
+private class ReferenceValue(val values: String, val level: ConditionLevel, @StringRes val meaning: Int)
+
+/** "0–3" for 0 up to (not including) 4, "4" for 4 alone: whole numbers, as N0NBH publishes them. */
+private fun valuesFrom(from: Int, until: Int) = if (until - from == 1) "$from" else "$from–${until - 1}"
+
+/**
+ * SFI, K and A: their title, explanation and scale. The scale is [IndexScales]' own, the one that colours
+ * the boxes, so the reference values and the colours never disagree.
+ */
+private enum class IndexKind(@StringRes val title: Int, @StringRes val explanation: Int, val scale: List<ReferenceValue>) {
+    SFI(
+        R.string.propagation_sfi_title,
+        R.string.propagation_sfi_dialog,
+        listOf(
+            ReferenceValue("< ${IndexScales.SFI_FAIR}", ConditionLevel.POOR, R.string.level_poor),
+            ReferenceValue(valuesFrom(IndexScales.SFI_FAIR, IndexScales.SFI_GOOD), ConditionLevel.FAIR, R.string.level_fair),
+            ReferenceValue("≥ ${IndexScales.SFI_GOOD}", ConditionLevel.GOOD, R.string.sfi_good),
+        ),
+    ),
+    K(
+        R.string.propagation_k_title,
+        R.string.propagation_k_dialog,
+        listOf(
+            ReferenceValue(valuesFrom(0, IndexScales.K_ACTIVE), ConditionLevel.GOOD, R.string.index_k_quiet),
+            ReferenceValue(valuesFrom(IndexScales.K_ACTIVE, IndexScales.K_STORM), ConditionLevel.FAIR, R.string.index_active),
+            ReferenceValue("≥ ${IndexScales.K_STORM}", ConditionLevel.POOR, R.string.index_storm),
+        ),
+    ),
+    A(
+        R.string.propagation_a_title,
+        R.string.propagation_a_dialog,
+        listOf(
+            ReferenceValue(valuesFrom(0, IndexScales.A_ACTIVE), ConditionLevel.GOOD, R.string.index_a_quiet),
+            ReferenceValue(valuesFrom(IndexScales.A_ACTIVE, IndexScales.A_STORM), ConditionLevel.FAIR, R.string.index_active),
+            ReferenceValue("≥ ${IndexScales.A_STORM}", ConditionLevel.POOR, R.string.index_storm),
+        ),
+    ),
+    ;
+
+    /** What a level means for this index, e.g. "Liniștit" for a good K. */
+    @StringRes
+    fun meaning(level: ConditionLevel): Int = scale.first { it.level == level }.meaning
+}
+
+/** "93 · Solar Flux Index (SFI) · Mediu", the explanation, then the reference values, the current one in bold. */
+@Composable
+private fun IndexDetails(kind: IndexKind, index: IndexUi?) {
+    PanelHeader(
+        value = index?.value ?: stringResource(R.string.not_available),
+        level = index?.level,
+        title = stringResource(kind.title),
+        subtitle = index?.level?.let { stringResource(kind.meaning(it)) },
+        numeric = true,
+    )
+    Text(stringResource(kind.explanation), style = MaterialTheme.typography.bodyMedium)
+    Column(
+        modifier = Modifier.testTag(PropagationTags.REFERENCE_VALUES),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.reference_values),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Side by side, low to high: the three steps fit under the explanation even with large text
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (step in kind.scale) {
+                ReferenceStep(step, current = step.level == index?.level, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** One step of the scale: a bar in its colour, its values ("0–3") and what they mean; [current] in bold. */
+@Composable
+private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modifier) {
+    val weight = if (current) FontWeight.Bold else FontWeight.Normal
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (current) 6.dp else 4.dp)
+                .background(LocalConditionColors.current.of(step.level).container, RoundedCornerShape(2.dp)),
+        )
+        Text(
+            text = step.values,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
+            fontWeight = weight,
+        )
+        Text(text = stringResource(step.meaning), style = MaterialTheme.typography.bodySmall, fontWeight = weight)
+    }
+}
+
+/** "80-40m · Acum: Mediu · Acum e zi la stație.", then by day and by night, the one of now in bold. */
+@Composable
+private fun GroupDetails(band: BandUi, isDay: Boolean, dayNightByClock: Boolean) {
+    PanelHeader(
+        value = band.group.label,
+        level = band.now,
+        title = stringResource(R.string.group_now, levelName(band.now)),
+        subtitle = stringResource(if (isDay) R.string.band_now_day else R.string.band_now_night),
+        numeric = false,
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        LevelRow(band.day, stringResource(R.string.group_day), levelName(band.day), current = isDay)
+        LevelRow(band.night, stringResource(R.string.group_night), levelName(band.night), current = !isDay)
+    }
+    if (dayNightByClock) {
+        Text(
+            text = stringResource(R.string.band_day_by_clock),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * "15m · 15 m · 21.0–21.45 MHz · Estimare: Bun", day or night at the station (or why it is not known),
+ * why there is no estimate when there is none, what the band is like, where the estimate comes from.
+ */
+@Composable
+private fun EstimateDetails(estimate: BandEstimate, phase: DayPhase?) {
+    PanelHeader(
+        value = estimate.band.label,
+        level = estimate.level,
+        title = stringResource(R.string.hf_band_title, estimate.band.meters, estimate.band.frequencies),
+        subtitle = stringResource(R.string.estimate_level, estimateLevelName(estimate.level)),
+        numeric = false,
+    )
+    Text(
+        text = stringResource(
+            when (phase) {
+                DayPhase.DAY -> R.string.band_now_day
+                DayPhase.TWILIGHT -> R.string.band_now_twilight
+                DayPhase.NIGHT -> R.string.band_now_night
+                null -> R.string.estimate_no_position
+            },
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    if (estimate.level == null && phase != null) {
+        Text(stringResource(R.string.estimate_no_data), style = MaterialTheme.typography.bodyMedium)
+    }
+    Text(stringResource(bandExplanation(estimate.band)), style = MaterialTheme.typography.bodyMedium)
+    Text(
+        text = stringResource(R.string.estimate_source),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
-/** "80-40 m / Ziua: Mediu • Noaptea: Bun / Condiții calculate de N0NBH (hamqsl.com)." */
+/** A small square in a level's colour, a label ("0–3", "Ziua") and its meaning; [current] in bold. */
 @Composable
-private fun BandDialog(band: BandUi, isDay: Boolean, dayNightByClock: Boolean, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
-        title = { Text(stringResource(R.string.band_title, band.group.range)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = stringResource(R.string.band_day_night, levelName(band.day), levelName(band.night)),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(stringResource(if (isDay) R.string.band_now_day else R.string.band_now_night))
-                if (dayNightByClock) Text(stringResource(R.string.band_day_by_clock))
-                Text(stringResource(R.string.propagation_source))
-            }
-        },
-    )
+private fun LevelRow(level: ConditionLevel?, label: String, meaning: String, current: Boolean) {
+    val weight = if (current) FontWeight.Bold else FontWeight.Normal
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .background(LocalConditionColors.current.of(level).container, RoundedCornerShape(4.dp)),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
+            fontWeight = weight,
+            modifier = Modifier.widthIn(min = 72.dp),
+        )
+        Text(text = meaning, style = MaterialTheme.typography.bodyMedium, fontWeight = weight, modifier = Modifier.weight(1f))
+    }
 }
 
 /** An estimated level, or "Unknown" when the data it needs is missing. */

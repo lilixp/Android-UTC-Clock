@@ -61,7 +61,7 @@ object DashboardTags {
 }
 
 // Digits of equal width, so the time does not shift sideways as the seconds change
-private const val TABULAR_DIGITS = "tnum"
+internal const val TABULAR_DIGITS = "tnum"
 
 /**
  * The main screen: the app name with the station (callsign and locator) and the Settings button at the

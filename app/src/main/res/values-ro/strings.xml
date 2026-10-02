@@ -70,8 +70,6 @@
     <string name="propagation_updated">Actualizat %1$s UTC</string>
     <string name="propagation_stale">Date neactualizate · ultima actualizare %1$s UTC</string>
     <string name="propagation_stale_no_time">Date neactualizate</string>
-    <string name="propagation_source">Condiții calculate de N0NBH (hamqsl.com).</string>
-    <string name="band_day_night">Ziua: %1$s • Noaptea: %2$s</string>
     <string name="band_now_day">Acum e zi la stație.</string>
     <string name="band_now_night">Acum e noapte la stație.</string>
     <string name="band_day_by_clock">Fără locator, ziua este între 06:00 și 18:00 ora locală.</string>
@@ -82,17 +80,27 @@
 
     <string name="propagation_sfi_title">Solar Flux Index (SFI)</string>
     <string name="propagation_sfi_dialog">Măsoară emisia radio solară la 10.7 cm. Un SFI &gt; 90/120 favorizează benzile înalte (15m–10m) în timpul zilei.</string>
-    <string name="propagation_k_title">Indicele K (Geomagnetic)</string>
-    <string name="propagation_k_dialog">Indice al activității geomagnetice (0–9). K 0–3: liniștit; K 4: activ; K 5 sau mai mult: furtună geomagnetică (scala NOAA), cu absorbție mai mare pe HF.</string>
-    <string name="propagation_a_title">Indicele A</string>
+    <string name="propagation_k_title">Indice K</string>
+    <string name="propagation_k_dialog">Indice al activității geomagnetice (0–9), după scala NOAA. Furtunile geomagnetice aduc absorbție mai mare pe HF.</string>
+    <string name="propagation_a_title">Indice A</string>
     <string name="propagation_a_dialog">Media zilnică a activității geomagnetice (0–400). Valori peste 15 indică instabilitate ionosferică.</string>
 
     <string name="estimate_title">Estimare offline · 10 benzi</string>
     <string name="estimate_level">Estimare: %1$s</string>
     <string name="band_now_twilight">Acum e crepuscul la stație.</string>
     <string name="estimate_no_position">Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.</string>
-    <string name="estimate_no_data">N0NBH nu a dat SFI sau indicele K, deci nu există estimare.</string>
-    <string name="estimate_source">Estimare offline, calculată pe telefon din SFI și K (N0NBH) și din Soarele la stație. Nu este o valoare publicată de N0NBH.</string>
+    <string name="estimate_no_data">Lipsesc SFI sau indicele K, deci nu există estimare.</string>
+    <string name="estimate_source">Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.</string>
+    <string name="propagation_hint">Apasă pe un indice sau pe o bandă pentru detalii.</string>
+    <string name="reference_values">Valori orientative</string>
+    <string name="sfi_good">Bun pentru benzile înalte</string>
+    <string name="index_k_quiet">Liniștit</string>
+    <string name="index_a_quiet">Liniștit sau instabil</string>
+    <string name="index_active">Activ</string>
+    <string name="index_storm">Furtună</string>
+    <string name="group_now">Acum: %1$s</string>
+    <string name="group_day">Ziua</string>
+    <string name="group_night">Noaptea</string>
     <string name="band_160m_dialog">Bandă de noapte și crepuscul. Absorbție D masivă în timpul zilei.</string>
     <string name="band_80m_dialog">Bandă de noapte și crepuscul. Absorbție mare ziua, DX excelent noaptea.</string>
     <string name="band_60m_dialog">Bandă de tranziție. Absorbție medie ziua, reflexie F2 stabilă noaptea.</string>

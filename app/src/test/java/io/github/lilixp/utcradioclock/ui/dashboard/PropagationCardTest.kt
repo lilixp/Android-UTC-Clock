@@ -1,19 +1,28 @@
 package io.github.lilixp.utcradioclock.ui.dashboard
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import io.github.lilixp.utcradioclock.R
@@ -26,6 +35,7 @@ import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.GOOD
 import io.github.lilixp.utcradioclock.domain.model.ConditionLevel.POOR
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.HfBand
+import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
 import io.github.lilixp.utcradioclock.ui.theme.ConditionColors
 import io.github.lilixp.utcradioclock.ui.theme.LocalConditionColors
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
@@ -109,7 +119,7 @@ class PropagationCardTest {
         compose.onNodeWithText("A 3").assertIsDisplayed()
         for (label in listOf("80-40m", "30-20m", "17-15m", "12-10m")) compose.onNodeWithText(label).assertIsDisplayed()
         compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
-        // Under the bands only the update time: the source is in the band dialog and in Settings
+        // Under the bands only the update time: the source is in Settings → About the app
         compose.onNodeWithText("hamqsl.com", substring = true).assertDoesNotExist()
     }
 
@@ -154,30 +164,6 @@ class PropagationCardTest {
     }
 
     @Test
-    fun tapOnABand_explainsDayAndNight() {
-        show()
-        compose.onNodeWithContentDescription("80-40m: Mediu").performClick()
-        compose.onNodeWithText("80-40 m").assertIsDisplayed()
-        compose.onNodeWithText("Ziua: Mediu • Noaptea: Bun").assertIsDisplayed()
-        compose.onNodeWithText("Acum e zi la stație.").assertIsDisplayed()
-        compose.onNodeWithText("Condiții calculate de N0NBH (hamqsl.com).").assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-        compose.onNodeWithText("Ziua: Mediu • Noaptea: Bun").assertDoesNotExist()
-
-        compose.onNodeWithContentDescription("30-20m: Bun").performClick() // another band, its own values
-        compose.onNodeWithText("30-20 m").assertIsDisplayed()
-        compose.onNodeWithText("Ziua: Bun • Noaptea: Bun").assertIsDisplayed()
-    }
-
-    @Test
-    fun withoutLocator_theDialogSaysDayIsByTheClock() {
-        show(data.copy(isDay = false, dayNightByClock = true))
-        compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
-        compose.onNodeWithText("Acum e noapte la stație.").assertIsDisplayed()
-        compose.onNodeWithText("Fără locator, ziua este între 06:00 și 18:00 ora locală.").assertIsDisplayed()
-    }
-
-    @Test
     fun staleData_saysSo() {
         show(data.copy(status = PropagationState.Status.STALE, updated = "30 sept. 21:00"))
         compose.onNodeWithText("SFI 93").assertIsDisplayed() // the last valid values stay
@@ -212,10 +198,6 @@ class PropagationCardTest {
         show()
         compose.onNodeWithText("PROPAGATION").assertIsDisplayed()
         compose.onNodeWithText("Updated 05:29 UTC").assertIsDisplayed()
-        compose.onNodeWithContentDescription("80-40m: Fair").performClick()
-        compose.onNodeWithText("Day: Fair • Night: Good").assertIsDisplayed()
-        compose.onNodeWithText("It is daytime at the station now.").assertIsDisplayed()
-        compose.onNodeWithText("Conditions calculated by N0NBH (hamqsl.com).").assertIsDisplayed()
     }
 
     @Test
@@ -271,47 +253,192 @@ class PropagationCardTest {
     }
 
     @Test
-    fun estimate_unknownBands_neutralColourAndSaidSo() {
-        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }))
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        assertColor(colors.unknown.container, boxColor(PropagationTags.estimate(HfBand.BAND_20M)))
-        compose.onNodeWithContentDescription("20m: Necunoscut").performClick()
-        compose.onNodeWithText("Estimare: Necunoscut").assertIsDisplayed()
-        compose.onNodeWithText("N0NBH nu a dat SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
-    }
-
-    @Test
-    fun estimate_withoutAPosition_theDialogSaysWhy() {
-        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }, phase = null))
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        compose.onNodeWithContentDescription("40m: Necunoscut").performClick()
-        compose.onNodeWithText(
-            "Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.",
-        ).assertIsDisplayed()
-    }
-
-    @Test
     fun noEstimate_noTitle() {
         show() // N0NBH data only (as before this phase)
         compose.onNodeWithTag(PropagationTags.ESTIMATE_TITLE).assertDoesNotExist()
     }
 
-    @Test
-    fun tapOnAnEstimatedBand_explainsIt_andSaysItIsNotN0nbh() {
-        show(withEstimate)
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        compose.onNodeWithContentDescription("20m: Bun").performClick()
-        compose.onNodeWithText("20 m · 14.0–14.35 MHz").assertIsDisplayed()
-        compose.onNodeWithText("Estimare: Bun").assertIsDisplayed()
-        compose.onNodeWithText("Acum e zi la stație.").assertIsDisplayed()
-        compose.onNodeWithText("Banda principală HF. Deschisă ziua și la crepuscul; noaptea depinde de SFI.").assertIsDisplayed()
-        compose.onNodeWithText("Nu este o valoare publicată de N0NBH", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-        compose.onNodeWithText("20 m · 14.0–14.35 MHz").assertDoesNotExist()
+    // ---- The details panel under the card (no dialog: the panel explains the box last tapped) ----
+
+    private fun panelValue() = compose.onNodeWithTag(PropagationTags.PANEL_VALUE)
+    private fun panelTitle() = compose.onNodeWithTag(PropagationTags.PANEL_TITLE)
+    private fun panelSubtitle() = compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE)
+
+    /** Taps a box and brings the panel into view (the test screen is tall, the phone's may scroll). */
+    private fun select(tag: String) {
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(tag))
+        compose.onNodeWithTag(tag).performClick()
+        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
+    }
+
+    private fun assertNoDialogNorButtons() {
+        compose.onNode(isDialog()).assertDoesNotExist()
+        compose.onNodeWithText("OK").assertDoesNotExist()
+        compose.onNodeWithText("X").assertDoesNotExist()
+    }
+
+    private fun assertNoN0nbh() {
+        assertEquals(0, compose.onAllNodesWithText("N0NBH", substring = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("hamqsl", substring = true).fetchSemanticsNodes().size)
     }
 
     @Test
-    fun everyEstimatedBand_hasItsOwnExplanation() {
+    fun panel_atFirst_aHint_nothingSelected() {
+        show(withEstimate)
+        compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.PANEL_HINT).assertTextEquals("Apasă pe un indice sau pe o bandă pentru detalii.")
+        panelTitle().assertDoesNotExist()
+        for (tag in listOf(PropagationTags.SFI, PropagationTags.K, PropagationTags.A)) compose.onNodeWithTag(tag).assertIsNotSelected()
+        for (band in HfBand.entries) compose.onNodeWithTag(PropagationTags.estimate(band)).assertIsNotSelected()
+        assertNoDialogNorButtons()
+        assertNoN0nbh()
+    }
+
+    @Test
+    fun panel_sfi_valueTitleLevelExplanationAndReferenceValues() {
+        show()
+        select(PropagationTags.SFI)
+        compose.onNodeWithTag(PropagationTags.SFI).assertIsSelected()
+        panelValue().assertTextEquals("93")
+        panelTitle().assertTextEquals("Solar Flux Index (SFI)")
+        panelSubtitle().assertTextEquals("Mediu")
+        compose.onNodeWithText("Măsoară emisia radio solară la 10.7 cm", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Valori orientative").assertIsDisplayed()
+        for (text in listOf("< 90", "90–119", "≥ 120", "Slab", "Bun pentru benzile înalte")) compose.onNodeWithText(text).assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.PANEL_HINT).assertDoesNotExist()
+        assertNoDialogNorButtons()
+    }
+
+    @Test
+    fun panel_k_largeValue_levelNow_andTheScaleOfTheColours() {
+        show()
+        select(PropagationTags.K)
+        compose.onNodeWithTag(PropagationTags.K).assertIsSelected()
+        panelValue().assertTextEquals("0")
+        panelTitle().assertTextEquals("Indice K")
+        panelSubtitle().assertTextEquals("Liniștit")
+        compose.onNodeWithText("Indice al activității geomagnetice (0–9)", substring = true).assertIsDisplayed()
+        // The scale that colours K (IndexScales): 0–3 quiet, 4 active, 5 and above storm
+        for (text in listOf("Valori orientative", "0–3", "Liniștit", "4", "Activ", "≥ 5", "Furtună")) {
+            compose.onNode(hasText(text) and hasAnyAncestorTag(PropagationTags.REFERENCE_VALUES)).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun panel_referenceValues_areTheScalesThatColourTheBoxes() {
+        // Built from IndexScales' own thresholds, so a box's colour and its reference value never disagree
+        assertEquals(IndexScales.kIndex(IndexScales.K_ACTIVE - 1.0), GOOD)
+        assertEquals(IndexScales.kIndex(IndexScales.K_ACTIVE.toDouble()), FAIR)
+        assertEquals(IndexScales.kIndex(IndexScales.K_STORM.toDouble()), POOR)
+        assertEquals(IndexScales.aIndex(IndexScales.A_ACTIVE - 1.0), GOOD)
+        assertEquals(IndexScales.aIndex(IndexScales.A_STORM.toDouble()), POOR)
+        assertEquals(IndexScales.solarFlux(IndexScales.SFI_FAIR - 1.0), POOR)
+        assertEquals(IndexScales.solarFlux(IndexScales.SFI_GOOD.toDouble()), GOOD)
+        show()
+        select(PropagationTags.A)
+        for (text in listOf("0–${IndexScales.A_ACTIVE - 1}", "${IndexScales.A_ACTIVE}–${IndexScales.A_STORM - 1}", "≥ ${IndexScales.A_STORM}")) {
+            compose.onNodeWithText(text).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun panel_k_storm_saysSo() {
+        show(data.copy(kIndex = IndexUi("5", POOR)))
+        select(PropagationTags.K)
+        panelValue().assertTextEquals("5")
+        panelSubtitle().assertTextEquals("Furtună")
+        assertColor(colors.poor.container, boxColor(PropagationTags.PANEL_VALUE))
+    }
+
+    @Test
+    fun panel_a_valueTitleAndInterpretation() {
+        show()
+        select(PropagationTags.A)
+        compose.onNodeWithTag(PropagationTags.A).assertIsSelected()
+        panelValue().assertTextEquals("3")
+        panelTitle().assertTextEquals("Indice A")
+        panelSubtitle().assertTextEquals("Liniștit sau instabil")
+        compose.onNodeWithText("Media zilnică a activității geomagnetice", substring = true).assertIsDisplayed()
+        for (text in listOf("0–15", "16–29", "≥ 30")) compose.onNodeWithText(text).assertIsDisplayed()
+    }
+
+    @Test
+    fun panel_indexNotReported_dashNoLevel() {
+        show(data.copy(kIndex = null))
+        select(PropagationTags.K)
+        panelValue().assertTextEquals("—")
+        panelSubtitle().assertDoesNotExist()
+        compose.onNodeWithText("Valori orientative").assertIsDisplayed()
+    }
+
+    @Test
+    fun panel_bandGroup_nowByDayAndByNight() {
+        show()
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsSelected()
+        panelValue().assertTextEquals("80-40m")
+        panelTitle().assertTextEquals("Acum: Mediu")
+        panelSubtitle().assertTextEquals("Acum e zi la stație.")
+        compose.onNodeWithText("Ziua").assertIsDisplayed()
+        compose.onNodeWithText("Noaptea").assertIsDisplayed()
+        assertColor(colors.fair.container, boxColor(PropagationTags.PANEL_VALUE))
+        assertNoDialogNorButtons()
+        assertNoN0nbh()
+
+        select(PropagationTags.band(BandGroup.BANDS_12_10)) // another group, its own values
+        panelValue().assertTextEquals("12-10m")
+        panelTitle().assertTextEquals("Acum: Slab")
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_80_40)).assertIsNotSelected()
+    }
+
+    @Test
+    fun panel_bandGroup_withoutLocator_dayIsByTheClock() {
+        show(data.copy(isDay = false, dayNightByClock = true))
+        select(PropagationTags.band(BandGroup.BANDS_17_15))
+        panelTitle().assertTextEquals("Acum: Mediu")
+        panelSubtitle().assertTextEquals("Acum e noapte la stație.")
+        compose.onNodeWithText("Fără locator, ziua este între 06:00 și 18:00 ora locală.").assertIsDisplayed()
+    }
+
+    @Test
+    fun panel_band_theCalculatorsEstimate_andTheBandsExplanation() {
+        show(withEstimate)
+        select(PropagationTags.estimate(HfBand.BAND_15M))
+        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
+        panelValue().assertTextEquals("15m")
+        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
+        panelSubtitle().assertTextEquals("Estimare: Bun")
+        compose.onNodeWithText("Acum e zi la stație.").assertIsDisplayed()
+        compose.onNodeWithText("Bandă de zi. Puternic influențată de fluxul solar (SFI ≥ 90).").assertIsDisplayed()
+        compose.onNodeWithText("Estimare offline, calculată pe telefon din SFI, K și Soarele la stație.").assertIsDisplayed()
+        assertColor(colors.good.container, boxColor(PropagationTags.PANEL_VALUE))
+        assertNoDialogNorButtons()
+        assertNoN0nbh()
+    }
+
+    @Test
+    fun panel_band_unknown_saysWhy() {
+        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }))
+        select(PropagationTags.estimate(HfBand.BAND_20M))
+        assertColor(colors.unknown.container, boxColor(PropagationTags.estimate(HfBand.BAND_20M)))
+        panelSubtitle().assertTextEquals("Estimare: Necunoscut")
+        compose.onNodeWithText("Lipsesc SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
+        assertColor(colors.unknown.container, boxColor(PropagationTags.PANEL_VALUE))
+    }
+
+    @Test
+    fun panel_band_withoutAPosition_saysWhy() {
+        show(withEstimate.copy(estimate = HfBand.entries.map { BandEstimate(it, null) }, phase = null))
+        select(PropagationTags.estimate(HfBand.BAND_40M))
+        panelSubtitle().assertTextEquals("Estimare: Necunoscut")
+        compose.onNodeWithText(
+            "Fără poziție (locator sau GPS), ziua și noaptea la stație nu se cunosc, deci nu există estimare.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("Lipsesc SFI", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun panel_everyBand_itsOwnFrequenciesAndExplanation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val explanation = mapOf(
             HfBand.BAND_160M to R.string.band_160m_dialog, HfBand.BAND_80M to R.string.band_80m_dialog,
@@ -322,58 +449,148 @@ class PropagationCardTest {
         ).mapValues { context.getString(it.value) }
         assertEquals(10, explanation.values.toSet().size) // ten different texts
         show(withEstimate.copy(phase = DayPhase.TWILIGHT))
-        for (band in HfBand.entries) {
-            scrollTo(PropagationTags.estimate(band))
-            compose.onNodeWithTag(PropagationTags.estimate(band)).performClick()
-            compose.onNodeWithText("${band.meters} m · ${band.frequencies}").assertIsDisplayed()
+        for ((band, level) in HfBand.entries.zip(dayLevels)) {
+            select(PropagationTags.estimate(band))
+            panelTitle().assertTextEquals("${band.meters} m · ${band.frequencies}")
+            panelSubtitle().assertTextEquals("Estimare: " + mapOf(GOOD to "Bun", FAIR to "Mediu", POOR to "Slab").getValue(level))
             compose.onNodeWithText("Acum e crepuscul la stație.").assertIsDisplayed()
             compose.onNodeWithText(explanation.getValue(band)).assertIsDisplayed()
-            compose.onNodeWithText("OK").performClick()
         }
     }
 
     @Test
-    fun tapOnSfiKA_explainsThem() {
-        show()
-        compose.onNodeWithTag(PropagationTags.SFI).performClick()
-        compose.onNodeWithText("Solar Flux Index (SFI)").assertIsDisplayed()
-        compose.onNodeWithText("Măsoară emisia radio solară la 10.7 cm", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-
-        compose.onNodeWithTag(PropagationTags.K).performClick()
-        compose.onNodeWithText("Indicele K (Geomagnetic)").assertIsDisplayed()
-        // The same scale as the colour of K (IndexScales): 4 active, 5 and above storm
-        compose.onNodeWithText("K 0–3: liniștit; K 4: activ; K 5 sau mai mult: furtună geomagnetică", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-
-        compose.onNodeWithTag(PropagationTags.A).performClick()
-        compose.onNodeWithText("Indicele A").assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-        compose.onNodeWithText("Indicele A").assertDoesNotExist()
+    fun panel_sfiThenKThenABand_followsTheSelection_oneSelectedAtATime() {
+        show(withEstimate)
+        select(PropagationTags.SFI)
+        panelTitle().assertTextEquals("Solar Flux Index (SFI)")
+        select(PropagationTags.K)
+        panelTitle().assertTextEquals("Indice K")
+        compose.onNodeWithTag(PropagationTags.SFI).assertIsNotSelected()
+        select(PropagationTags.estimate(HfBand.BAND_40M))
+        panelTitle().assertTextEquals("40 m · ${HfBand.BAND_40M.frequencies}")
+        select(PropagationTags.estimate(HfBand.BAND_15M))
+        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
+        compose.onNodeWithTag(PropagationTags.K).assertIsNotSelected()
+        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_40M)).assertIsNotSelected()
+        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
+        // A second tap on the same box keeps it: nothing to close
+        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).performClick()
+        panelTitle().assertTextEquals("15 m · ${HfBand.BAND_15M.frequencies}")
+        assertNoDialogNorButtons()
     }
 
     @Test
-    fun theN0nbhBandDialogStillWorks_besideTheNewOnes() {
+    fun panel_selectingKeepsTheBoxesSize() {
+        show()
+        val before = compose.onNodeWithTag(PropagationTags.K).fetchSemanticsNode().size
+        select(PropagationTags.K)
+        assertEquals(before, compose.onNodeWithTag(PropagationTags.K).fetchSemanticsNode().size)
+    }
+
+    @Test
+    fun panel_followsNewData_withoutAnotherTap() {
+        var propagation by mutableStateOf(withEstimate)
+        compose.setContent {
+            UTCRadioClockTheme(darkTheme = false) {
+                colors = LocalConditionColors.current
+                DashboardScreen(dashboard(propagation), selectedTab = AppTab.PROPAGATION) {}
+            }
+        }
+        select(PropagationTags.K)
+        panelValue().assertTextEquals("0")
+        propagation = withEstimate.copy(kIndex = IndexUi("4", FAIR)) // the next N0NBH update
+        compose.waitForIdle()
+        panelValue().assertTextEquals("4")
+        panelSubtitle().assertTextEquals("Activ")
+        compose.onNodeWithTag(PropagationTags.K).assertIsSelected()
+    }
+
+    @Test
+    fun panel_selectionKeptThroughARotation() {
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent {
+            UTCRadioClockTheme(darkTheme = false) {
+                DashboardScreen(dashboard(withEstimate), selectedTab = AppTab.PROPAGATION) {}
+            }
+        }
+        select(PropagationTags.estimate(HfBand.BAND_15M))
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithTag(PropagationTags.estimate(HfBand.BAND_15M)).assertIsSelected()
+        panelValue().assertTextEquals("15m")
+    }
+
+    @Test
+    fun panel_loading_noPanel() {
+        show(PropagationUiState(status = PropagationState.Status.LOADING))
+        compose.onNodeWithTag(PropagationTags.PANEL).assertDoesNotExist()
+    }
+
+    @Test
+    fun panel_unavailable_noPanel() {
+        show(PropagationUiState(status = PropagationState.Status.UNAVAILABLE))
+        compose.onNodeWithTag(PropagationTags.PANEL).assertDoesNotExist()
+    }
+
+    @Test
+    fun panel_staleData_stillExplained() {
+        show(data.copy(status = PropagationState.Status.STALE, updated = "30 sept. 21:00"))
+        select(PropagationTags.SFI)
+        panelValue().assertTextEquals("93")
+    }
+
+    @Test
+    fun noN0nbhNorHfInTheTitle() {
         show(withEstimate)
-        compose.onNodeWithContentDescription("80-40m: Mediu").performClick()
-        compose.onNodeWithText("Ziua: Mediu • Noaptea: Bun").assertIsDisplayed()
-        compose.onNodeWithText("Condiții calculate de N0NBH (hamqsl.com).").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("Propagare HF", substring = true, ignoreCase = true).assertDoesNotExist()
+        for (tag in listOf(PropagationTags.SFI, PropagationTags.band(BandGroup.BANDS_30_20), PropagationTags.estimate(HfBand.BAND_20M))) {
+            select(tag)
+            assertNoN0nbh()
+        }
+    }
+
+    @Test
+    fun panel_darkTheme() {
+        show(withEstimate, dark = true)
+        select(PropagationTags.K)
+        panelTitle().assertTextEquals("Indice K")
+        assertColor(colors.good.container, boxColor(PropagationTags.PANEL_VALUE))
+        select(PropagationTags.estimate(HfBand.BAND_10M))
+        assertColor(colors.poor.container, boxColor(PropagationTags.PANEL_VALUE))
     }
 
     @Test
     @Config(qualifiers = "en-w411dp-h891dp")
-    fun estimateAndExplanationsInEnglish() {
+    fun panel_inEnglish() {
         show(withEstimate.copy(phase = DayPhase.NIGHT))
-        scrollTo(PropagationTags.estimate(HfBand.BAND_10M))
-        compose.onNodeWithTag(PropagationTags.ESTIMATE_TITLE).assertTextEquals("Offline estimate · 10 bands")
-        compose.onNodeWithContentDescription("160m: Poor").performClick()
-        compose.onNodeWithText("Estimate: Poor").assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.PANEL_HINT).performScrollTo().assertTextEquals("Tap an index or a band for details.")
+        select(PropagationTags.K)
+        panelTitle().assertTextEquals("K index")
+        panelSubtitle().assertTextEquals("Quiet")
+        for (text in listOf("Reference values", "0–3", "Active", "≥ 5", "Storm")) compose.onNodeWithText(text).assertIsDisplayed()
+        select(PropagationTags.A)
+        panelTitle().assertTextEquals("A index")
+        panelSubtitle().assertTextEquals("Quiet or unsettled")
+        select(PropagationTags.SFI)
+        panelSubtitle().assertTextEquals("Fair")
+        select(PropagationTags.band(BandGroup.BANDS_80_40))
+        panelTitle().assertTextEquals("Now: Fair")
+        for (text in listOf("By day", "At night", "It is daytime at the station now.")) compose.onNodeWithText(text).assertIsDisplayed()
+        select(PropagationTags.estimate(HfBand.BAND_160M))
+        panelSubtitle().assertTextEquals("Estimate: Poor")
         compose.onNodeWithText("It is night at the station now.").assertIsDisplayed()
-        compose.onNodeWithText("It is not a value published by N0NBH", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-        scrollTo(PropagationTags.K)
-        compose.onNodeWithTag(PropagationTags.K).performClick()
-        compose.onNodeWithText("Planetary K-Index").assertIsDisplayed()
-        compose.onNodeWithText("K 4: active; K 5 and above: geomagnetic storm", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Offline estimate, calculated on the phone from SFI, K and the Sun at the station.").assertIsDisplayed()
+        assertNoN0nbh()
     }
+
+    private fun dashboard(propagation: PropagationUiState) = DashboardUiState(
+        utcDate = "1 octombrie 2026",
+        utcTime = "05:42:31",
+        localTime = "08:42:31",
+        localDate = null,
+        zone = ZoneUi(name = "Europe/Chisinau", abbreviation = "EEST", offset = "UTC+03:00"),
+        propagation = propagation,
+    )
+
+    private fun hasAnyAncestorTag(tag: String) = androidx.compose.ui.test.hasAnyAncestor(hasTestTag(tag))
 }

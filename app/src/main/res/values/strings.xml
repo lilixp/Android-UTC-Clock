@@ -80,9 +80,6 @@
     <string name="propagation_updated">Updated %1$s UTC</string>
     <string name="propagation_stale">Data not updated · last update %1$s UTC</string>
     <string name="propagation_stale_no_time">Data not updated</string>
-    <string name="propagation_source">Conditions calculated by N0NBH (hamqsl.com).</string>
-    <string name="band_title" translatable="false">%1$s m</string>
-    <string name="band_day_night">Day: %1$s • Night: %2$s</string>
     <string name="band_now_day">It is daytime at the station now.</string>
     <string name="band_now_night">It is night at the station now.</string>
     <string name="band_day_by_clock">Without a locator, day is 06:00–18:00 local time.</string>
@@ -95,9 +92,9 @@
     <!-- SFI, K and A explained (tap on the box); K follows the scale of IndexScales (NOAA) -->
     <string name="propagation_sfi_title">Solar Flux Index (SFI)</string>
     <string name="propagation_sfi_dialog">Measures 10.7 cm solar radio emissions. SFI &gt; 90/120 enhances upper HF bands (15m–10m) during daylight hours.</string>
-    <string name="propagation_k_title">Planetary K-Index</string>
-    <string name="propagation_k_dialog">Geomagnetic activity index (0–9). K 0–3: quiet; K 4: active; K 5 and above: geomagnetic storm (NOAA scale), with more absorption on HF.</string>
-    <string name="propagation_a_title">Planetary A-Index</string>
+    <string name="propagation_k_title">K index</string>
+    <string name="propagation_k_dialog">Geomagnetic activity index (0–9), on the NOAA scale. Geomagnetic storms bring more absorption on HF.</string>
+    <string name="propagation_a_title">A index</string>
     <string name="propagation_a_dialog">Daily average geomagnetic activity index (0–400). Values above 15 indicate geomagnetic instability.</string>
 
     <!-- The offline estimate for the ten HF bands: calculated on the phone, not N0NBH data -->
@@ -106,8 +103,19 @@
     <string name="estimate_level">Estimate: %1$s</string>
     <string name="band_now_twilight">It is twilight at the station now.</string>
     <string name="estimate_no_position">Without a position (locator or GPS), day and night at the station are not known, so there is no estimate.</string>
-    <string name="estimate_no_data">N0NBH gave no SFI or K index, so there is no estimate.</string>
-    <string name="estimate_source">Offline estimate, calculated on the phone from SFI and K (N0NBH) and the Sun at the station. It is not a value published by N0NBH.</string>
+    <string name="estimate_no_data">SFI or the K index is missing, so there is no estimate.</string>
+    <string name="estimate_source">Offline estimate, calculated on the phone from SFI, K and the Sun at the station.</string>
+    <!-- The panel under the PROPAGATION card: it explains the box last tapped -->
+    <string name="propagation_hint">Tap an index or a band for details.</string>
+    <string name="reference_values">Reference values</string>
+    <string name="sfi_good">Good for the high bands</string>
+    <string name="index_k_quiet">Quiet</string>
+    <string name="index_a_quiet">Quiet or unsettled</string>
+    <string name="index_active">Active</string>
+    <string name="index_storm">Storm</string>
+    <string name="group_now">Now: %1$s</string>
+    <string name="group_day">By day</string>
+    <string name="group_night">At night</string>
     <string name="band_160m_dialog">Night and twilight band. Severe daytime D-layer absorption.</string>
     <string name="band_80m_dialog">Night and twilight band. Heavy daytime absorption, excellent night DX.</string>
     <string name="band_60m_dialog">Transition band. Moderate daytime absorption, reliable night F2 reflection.</string>
@@ -118,7 +126,6 @@
     <string name="band_15m_dialog">Daytime band. Highly responsive to solar flux (SFI ≥ 90).</string>
     <string name="band_12m_dialog">Daytime band. Opens near solar noon when SFI ≥ 110.</string>
     <string name="band_10m_dialog">Daytime band. Requires strong solar ionization near solar noon (SFI ≥ 120).</string>
-    <string name="ok" translatable="false">OK</string>
 
     <string name="section_appearance">APPEARANCE</string>
     <string name="theme_system">System</string>
