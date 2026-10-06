@@ -71,6 +71,21 @@ class AndroidLocationProviderTest {
         assertEquals(8f, fix.accuracyMeters)
         assertEquals(Instant.ofEpochMilli(1_000), fix.time)
         assertEquals(28.3041, fix.position.longitude, 1e-9)
+        assertNull(fix.altitudeMeters) // the phone gave no height
+    }
+
+    @Test
+    fun altitude_aboveSeaLevelWhenGiven_otherwiseTheGpsHeight() {
+        allow(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        shadowOf(manager).simulateLocation(location(LocationManager.GPS_PROVIDER, 46.9612, 28.3041, 1_000).apply {
+            altitude = 175.0
+        })
+        assertEquals(175.0, provider.lastKnown()!!.altitudeMeters!!, 1e-9)
+        shadowOf(manager).simulateLocation(location(LocationManager.GPS_PROVIDER, 46.9612, 28.3041, 2_000).apply {
+            altitude = 175.0
+            mslAltitudeMeters = 145.0
+        })
+        assertEquals(145.0, provider.lastKnown()!!.altitudeMeters!!, 1e-9)
     }
 
     @Test

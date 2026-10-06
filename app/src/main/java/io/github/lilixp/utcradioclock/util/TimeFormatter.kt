@@ -127,6 +127,20 @@ class TimeFormatter(val locale: Locale) {
     /** "±15 m": whole metres. */
     fun accuracy(meters: Float): String = "±%d m".format(locale, meters.roundToInt())
 
+    /** "185 m": a height in whole metres. */
+    fun altitude(meters: Double): String = "%d m".format(locale, meters.roundToInt())
+
+    /** "6,4° E" or "3,2° W": the magnetic declination, east or west of true north. */
+    fun declination(degrees: Double): String =
+        "%.1f° %s".format(locale, abs(degrees), if (degrees < 0) "W" else "E")
+
+    /** "35 km", or "4,2 km" under 10 km. */
+    fun distance(kilometres: Double): String =
+        if (kilometres < 10) "%.1f km".format(locale, kilometres) else "%d km".format(locale, kilometres.roundToInt())
+
+    /** "238°": an azimut in whole degrees, 0–359. */
+    fun bearing(degrees: Double): String = "%d°".format(locale, degrees.roundToInt() % 360)
+
     private fun coordinate(degrees: Double, hemisphere: String) =
         "%.4f° %s".format(locale, abs(degrees), hemisphere)
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
+import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
 
@@ -56,6 +57,15 @@ object DashboardTags {
     const val CALLSIGN = "callsign"
     const val LOCATOR = "locator"
     const val LOCATION_SOURCE = "location_source"
+    const val LOCATION_LOCATOR = "location_locator"
+    const val LOCATION_EXTENDED_LOCATOR = "location_extended_locator"
+    const val LOCATION_SWITCH = "location_switch"
+    const val LOCATION_HOME = "location_home"
+    const val LOCATION_LATITUDE = "location_latitude"
+    const val LOCATION_LONGITUDE = "location_longitude"
+    const val LOCATION_ALTITUDE = "location_altitude"
+    const val LOCATION_ACCURACY = "location_accuracy"
+    const val LOCATION_DECLINATION = "location_declination"
     const val LOCATION_STATUS = "location_status"
     const val LOCATION_ACTION = "location_action"
 }
@@ -79,6 +89,8 @@ fun DashboardScreen(
     /** The location permission was refused for good ("Don't ask again"). */
     locationPermissionBlocked: Boolean = false,
     onLocationAction: (LocationAction) -> Unit = {},
+    /** Manual or Automatic (GPS), chosen on the Location screen: the same setting as in Settings. */
+    onPositionSourceChange: (PositionSource) -> Unit = {},
     onOpenSettings: () -> Unit,
 ) {
     Scaffold(
@@ -110,7 +122,13 @@ fun DashboardScreen(
                     ZoneTiles(state.zone)
                 }
                 AppTab.SUN -> SunScreen(state.sun)
-                AppTab.LOCATION -> LocationCard(state.location, state.locator, locationPermissionBlocked, onLocationAction)
+                AppTab.LOCATION -> LocationCard(
+                    state.location,
+                    state.locator,
+                    locationPermissionBlocked,
+                    onLocationAction,
+                    onPositionSourceChange,
+                )
                 AppTab.PROPAGATION -> PropagationCard(state.propagation)
             }
         }
@@ -299,7 +317,7 @@ private fun ZoneTiles(zone: ZoneUi) {
  * "EEST · UTC+03:00") and shrinks only when it does not fit (large text, narrow phone).
  */
 @Composable
-private fun Tile(title: String, value: String, details: List<String>, modifier: Modifier, valueModifier: Modifier = Modifier) {
+internal fun Tile(title: String, value: String, details: List<String>, modifier: Modifier, valueModifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxHeight()) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

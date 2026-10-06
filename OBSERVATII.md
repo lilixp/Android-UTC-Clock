@@ -167,6 +167,26 @@ Decizii ale lui Lilian în aceeași zi (notate de Claude Code):
   ca acum. Propunerea „Actualizare la cerere” de mai sus nu se mai face.
 - **Etapa 4 (Locație)** este următoarea.
 
+## Etapa 4: ecranul Locație (6 octombrie 2026, făcută de Claude Code)
+
+Varianta A aleasă de Lilian, implementată de **Claude Code**:
+
+- **Sus:** locatorul mare; pe GPS și locatorul de 8 caractere (VHF și peste). Sursa poziției cu
+  aceleași cuvinte ca pe ecranul Soare: „Locator manual / Locator de rezervă · centrul pătratului”,
+  „Poziție din GPS · 11:14 UTC”, „Ultima poziție GPS disponibilă · … UTC” (marcată, ca să nu fie
+  luată drept una nouă: observația din testarea fazei 5). Ora poziției e în UTC, lângă sursă, nu
+  într-o placă separată (Lilian nu era sigură că merită o placă).
+- **Comutatorul Manual | Automat (GPS)** pe ecran: aceeași setare ca în Setări, cu aceeași cerere de
+  permisiune la trecerea pe Automat.
+- **Portabil:** „La 2,6 km de KN46dw · azimut spre casă 248°”, doar pe GPS, de la 1 km de locatorul
+  din Setări (azimutul e cel de întors antena spre casă).
+- **Plăci:** Latitudine, Longitudine; pe GPS Altitudine (deasupra nivelului mării când telefonul o dă,
+  altfel înălțimea GPS) și Precizie (GPS exact / aproximativ); Declinația magnetică (modelul magnetic
+  mondial din Android, fără Internet), pentru orientarea antenei cu busola.
+- Altitudinea se păstrează și cu ultima poziție salvată. Fără surse noi online și fără biblioteci noi.
+- Lăsate pentru mai târziu (variantele B și C): coordonate în grade-minute-secunde, calculatorul de
+  azimut către un locator, zonele CQ/ITU, regiunea IARU, DXCC (acestea din urmă cer date externe).
+
 ## Faza A — corecții funcționale (1 octombrie 2026)
 
 Rezolvate (detalii în `PHASE_A_REPORT.md`):

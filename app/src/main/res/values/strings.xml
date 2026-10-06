@@ -72,12 +72,19 @@
     <string name="sun_polar_night">The Sun does not rise on this day.</string>
 
     <string name="section_location">LOCATION</string>
-    <string name="latitude">Latitude: %1$s</string>
-    <string name="longitude">Longitude: %1$s</string>
-    <string name="qth" translatable="false">QTH: %1$s</string>
-    <string name="location_gps" translatable="false">GPS</string>
-    <string name="location_gps_approximate">GPS (approximate)</string>
-    <string name="location_from_locator">Locator from Settings (centre of the square)</string>
+    <!-- The LOCATION screen -->
+    <string name="location_source_time" translatable="false">%1$s · %2$s UTC</string>
+    <string name="location_square_centre">%1$s · centre of the square</string>
+    <string name="location_home">%1$s from %2$s · bearing home %3$s</string>
+    <string name="tile_latitude">Latitude</string>
+    <string name="tile_longitude">Longitude</string>
+    <string name="tile_altitude">Altitude</string>
+    <string name="altitude_detail">From GPS</string>
+    <string name="tile_accuracy">Accuracy</string>
+    <string name="tile_declination">Magnetic declination</string>
+    <string name="declination_detail">Compass north vs. true north</string>
+    <string name="accuracy_gps_exact">Precise GPS</string>
+    <string name="accuracy_gps_approximate">Approximate GPS</string>
     <string name="location_searching">Looking for the position…</string>
     <string name="location_no_permission">The app may not use the location of the phone.</string>
     <string name="location_permission_blocked">Location access was denied. You can allow it in the app settings.</string>

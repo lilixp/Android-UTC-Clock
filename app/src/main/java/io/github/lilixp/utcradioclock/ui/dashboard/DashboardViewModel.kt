@@ -18,6 +18,9 @@ import io.github.lilixp.utcradioclock.domain.model.PositionSource
 import io.github.lilixp.utcradioclock.domain.model.SolarDay
 import io.github.lilixp.utcradioclock.domain.model.StationIdentity
 import io.github.lilixp.utcradioclock.domain.model.StationPosition
+import io.github.lilixp.utcradioclock.domain.location.GreatCircle
+import io.github.lilixp.utcradioclock.domain.location.MagneticDeclination
+import io.github.lilixp.utcradioclock.domain.location.Maidenhead
 import io.github.lilixp.utcradioclock.domain.propagation.IndexScales
 import io.github.lilixp.utcradioclock.domain.propagation.OfflinePropagationCalculator
 import io.github.lilixp.utcradioclock.domain.solar.SolarCalculator
@@ -42,6 +45,8 @@ class DashboardViewModel(
     propagation: Flow<PropagationState>,
     /** The solar calculation; tests pass their own to count how often it runs. */
     private val solar: (LocalDate, ZoneId, GeoPosition) -> SolarDay = SolarCalculator::calculate,
+    /** The magnetic declination (degrees, east positive); tests pass their own (no Android model there). */
+    private val magneticDeclination: (GeoPosition, Double?, Instant) -> Double = MagneticDeclination::at,
     /** Read on every tick: the ViewModel survives a language change, the texts must follow it. */
     private val locale: () -> Locale,
 ) : ViewModel() {
@@ -126,7 +131,7 @@ class DashboardViewModel(
             callsign = station.callsign.ifEmpty { null },
             sun = displayedSun.ui.copy(presentation = sunPresentation),
             propagation = propagationState(propagation, reading, sun.day, format),
-            location = locationState(position, reading, format),
+            location = locationState(position, station, reading, format),
             // From GPS in automatic mode, otherwise as entered in Settings
             locator = position.locator,
         )
@@ -153,20 +158,56 @@ class DashboardViewModel(
         )
     }
 
-    /** The LOCATION card: coordinates of the position used (GPS or the locator's centre) and where it came from. */
-    private fun locationState(position: StationPosition, reading: ClockReading, format: TimeFormatter): LocationUiState {
+    /**
+     * The LOCATION screen: the position used (GPS or the locator's centre), where it came from, and what a
+     * radio amateur needs about it: the 8-character locator and height of a GPS position, the magnetic
+     * declination, and, when portable, the distance and azimut to the home QTH (the locator in Settings).
+     */
+    private fun locationState(
+        position: StationPosition,
+        station: StationIdentity,
+        reading: ClockReading,
+        format: TimeFormatter,
+    ): LocationUiState {
+        val coordinates = position.position
         val fix = position.fix.takeIf { position.origin == PositionOrigin.GPS }
         return LocationUiState(
-            latitude = position.position?.let { format.latitude(it.latitude) },
-            longitude = position.position?.let { format.longitude(it.longitude) },
+            latitude = coordinates?.let { format.latitude(it.latitude) },
+            longitude = coordinates?.let { format.longitude(it.longitude) },
             origin = position.origin,
             automatic = position.source == PositionSource.AUTOMATIC,
             gps = position.gps,
-            fixTime = fix?.let { format.localStamp(it.time, reading.zone, reading.instant) },
+            fixTime = fix?.let { format.utcStamp(it.time, reading.instant) },
             accuracy = fix?.accuracyMeters?.let(format::accuracy),
             approximate = fix?.approximate == true,
             invalidLocator = position.invalidLocator,
+            source = coordinates?.let { sunPositionSource(position, reading.instant) },
+            extendedLocator = fix?.let { Maidenhead.fromPosition(it.position, EXTENDED_LOCATOR) },
+            altitude = fix?.altitudeMeters?.let(format::altitude),
+            declination = coordinates?.let { format.declination(declination(it, fix?.altitudeMeters, reading.instant)) },
+            home = fix?.let { home(it.position, station.locator, format) },
         )
+    }
+
+    /** Distance and azimut from a GPS position back to the home locator, from [HOME_AWAY_KM] away. */
+    private fun home(here: GeoPosition, homeLocator: String, format: TimeFormatter): HomeUi? {
+        val home = Maidenhead.toPosition(homeLocator) ?: return null
+        val distance = GreatCircle.distanceKm(here, home)
+        if (distance < HOME_AWAY_KM) return null
+        return HomeUi(
+            locator = Maidenhead.fromPosition(home, homeLocator.length) ?: homeLocator,
+            distance = format.distance(distance),
+            bearing = format.bearing(GreatCircle.bearingDegrees(here, home)),
+        )
+    }
+
+    /** The last declination, reused while the position, the height and the UTC day stay the same. */
+    private var lastDeclination: Pair<Triple<GeoPosition, Double?, LocalDate>, Double>? = null
+
+    private fun declination(position: GeoPosition, altitude: Double?, instant: Instant): Double {
+        val key = Triple(position, altitude, instant.atZone(java.time.ZoneOffset.UTC).toLocalDate())
+        lastDeclination?.let { (lastKey, value) -> if (lastKey == key) return value }
+        return magneticDeclination(position, altitude, instant).also { lastDeclination = key to it }
     }
 
     /**
@@ -282,6 +323,12 @@ class DashboardViewModel(
         const val STOP_TIMEOUT_MILLIS = 5_000L
 
         /** Without a position, "day" for the band conditions is 06:00–18:00 local time. */
+        /** The locator of a GPS position with 8 characters, as used on VHF and up. */
+        const val EXTENDED_LOCATOR = 8
+
+        /** From this far from the home locator, the screen says how far and which way home is. */
+        const val HOME_AWAY_KM = 1.0
+
         const val DAY_START_HOUR = 6
         const val DAY_END_HOUR = 18
     }

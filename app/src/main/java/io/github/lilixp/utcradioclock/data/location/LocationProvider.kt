@@ -107,5 +107,13 @@ class AndroidLocationProvider(private val context: Context) : LocationProvider {
         accuracyMeters = if (hasAccuracy()) accuracy else null,
         time = Instant.ofEpochMilli(time),
         approximate = !precise,
+        altitudeMeters = altitude(),
     )
+
+    /** Above sea level when the phone knows it (Android 14+), otherwise the GPS height; null without any. */
+    private fun Location.altitude(): Double? = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && hasMslAltitude() -> mslAltitudeMeters
+        hasAltitude() -> altitude
+        else -> null
+    }
 }

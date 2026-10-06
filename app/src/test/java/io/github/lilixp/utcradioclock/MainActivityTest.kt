@@ -228,6 +228,12 @@ class MainActivityTest {
         compose.onNodeWithText(text).assertIsDisplayed()
     }
 
+    /** The large locator on the LOCATION screen (the station badge in the top bar shows it too). */
+    private fun assertLocationLocator(locator: String) {
+        openTab(AppTab.LOCATION)
+        compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertTextEquals(locator)
+    }
+
     /** What Android's permission dialog answers, delivered as the system would. */
     @Suppress("DEPRECATION") // the way the system hands the answer to the activity
     private fun answerPermissionDialog(granted: Boolean) {
@@ -256,10 +262,26 @@ class MainActivityTest {
         backToDashboard()
 
         compose.onNodeWithTag(DashboardTags.LOCATOR).assertTextEquals("KN46dx") // the station badge
-        assertOnLocationCard("Latitudine: 46,9612° N")
-        assertOnLocationCard("Longitudine: 28,3041° E")
-        assertOnLocationCard("QTH: KN46dx")
-        assertOnLocationCard("GPS · 18:42 · ±12 m")
+        assertOnLocationCard("46,9612° N")
+        assertOnLocationCard("28,3041° E")
+        assertLocationLocator("KN46dx")
+        assertOnLocationCard("Poziție din GPS · 15:42 UTC") // the position's time in UTC
+        assertOnLocationCard("±12 m")
+    }
+
+    @Test
+    fun locationScreen_switch_isTheSettingOfSettings_andAsksForThePermission() {
+        openTab(AppTab.LOCATION)
+        compose.onNodeWithText("Automat (GPS)").performClick()
+        compose.waitForIdle()
+        assertEquals(PositionSource.AUTOMATIC, app().settings().positionSource.value)
+        val asked = shadowOf(compose.activity).lastRequestedPermission.requestedPermissions.toSet()
+        assertEquals(setOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), asked)
+        compose.onNodeWithText("Manual").performClick()
+        compose.waitForIdle()
+        assertEquals(PositionSource.MANUAL, app().settings().positionSource.value)
+        openSettings() // Settings shows the same choice
+        compose.onNodeWithText("Manual").performScrollTo().assertIsSelected()
     }
 
     @Test
@@ -276,7 +298,7 @@ class MainActivityTest {
         app().locations.current = fix(BOGHICENI)
         answerPermissionDialog(granted = true)
         backToDashboard()
-        assertOnLocationCard("QTH: KN46dx")
+        assertLocationLocator("KN46dx")
     }
 
     @Test
@@ -287,8 +309,8 @@ class MainActivityTest {
         answerPermissionDialog(granted = false)
         backToDashboard()
 
-        assertOnLocationCard("Locator din Setări (centrul pătratului)")
-        assertOnLocationCard("QTH: KN46dw")
+        assertOnLocationCard("Locator de rezervă · centrul pătratului")
+        assertLocationLocator("KN46dw")
         // Robolectric's Android says the dialog may not be shown again: "Don't ask again"
         assertOnLocationCard("Accesul la locație a fost refuzat. Îl poți permite din setările aplicației.")
         compose.onNodeWithText("Deschide setările aplicației").performClick()
@@ -391,7 +413,7 @@ class MainActivityTest {
     fun switchingSections_oneGpsReading() {
         chooseAutomaticPosition()
         backToDashboard()
-        assertOnLocationCard("QTH: KN46dx")
+        assertLocationLocator("KN46dx")
         val readings = app().locations.requests
         assertEquals(1, readings)
         repeat(3) {

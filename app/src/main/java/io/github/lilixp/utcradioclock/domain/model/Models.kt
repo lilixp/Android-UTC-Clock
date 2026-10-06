@@ -42,6 +42,11 @@ data class LocationFix(
     val time: Instant,
     /** Only "approximate location" was allowed (Android 12+): off by up to about 3 km. */
     val approximate: Boolean = false,
+    /**
+     * Height in metres: above sea level when the phone gives it, otherwise the GPS (WGS 84 ellipsoid)
+     * height; null when the phone gave none.
+     */
+    val altitudeMeters: Double? = null,
 )
 
 /** How the automatic (GPS) position is doing. */

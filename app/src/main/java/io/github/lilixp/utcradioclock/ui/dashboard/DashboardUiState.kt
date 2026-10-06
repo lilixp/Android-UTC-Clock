@@ -65,7 +65,7 @@ data class LocationUiState(
     val automatic: Boolean = false,
     /** How the phone's location is doing; null in manual mode. */
     val gps: GpsStatus? = null,
-    /** When the GPS position was taken, local time, e.g. "18:42"; with [PositionOrigin.GPS] only. */
+    /** When the GPS position was taken, in UTC, e.g. "15:42", or "30 sept. 15:42" another day; GPS only. */
     val fixTime: String? = null,
     /** E.g. "±15 m"; null when the phone did not say. */
     val accuracy: String? = null,
@@ -73,7 +73,20 @@ data class LocationUiState(
     val approximate: Boolean = false,
     /** The locator from Settings when it is not valid (e.g. "KN4"): said instead of "not available". */
     val invalidLocator: String? = null,
+    /** Where the position comes from, in the Sun screen's own words; null without a position. */
+    val source: SunPositionSource? = null,
+    /** The 8-character locator of a GPS position (e.g. "KN46dx53"), for VHF and up; null otherwise. */
+    val extendedLocator: String? = null,
+    /** The GPS position's height, e.g. "185 m"; null without one. */
+    val altitude: String? = null,
+    /** The magnetic declination at the position, e.g. "6,4° E"; null without a position. */
+    val declination: String? = null,
+    /** How far the GPS position is from the home QTH (the locator in Settings); only from 1 km away. */
+    val home: HomeUi? = null,
 )
+
+/** Away from home (portable): "35 km" from "KN46dw", with the azimut to turn towards home, e.g. "58°". */
+data class HomeUi(val locator: String, val distance: String, val bearing: String)
 
 /** SFI, K or A: the value exactly as N0NBH gave it, and its colour level. */
 data class IndexUi(val value: String, val level: ConditionLevel)

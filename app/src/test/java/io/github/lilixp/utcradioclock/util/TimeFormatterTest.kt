@@ -111,6 +111,21 @@ class TimeFormatterTest {
     }
 
     @Test
+    fun altitudeDeclinationDistanceAndBearing_forTheLocationScreen() {
+        assertEquals("185 m", formatter.altitude(184.6))
+        assertEquals("-12 m", formatter.altitude(-12.2))
+        assertEquals("6,4° E", formatter.declination(6.43))
+        assertEquals("13,1° W", formatter.declination(-13.07))
+        assertEquals("2,8 km", formatter.distance(2.76))
+        assertEquals("35 km", formatter.distance(35.4))
+        assertEquals("238°", formatter.bearing(237.6))
+        assertEquals("0°", formatter.bearing(359.7)) // a full turn is north again
+        val english = TimeFormatter(Locale.UK)
+        assertEquals("6.4° E", english.declination(6.43))
+        assertEquals("2.8 km", english.distance(2.76))
+    }
+
+    @Test
     fun accuracyInWholeMetres() {
         assertEquals("±12 m", formatter.accuracy(12.4f))
         assertEquals("±2500 m", formatter.accuracy(2500f))

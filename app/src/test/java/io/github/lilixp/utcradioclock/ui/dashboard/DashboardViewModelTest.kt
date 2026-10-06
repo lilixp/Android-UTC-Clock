@@ -39,6 +39,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import io.github.lilixp.utcradioclock.domain.location.GreatCircle
+import io.github.lilixp.utcradioclock.domain.location.Maidenhead
+import io.github.lilixp.utcradioclock.util.TimeFormatter
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
@@ -84,8 +87,12 @@ class DashboardViewModelTest {
             positions = PositionRepository(settings, locations, lastPosition, time),
             propagation = propagation,
             solar = countingSolar,
+            magneticDeclination = { _, _, _ -> 6.4 }, // Android's model is not on the plain JVM
         ) { locale }
     }
+
+    /** The centre of KN46dw, the home locator of these tests. */
+    private val KN46DW_CENTRE = GeoPosition(46.9375, 28.291666666666668)
 
     /** N0NBH data like on 1 October 2026: SFI 93, K 0, A 3; 80-40m Fair by day and Good by night, etc. */
     private val n0nbh = SolarConditions(
@@ -543,7 +550,13 @@ class DashboardViewModelTest {
         subscribe(viewModel)
         val state = viewModel.uiState.value
         assertEquals(
-            LocationUiState(latitude = "46,9375° N", longitude = "28,2917° E", origin = PositionOrigin.LOCATOR),
+            LocationUiState(
+                latitude = "46,9375° N",
+                longitude = "28,2917° E",
+                origin = PositionOrigin.LOCATOR,
+                source = SunPositionSource.MANUAL,
+                declination = "6,4° E",
+            ),
             state.location,
         )
         assertEquals("KN46dw", state.locator)
@@ -565,11 +578,22 @@ class DashboardViewModelTest {
                 origin = PositionOrigin.GPS,
                 automatic = true,
                 gps = GpsStatus.OK,
-                fixTime = "18:41", // local time of the position
+                fixTime = "15:41", // UTC time of the position
                 accuracy = "±12 m",
+                source = SunPositionSource.GPS,
+                extendedLocator = Maidenhead.fromPosition(BOGHICENI, 8),
+                declination = "6,4° E",
+                // Portable: 2,8 km from the home locator, with the azimut back home
+                home = HomeUi(
+                    locator = "KN46dw",
+                    distance = TimeFormatter(Locale.forLanguageTag("ro")).distance(GreatCircle.distanceKm(BOGHICENI, KN46DW_CENTRE)),
+                    bearing = TimeFormatter(Locale.forLanguageTag("ro")).bearing(GreatCircle.bearingDegrees(BOGHICENI, KN46DW_CENTRE)),
+                ),
             ),
             state.location,
         )
+        assertEquals("KN46dx60", state.location.extendedLocator)
+        assertEquals("2,8 km", state.location.home?.distance)
         assertEquals("KN46dx", state.locator) // from GPS, also in the station badge
     }
 
@@ -659,7 +683,8 @@ class DashboardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("IO91wm", state.locator)
         assertEquals("51,5074° N", state.location.latitude)
-        assertEquals("19:12", state.location.fixTime)
+        assertEquals("16:12", state.location.fixTime) // UTC
+        assertEquals(null, state.location.home) // no home locator set: no distance home
     }
 
     @Test

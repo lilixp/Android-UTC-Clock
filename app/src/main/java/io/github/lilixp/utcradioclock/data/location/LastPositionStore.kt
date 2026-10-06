@@ -36,6 +36,7 @@ class SharedPreferencesLastPositionStore(context: Context) : LastPositionStore {
             accuracyMeters = preferences.getFloat(KEY_ACCURACY, -1f).takeIf { it >= 0f },
             time = Instant.ofEpochMilli(preferences.getLong(KEY_TIME, 0L)),
             approximate = preferences.getBoolean(KEY_APPROXIMATE, false),
+            altitudeMeters = preferences.getFloat(KEY_ALTITUDE, Float.NaN).takeIf { it.isFinite() }?.toDouble(),
         )
     }
 
@@ -45,6 +46,7 @@ class SharedPreferencesLastPositionStore(context: Context) : LastPositionStore {
         if (fix.accuracyMeters != null) putFloat(KEY_ACCURACY, fix.accuracyMeters) else remove(KEY_ACCURACY)
         putLong(KEY_TIME, fix.time.toEpochMilli())
         putBoolean(KEY_APPROXIMATE, fix.approximate)
+        if (fix.altitudeMeters != null) putFloat(KEY_ALTITUDE, fix.altitudeMeters.toFloat()) else remove(KEY_ALTITUDE)
     }
 
     override fun clear() = preferences.edit { clear() }
@@ -59,5 +61,6 @@ class SharedPreferencesLastPositionStore(context: Context) : LastPositionStore {
         const val KEY_ACCURACY = "accuracy_m"
         const val KEY_TIME = "time_ms"
         const val KEY_APPROXIMATE = "approximate"
+        const val KEY_ALTITUDE = "altitude_m"
     }
 }

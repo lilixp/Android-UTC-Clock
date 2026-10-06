@@ -159,6 +159,11 @@ class MainActivity : ComponentActivity() {
                         onOpenSettings = { showSettings = true },
                         locationPermissionBlocked = locationBlocked,
                         onLocationAction = ::onLocationAction,
+                        // The same setting as in Settings, and the same request for the location permission
+                        onPositionSourceChange = { source ->
+                            settings.setPositionSource(source)
+                            if (source == PositionSource.AUTOMATIC) requestLocation()
+                        },
                     )
                 }
             }

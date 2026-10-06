@@ -50,7 +50,6 @@ class DashboardInstrumentedTest {
     val compose = createComposeRule()
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val dash = context.getString(R.string.not_available)
 
     @Test
     fun dashboardShowsClocksAndPlaceholders() {
@@ -81,10 +80,10 @@ class DashboardInstrumentedTest {
         compose.onNode(hasScrollAction()).performScrollToNode(noLocation)
         compose.onNode(noLocation).assertIsDisplayed()
         compose.onNode(hasText(context.getString(R.string.sun_enter_locator)) and inSunCard).assertIsDisplayed()
-        val latitude = context.getString(R.string.latitude, dash)
+        // No position: the LOCATION screen says so, with the Manual / Automatic choice to get one
         compose.onNodeWithTag(AppTab.LOCATION.testTag).performClick()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(latitude))
-        compose.onNodeWithText(latitude).assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals(context.getString(R.string.sun_no_location))
+        compose.onNodeWithTag(DashboardTags.LOCATION_SWITCH).assertIsDisplayed()
         val propagation = context.getString(R.string.propagation_loading) // no data in this state yet
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).performClick()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(propagation))

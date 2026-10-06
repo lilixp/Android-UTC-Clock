@@ -108,12 +108,10 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun unknownLocationValuesAreShownAsDashes() {
+    fun unknownLocation_aDashForTheLocator_andSaidSo() {
         show(tab = AppTab.LOCATION)
-        for (text in listOf("Latitudine: —", "Longitudine: —", "QTH: —")) {
-            scrollTo(text)
-            compose.onNodeWithText(text).assertIsDisplayed()
-        }
+        compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertTextEquals("—")
+        compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals("Locația nu este disponibilă.")
     }
 
     // ---- The SUN card ----
@@ -253,8 +251,7 @@ class DashboardScreenTest {
     @Test
     fun locatorIsShownAtQth() {
         show(state.copy(locator = "KN46dw"), tab = AppTab.LOCATION)
-        scrollTo("QTH: KN46dw")
-        compose.onNodeWithText("QTH: KN46dw").assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertTextEquals("KN46dw").assertIsDisplayed()
     }
 
     @Test

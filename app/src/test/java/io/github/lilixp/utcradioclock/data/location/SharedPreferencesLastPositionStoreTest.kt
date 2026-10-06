@@ -39,6 +39,15 @@ class SharedPreferencesLastPositionStoreTest {
         assertEquals(12.5f, loaded.accuracyMeters)
         assertEquals(boghiceni.time, loaded.time)
         assertFalse(loaded.approximate)
+        assertNull(loaded.altitudeMeters) // none was given
+    }
+
+    @Test
+    fun altitude_savedAndReloaded() {
+        restart().save(boghiceni.copy(altitudeMeters = 144.6))
+        assertEquals(144.6, restart().load()!!.altitudeMeters!!, 0.01)
+        restart().save(boghiceni) // a later position without one: no old height left behind
+        assertNull(restart().load()!!.altitudeMeters)
     }
 
     @Test

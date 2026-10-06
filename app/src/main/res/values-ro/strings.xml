@@ -67,10 +67,18 @@
     <string name="sun_polar_night">Soarele nu răsare în această zi.</string>
 
     <string name="section_location">LOCAȚIE</string>
-    <string name="latitude">Latitudine: %1$s</string>
-    <string name="longitude">Longitudine: %1$s</string>
-    <string name="location_gps_approximate">GPS (aproximativ)</string>
-    <string name="location_from_locator">Locator din Setări (centrul pătratului)</string>
+    <!-- Ecranul LOCAȚIE -->
+    <string name="location_square_centre">%1$s · centrul pătratului</string>
+    <string name="location_home">La %1$s de %2$s · azimut spre casă %3$s</string>
+    <string name="tile_latitude">Latitudine</string>
+    <string name="tile_longitude">Longitudine</string>
+    <string name="tile_altitude">Altitudine</string>
+    <string name="altitude_detail">Din GPS</string>
+    <string name="tile_accuracy">Precizie</string>
+    <string name="tile_declination">Declinație magnetică</string>
+    <string name="declination_detail">Nordul busolei față de nordul geografic</string>
+    <string name="accuracy_gps_exact">GPS exact</string>
+    <string name="accuracy_gps_approximate">GPS aproximativ</string>
     <string name="location_searching">Se caută poziția…</string>
     <string name="location_no_permission">Aplicația nu are acces la locația telefonului.</string>
     <string name="location_permission_blocked">Accesul la locație a fost refuzat. Îl poți permite din setările aplicației.</string>
