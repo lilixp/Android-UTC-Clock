@@ -12,6 +12,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -28,7 +31,10 @@ import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import java.time.Duration
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 object SunTags {
     const val CONTENT = "sun_content"
@@ -225,6 +231,29 @@ private fun sunDuration(duration: Duration, countdown: Boolean): String {
         else stringResource(R.string.sun_duration_minutes, rest)
 }
 
+/** The sun of now on the day band: eight short rays and a disc, with a dark outline that shows on every phase. */
+private fun DrawScope.drawSun(center: Offset) {
+    val ray = SUN_RAY_WIDTH.toPx()
+    val inner = SUN_RAY_INNER.toPx()
+    val outer = SUN_RAY_OUTER.toPx()
+    for (i in 0 until 8) {
+        val angle = i * PI / 4
+        val direction = Offset(cos(angle).toFloat(), sin(angle).toFloat())
+        drawLine(SunOutline, center + direction * inner, center + direction * outer, ray, StrokeCap.Round)
+    }
+    drawCircle(SunFill, SUN_DISC.toPx(), center)
+    drawCircle(SunOutline, SUN_DISC.toPx(), center, style = Stroke(SUN_DISC_OUTLINE.toPx()))
+}
+
+/** The sun's size: it fits the 20 dp band, rays included. */
+private val SUN_DISC = 4.6.dp
+private val SUN_DISC_OUTLINE = 1.2.dp
+private val SUN_RAY_INNER = 6.5.dp
+private val SUN_RAY_OUTER = 9.dp
+private val SUN_RAY_WIDTH = 1.6.dp
+private val SunFill = Color(0xFFFFC22E)
+private val SunOutline = Color(0xFF3B2A00)
+
 @Composable
 private fun DayBand(data: SunPresentation) {
     // Local colours, readable in both themes. Text legend and semantics identify every phase.
@@ -262,9 +291,15 @@ private fun DayBand(data: SunPresentation) {
             .semantics { contentDescription = description }) {
             data.segments.forEach { drawRect(color(it.phase), Offset(it.start * size.width, 0f),
                 Size((it.end - it.start) * size.width, size.height)) }
-            val x = (data.marker * size.width).coerceIn(1.dp.toPx(), size.width - 1.dp.toPx())
-            drawLine(Color.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
-            drawCircle(day, 3.dp.toPx(), Offset(x, 3.dp.toPx()))
+            if (data.markerPhase == DayPhase.DAY) {
+                // By day, now is a small stylised sun inside the band; at twilight and at night the white line
+                val radius = SUN_RAY_OUTER.toPx()
+                drawSun(Offset((data.marker * size.width).coerceIn(radius, size.width - radius), size.height / 2))
+            } else {
+                val x = (data.marker * size.width).coerceIn(1.dp.toPx(), size.width - 1.dp.toPx())
+                drawLine(Color.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+                drawCircle(day, 3.dp.toPx(), Offset(x, 3.dp.toPx()))
+            }
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val availableWidth = constraints.maxWidth

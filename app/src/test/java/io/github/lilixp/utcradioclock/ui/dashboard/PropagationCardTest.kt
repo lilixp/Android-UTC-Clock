@@ -760,16 +760,18 @@ class PropagationCardTest {
     }
 
     @Test
-    fun cells_haveReadableLevelsAndAccessibleDescriptions() {
+    fun cells_colourOnly_noWordsNorInitials_butAccessibleDescriptions() {
         show(withFallback)
         for (group in listOf(BandGroup.BANDS_30_20, BandGroup.BANDS_12_10)) {
             select(PropagationTags.band(group))
             val inTable = androidx.compose.ui.test.hasAnyAncestor(hasTestTag(PropagationTags.BAND_TABLE))
-            for (word in listOf("Necunoscut", "ACUM", "Acum")) {
+            for (word in listOf("Bun", "Mediu", "Slab", "Necunoscut", "—", "B", "M", "S", "ACUM", "Acum")) {
                 assertEquals(word, 0, compose.onAllNodes(hasText(word, substring = word.length > 1) and inTable).fetchSemanticsNodes().size)
             }
-            assertTrue(compose.onAllNodes(hasText("Bun").or(hasText("Mediu")).or(hasText("Slab")) and inTable)
-                .fetchSemanticsNodes().isNotEmpty())
+            for (band in group.bands) for (phase in listOf(DayPhase.DAY, DayPhase.NIGHT)) {
+                cell(band, phase).assert(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+                    androidx.compose.ui.semantics.SemanticsProperties.ContentDescription))
+            }
         }
     }
 
@@ -809,7 +811,7 @@ class PropagationCardTest {
     private fun assertCell(band: HfBand, phase: DayPhase, level: String) {
         cell(band, phase)
             .assertContentDescriptionEquals("${band.meters} m, ${phaseRo.getValue(phase)}: $level")
-            .assertTextEquals(if (level == "Necunoscut") "—" else level)
+            .assert(androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(androidx.compose.ui.semantics.SemanticsProperties.Text))
     }
 
     /** The colour at the top of a phase's column, above its title: the stripe of now or the panel's own. */

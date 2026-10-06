@@ -33,7 +33,12 @@ data class SunPresentation(
     val midday: Float,
     val countdown: SunCountdown?,
     val phaseRanges: List<SunPhaseRange> = emptyList(),
-)
+) {
+    /** The phase at the marker (now), from the band's own segments; null where the band has none. */
+    val markerPhase: DayPhase?
+        get() = segments.firstOrNull { marker >= it.start && marker < it.end }?.phase
+            ?: segments.lastOrNull { marker >= it.start && marker <= it.end }?.phase
+}
 
 /** Small shared solar-result cache: the centre day and its neighbours use the same calculator.
  * Adjacent days cover events across local midnight and a remote station's solar noon. No per-tick astronomy.

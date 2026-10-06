@@ -7,8 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -26,6 +28,7 @@ import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardUiState
+import io.github.lilixp.utcradioclock.ui.dashboard.SunTags
 import io.github.lilixp.utcradioclock.ui.dashboard.ZoneUi
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
 import io.github.lilixp.utcradioclock.ui.theme.UTCRadioClockTheme
@@ -70,10 +73,10 @@ class DashboardInstrumentedTest {
         }
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_TIME).assertTextEquals("18:42:31")
-        // No locator in this state: the SUN card says so instead of showing times. The LOCATION card says
-        // "not available" too, so the text is looked for next to the SUN title, in the SUN card only
+        // No locator in this state: the SUN screen says so instead of showing times. The LOCATION card says
+        // "not available" too, so the text is looked for in the SUN screen's content only
         compose.onNodeWithTag(AppTab.SUN.testTag).performClick()
-        val inSunCard = hasAnySibling(hasText(context.getString(R.string.section_sun)))
+        val inSunCard = hasAnyAncestor(hasTestTag(SunTags.CONTENT))
         val noLocation = hasText(context.getString(R.string.sun_no_location)) and inSunCard
         compose.onNode(hasScrollAction()).performScrollToNode(noLocation)
         compose.onNode(noLocation).assertIsDisplayed()

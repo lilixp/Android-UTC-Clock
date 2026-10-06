@@ -761,21 +761,20 @@ private fun TableColumn(
     }
 }
 
-/** Colour and readable text together; the accessible description also identifies the band and phase. */
+/**
+ * A level as its colour only, like the boxes (no word, no initial); unknown in the neutral colour. The
+ * accessible description gives the band, the phase and the level ("30 m, Zi: Bun").
+ */
 @Composable
 private fun LevelCell(level: ConditionLevel?, description: String, tag: String, modifier: Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 28.dp)
+            .heightIn(min = 24.dp)
             .background(LocalConditionColors.current.of(level).container, CellShape)
             .testTag(tag)
-            .semantics(mergeDescendants = true) { contentDescription = description },
-    ) {
-        Text(levelName(level), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-            color = LocalConditionColors.current.of(level).content, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp))
-    }
+            .semantics { contentDescription = description },
+    )
 }
 
 @Composable

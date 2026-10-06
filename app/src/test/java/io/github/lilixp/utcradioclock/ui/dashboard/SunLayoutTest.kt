@@ -28,6 +28,7 @@ import java.io.File
 import java.time.*
 import java.util.Locale
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.toPixelMap
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -152,6 +153,35 @@ class SunLayoutTest {
         val directory = File("build/sun-review").apply { mkdirs() }
         File(directory, "$name.png").outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+    /** By day now is a small sun inside the band; at twilight and at night the white line stays. */
+    @Test fun marker_sunByDay_whiteLineAtTwilightAndAtNight() {
+        val ro = Locale.forLanguageTag("ro")
+        var input by mutableStateOf(sample(ro, date.atTime(13, 0).atZone(zone).toInstant()))
+        compose.setContent {
+            UTCRadioClockTheme(false) {
+                Box(Modifier.requiredSize(384.dp, 760.dp)) {
+                    DashboardScreen(DashboardUiState("6 octombrie 2026", "10:00:00", "13:00:00", null,
+                        ZoneUi(zone.id, "EEST", "UTC+03:00"), callsign = "ER1PL", locator = "KN46dw", sun = input),
+                        selectedTab = AppTab.SUN) {}
+                }
+            }
+        }
+        fun atMarker(): androidx.compose.ui.graphics.Color {
+            val image = compose.onNodeWithTag(SunTags.BAND).captureToImage().toPixelMap()
+            val x = (input.presentation!!.marker * image.width).toInt().coerceIn(0, image.width - 1)
+            return image[x, image.height / 2]
+        }
+        fun close(expected: androidx.compose.ui.graphics.Color, actual: androidx.compose.ui.graphics.Color) =
+            kotlin.math.abs(expected.red - actual.red) < 0.03 && kotlin.math.abs(expected.green - actual.green) < 0.03 &&
+                kotlin.math.abs(expected.blue - actual.blue) < 0.03
+        assertEquals(DayPhase.DAY, input.presentation!!.markerPhase)
+        assertTrue("A sun by day", close(androidx.compose.ui.graphics.Color(0xFFFFC22E), atMarker()))
+        for ((hour, minute, phase) in listOf(Triple(18, 50, DayPhase.TWILIGHT), Triple(22, 40, DayPhase.NIGHT))) {
+            compose.runOnIdle { input = sample(ro, date.atTime(hour, minute).atZone(zone).toInstant()) }
+            assertEquals(phase, input.presentation!!.markerPhase)
+            assertTrue("The white line at $hour:$minute", close(androidx.compose.ui.graphics.Color.White, atMarker()))
         }
     }
     @Test fun romanianLight13() = check(false)

@@ -140,6 +140,24 @@ Decizii (cerința lui Lilian pentru redesignul ecranului Propagare):
   cele 10 benzi HF și afișată contextual doar când există condiții relevante de propagare pe 6 m.
   Sursa și regula se decid atunci; acum nu există nimic pentru 6 m în cod.
 
+## Modificări făcute de Claude Code (6 octombrie 2026)
+
+Două ajustări de design cerute de Lilian, făcute de **Claude Code** (nu de ChatGPT Codex), peste
+lucrul existent:
+
+- **Propagare, tabelul unui grup (Bandă | Zi | Noapte):** celulele sunt din nou **doar culoare**, fără
+  „Bun/Mediu/Slab” și fără „—” (revenire la decizia din 2 octombrie). Celula neutră înseamnă
+  „Necunoscut”. TalkBack citește fiecare celulă („30 m, Zi: Bun”). Celula are minimum 24 dp
+  (era 28 dp cu text). Fișier: `PropagationCard.kt` (`LevelCell`).
+- **Soare, bara „Ziua la stație”:** ziua, momentul curent e un **soare mic stilizat** (disc și 8 raze,
+  contur închis), desenat în interiorul barei. În crepuscul și noaptea rămâne liniuța albă. Fără lună.
+  Faza momentului curent vine din segmentele barei (`SunPresentation.markerPhase`). Fișiere:
+  `SunScreen.kt` (`DayBand`, `drawSun`), `SunPresentation.kt`.
+- Teste: `PropagationCardTest` (celule fără text, cu descriere) și `SunLayoutTest`
+  (`marker_sunByDay_whiteLineAtTwilightAndAtNight`).
+- Testul instrumentat `dashboardShowsClocksAndPlaceholders` caută acum „Locația nu este disponibilă.”
+  în conținutul ecranului Soare (noul ecran Soare îl pune într-un card, nu lângă titlu).
+
 ## Faza A — corecții funcționale (1 octombrie 2026)
 
 Rezolvate (detalii în `PHASE_A_REPORT.md`):
