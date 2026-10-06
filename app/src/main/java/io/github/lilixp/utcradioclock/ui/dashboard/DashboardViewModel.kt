@@ -11,7 +11,6 @@ import io.github.lilixp.utcradioclock.domain.model.ClockReading
 import io.github.lilixp.utcradioclock.domain.model.DayPhase
 import io.github.lilixp.utcradioclock.domain.model.GeoPosition
 import io.github.lilixp.utcradioclock.domain.model.GpsStatus
-import io.github.lilixp.utcradioclock.domain.model.HfBand
 import io.github.lilixp.utcradioclock.domain.model.LocalDay
 import io.github.lilixp.utcradioclock.domain.model.PolarCondition
 import io.github.lilixp.utcradioclock.domain.model.PositionOrigin
@@ -218,7 +217,7 @@ class DashboardViewModel(
      * [OfflinePropagationCalculator] with N0NBH's SFI and K as numbers (never read back from the shown text).
      */
     private fun groupEstimate(group: BandGroup, solarFlux: Double, kIndex: Double): List<BandPhasesUi> =
-        group.hfBands().map { band ->
+        group.bands.map { band ->
             BandPhasesUi(
                 band = band,
                 day = OfflinePropagationCalculator.level(band, DayPhase.DAY, solarFlux, kIndex),
@@ -226,14 +225,6 @@ class DashboardViewModel(
                 night = OfflinePropagationCalculator.level(band, DayPhase.NIGHT, solarFlux, kIndex),
             )
         }
-
-    /** The HF bands of each N0NBH group, as the offline estimate has them; 160 m belongs to none. */
-    private fun BandGroup.hfBands(): List<HfBand> = when (this) {
-        BandGroup.BANDS_80_40 -> listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M)
-        BandGroup.BANDS_30_20 -> listOf(HfBand.BAND_30M, HfBand.BAND_20M)
-        BandGroup.BANDS_17_15 -> listOf(HfBand.BAND_17M, HfBand.BAND_15M)
-        BandGroup.BANDS_12_10 -> listOf(HfBand.BAND_12M, HfBand.BAND_10M)
-    }
 
     private fun sunState(day: LocalDay, input: SunInput): Sun {
         val position = input.position

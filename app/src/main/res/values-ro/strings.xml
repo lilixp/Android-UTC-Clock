@@ -97,8 +97,6 @@
     <string name="index_a_quiet">Liniștit sau instabil</string>
     <string name="index_active">Activ</string>
     <string name="index_storm">Furtună</string>
-    <string name="group_day">Ziua</string>
-    <string name="group_night">Noaptea</string>
 
     <string name="section_appearance">ASPECT</string>
     <string name="theme_system">Sistem</string>

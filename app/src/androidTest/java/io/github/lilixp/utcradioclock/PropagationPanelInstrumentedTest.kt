@@ -143,7 +143,7 @@ class PropagationPanelInstrumentedTest {
         // The group N0NBH has no data for: its estimate table on the screen, under the card, none of it cut
         tapAndCheck(PropagationTags.band(BandGroup.BANDS_80_40))
         compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag(PropagationTags.estimateCell(HfBand.BAND_40M, DayPhase.NIGHT)).assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.bandCell(HfBand.BAND_40M, DayPhase.NIGHT)).assertIsDisplayed()
     }
 
     @Test

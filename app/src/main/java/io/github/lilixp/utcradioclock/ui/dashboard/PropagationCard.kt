@@ -6,15 +6,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +42,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
@@ -72,10 +72,16 @@ object PropagationTags {
     /** The reference values of SFI, K or A. */
     const val REFERENCE_VALUES = "propagation_reference_values"
 
-    /** A band group's offline estimate: its bands by day, at twilight and at night. */
+    /** A group's table, Bandă | Zi | Noapte, a band's row in it and a band's cell by day or by night. */
+    const val BAND_TABLE = "propagation_band_table"
+    fun bandRow(band: HfBand) = "band_row_${band.meters}"
+    fun bandCell(band: HfBand, phase: DayPhase) = "band_cell_${band.meters}_${phase.name.lowercase()}"
+
+    /** A phase's column in a group's table (the column of now has a light stripe). */
+    fun phaseColumn(phase: DayPhase) = "phase_column_${phase.name.lowercase()}"
+
+    /** A group's offline estimate: only for a group N0NBH has no data for. */
     const val ESTIMATE_TABLE = "propagation_estimate_table"
-    fun estimateRow(band: HfBand) = "estimate_row_${band.meters}"
-    fun estimateCell(band: HfBand, phase: DayPhase) = "estimate_${band.meters}_${phase.name.lowercase()}"
 }
 
 /** What the panel explains: an index (SFI, K, A), a band group or an estimated band (by its name). */
@@ -90,9 +96,12 @@ private val SELECTION_RING_GAP = 1.5.dp
 
 private val BoxShape = RoundedCornerShape(BOX_CORNER)
 
-/** The estimate table: the band column is a little narrower than the three level columns. */
+/** The bands table: the band column is a little narrower than the three level columns. */
 private const val BAND_COLUMN = 0.8f
 private val TABLE_GAP = 6.dp
+private val CELL_GAP = 3.dp
+private val CELL_CORNER = 5.dp
+private val CellShape = RoundedCornerShape(CELL_CORNER)
 
 /**
  * N0NBH's data: SFI, K and A on the first row, the four band groups on the second, each in its colour,
@@ -420,13 +429,14 @@ private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modi
 }
 
 /**
- * A band group: N0NBH's level now, by day and by night (the one of now, day or night at the station, in
- * bold). Only when N0NBH reported nothing for the group: the offline estimate for its own bands, as the
- * state brings it (the fallback), or why there is none.
+ * A band group: its box and N0NBH's level now, then its bands in a compact table, Bandă | Zi | Noapte, in
+ * colours only, each band with its own cells. With N0NBH data every band shows the group's level (N0NBH
+ * publishes one level for the group: the same colour repeated, not a measurement per band). Only when
+ * N0NBH reported nothing for the group: the offline estimate for each band, as the state brings it (the
+ * fallback, where two bands may differ), or why there is none.
  */
 @Composable
 private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
-    val isDay = propagation.isDay
     PanelHeader(
         value = band.group.label,
         level = band.now,
@@ -434,9 +444,43 @@ private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
         subtitle = null,
         numeric = false,
     )
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        LevelRow(band.day, stringResource(R.string.group_day), levelName(band.day), current = isDay)
-        LevelRow(band.night, stringResource(R.string.group_night), levelName(band.night), current = !isDay)
+    // Day or night at the station now (twilight counts as night, as for N0NBH's groups; without a
+    // position, by the clock)
+    val now = if (propagation.isDay) DayPhase.DAY else DayPhase.NIGHT
+    val estimate = band.estimate
+    when {
+        estimate != null -> Column(
+            modifier = Modifier.testTag(PropagationTags.ESTIMATE_TABLE),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.estimate_title),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            BandTable(estimate.map { BandRow(it.band, it.day, it.night) }, now)
+            if (estimate.any { it.day == null || it.night == null }) {
+                Text(
+                    text = stringResource(R.string.estimate_no_data),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = stringResource(R.string.estimate_source),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // N0NBH's level is for the whole group: each band of it shows that level
+        band.day != null || band.night != null -> BandTable(band.group.bands.map { BandRow(it, band.day, band.night) }, now)
+        // Nothing from N0NBH for this group, and not both SFI and K for an estimate
+        else -> Text(
+            text = stringResource(R.string.estimate_no_data),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
     if (propagation.dayNightByClock) {
         Text(
@@ -445,125 +489,107 @@ private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    val estimate = band.estimate
-    if (estimate != null) {
-        EstimateTable(estimate, propagation.phase)
-    } else if (band.day == null && band.night == null) {
-        // Nothing from N0NBH for this group, and neither SFI nor K for an estimate
-        Text(
-            text = stringResource(R.string.estimate_no_data),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }
 
-/** The table's columns: the three phases of the estimate, in the order of the day. */
-private val PHASES = listOf(DayPhase.DAY, DayPhase.TWILIGHT, DayPhase.NIGHT)
-
-/** A band's level at [phase], as the state brings it. */
-private fun BandPhasesUi.at(phase: DayPhase): ConditionLevel? = when (phase) {
-    DayPhase.DAY -> day
-    DayPhase.TWILIGHT -> twilight
-    DayPhase.NIGHT -> night
+/** One row of the table: a band and its level by day and by night (null is "Unknown"). */
+private class BandRow(val band: HfBand, val day: ConditionLevel?, val night: ConditionLevel?) {
+    fun at(phase: DayPhase): ConditionLevel? = if (phase == DayPhase.DAY) day else night
 }
+
+/** The table's columns: day and night. */
+private val PHASES = listOf(DayPhase.DAY, DayPhase.NIGHT)
 
 /**
- * "Estimare offline": a compact table, Bandă | Zi | Amurg | Noapte, each level in its colour ("Necunoscut"
- * in the neutral one), exactly as the state brings it (calculated in the ViewModel, nothing here); the
- * phase of now at the station ([phase]) in bold, when it is known. Then why some levels are unknown, if
- * any, and where the estimate comes from.
+ * Bandă | Zi | Noapte: the bands down the first column, then a cell per band in the day and in the night
+ * column. The column of [now] has a light stripe behind it and its title in bold.
  */
 @Composable
-private fun EstimateTable(estimate: List<BandPhasesUi>, phase: DayPhase?) {
-    Column(
-        modifier = Modifier.padding(top = 4.dp).testTag(PropagationTags.ESTIMATE_TABLE),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+private fun BandTable(rows: List<BandRow>, now: DayPhase) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).testTag(PropagationTags.BAND_TABLE),
+        horizontalArrangement = Arrangement.spacedBy(TABLE_GAP),
     ) {
-        Text(
-            text = stringResource(R.string.estimate_title),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(TABLE_GAP), verticalAlignment = Alignment.CenterVertically) {
-            TableHeader(stringResource(R.string.estimate_band), current = false, TextAlign.Start, Modifier.weight(BAND_COLUMN))
-            for (column in PHASES) {
-                TableHeader(phaseName(column), current = column == phase, TextAlign.Center, Modifier.weight(1f))
+        TableColumn(stringResource(R.string.estimate_band), current = false, TextAlign.Start, Modifier.weight(BAND_COLUMN)) {
+            for (row in rows) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().testTag(PropagationTags.bandRow(row.band)),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        text = stringResource(R.string.band_meters, row.band.meters),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
             }
         }
-        for (row in estimate) {
-            val band = row.band
-            Row(
-                modifier = Modifier.testTag(PropagationTags.estimateRow(band)),
-                horizontalArrangement = Arrangement.spacedBy(TABLE_GAP),
-                verticalAlignment = Alignment.CenterVertically,
+        for (phase in PHASES) {
+            TableColumn(
+                phaseName(phase),
+                current = phase == now,
+                TextAlign.Center,
+                Modifier.weight(1f).testTag(PropagationTags.phaseColumn(phase)),
             ) {
-                Text(
-                    text = stringResource(R.string.band_meters, band.meters),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.weight(BAND_COLUMN),
-                )
-                for (column in PHASES) {
-                    EstimateCell(
-                        level = row.at(column),
-                        current = column == phase,
-                        tag = PropagationTags.estimateCell(band, column),
+                for (row in rows) {
+                    LevelCell(
+                        level = row.at(phase),
+                        description = stringResource(
+                            R.string.cell_description,
+                            stringResource(R.string.band_meters, row.band.meters),
+                            phaseName(phase),
+                            estimateLevelName(row.at(phase)),
+                        ),
+                        tag = PropagationTags.bandCell(row.band, phase),
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
-        if (estimate.any { row -> PHASES.any { row.at(it) == null } }) {
-            Text(
-                text = stringResource(R.string.estimate_no_data),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Text(
-            text = stringResource(R.string.estimate_source),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
-/** A column title of the table ("Zi"); the phase of now in bold, in the text colour. */
+/** A column: its title, then its cells filling the height left; the column of now on a light stripe. */
 @Composable
-private fun TableHeader(text: String, current: Boolean, align: TextAlign, modifier: Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
-        color = if (current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = align,
-        modifier = modifier,
-    )
-}
-
-/**
- * One level in its colour, like the boxes: "Bun", "Mediu", "Slab", or "Necunoscut" in the neutral colour.
- * On one line; a long word ("Necunoscut") shrinks a little at a large text size rather than being cut.
- */
-@Composable
-private fun EstimateCell(level: ConditionLevel?, current: Boolean, tag: String, modifier: Modifier) {
-    val colors = LocalConditionColors.current.of(level)
-    Surface(shape = RoundedCornerShape(6.dp), color = colors.container, contentColor = colors.content, modifier = modifier) {
+private fun TableColumn(
+    title: String,
+    current: Boolean,
+    align: TextAlign,
+    modifier: Modifier,
+    cells: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(if (current) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(6.dp))
+            .padding(3.dp),
+        verticalArrangement = Arrangement.spacedBy(CELL_GAP),
+    ) {
         Text(
-            text = estimateLevelName(level),
+            text = title,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center,
+            fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+            color = if (current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = align,
             maxLines = 1,
-            softWrap = false,
-            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.labelMedium.fontSize),
-            modifier = Modifier.testTag(tag).padding(horizontal = 2.dp, vertical = 5.dp),
+            modifier = Modifier.fillMaxWidth(),
         )
+        Column(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CELL_GAP), content = cells)
     }
+}
+
+/** A level as its colour only, like the boxes; unknown in the neutral one. TalkBack reads [description]. */
+@Composable
+private fun LevelCell(level: ConditionLevel?, description: String, tag: String, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .background(LocalConditionColors.current.of(level).container, CellShape)
+            .testTag(tag)
+            .semantics { contentDescription = description },
+    )
 }
 
 @Composable
@@ -574,26 +600,6 @@ private fun phaseName(phase: DayPhase): String = stringResource(
         DayPhase.NIGHT -> R.string.phase_night
     },
 )
-
-/** A small square in a level's colour, a label ("0–3", "Ziua") and its meaning; [current] in bold. */
-@Composable
-private fun LevelRow(level: ConditionLevel?, label: String, meaning: String, current: Boolean) {
-    val weight = if (current) FontWeight.Bold else FontWeight.Normal
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(
-            modifier = Modifier
-                .size(14.dp)
-                .background(LocalConditionColors.current.of(level).container, RoundedCornerShape(4.dp)),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
-            fontWeight = weight,
-            modifier = Modifier.widthIn(min = 72.dp),
-        )
-        Text(text = meaning, style = MaterialTheme.typography.bodyMedium, fontWeight = weight, modifier = Modifier.weight(1f))
-    }
-}
 
 /** An estimated level, or "Unknown" when the data it needs is missing. */
 @Composable

@@ -6,6 +6,7 @@ import android.provider.Settings
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
@@ -155,7 +156,10 @@ class MainActivityTest {
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
         compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Mediu")
         compose.onNodeWithTag(PropagationTags.PANEL_SUBTITLE).assertDoesNotExist() // no "Acum e noapte la stație."
-        compose.onNodeWithText("Noaptea").assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.bandCell(HfBand.BAND_17M, DayPhase.NIGHT))
+            .assertContentDescriptionEquals("17 m, Noapte: Mediu")
+        compose.onNodeWithTag(PropagationTags.bandCell(HfBand.BAND_15M, DayPhase.NIGHT))
+            .assertContentDescriptionEquals("15 m, Noapte: Mediu")
         compose.onNodeWithText("OK").assertDoesNotExist() // no dialog: the panel under the card explains it
     }
 
@@ -169,7 +173,7 @@ class MainActivityTest {
         for (group in BandGroup.entries) {
             compose.onNodeWithTag(PropagationTags.band(group)).performClick()
             compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
-            compose.onNodeWithText("Ziua").assertIsDisplayed()
+            compose.onNodeWithTag(PropagationTags.BAND_TABLE).assertIsDisplayed()
             compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
             compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
         }

@@ -36,13 +36,14 @@ data class BandEstimate(val band: HfBand, val level: ConditionLevel?)
 
 /**
  * The four band groups for which N0NBH publishes conditions. [range] is the same in every language
- * ("80-40"), [label] is what the band box shows ("80-40m"), [sourceName] is the name in the feed.
+ * ("80-40"), [label] is what the band box shows ("80-40m"), [sourceName] is the name in the feed, [bands]
+ * the HF bands of the group (160 m belongs to none).
  */
-enum class BandGroup(val range: String, val sourceName: String) {
-    BANDS_80_40("80-40", "80m-40m"),
-    BANDS_30_20("30-20", "30m-20m"),
-    BANDS_17_15("17-15", "17m-15m"),
-    BANDS_12_10("12-10", "12m-10m"),
+enum class BandGroup(val range: String, val sourceName: String, val bands: List<HfBand>) {
+    BANDS_80_40("80-40", "80m-40m", listOf(HfBand.BAND_80M, HfBand.BAND_60M, HfBand.BAND_40M)),
+    BANDS_30_20("30-20", "30m-20m", listOf(HfBand.BAND_30M, HfBand.BAND_20M)),
+    BANDS_17_15("17-15", "17m-15m", listOf(HfBand.BAND_17M, HfBand.BAND_15M)),
+    BANDS_12_10("12-10", "12m-10m", listOf(HfBand.BAND_12M, HfBand.BAND_10M)),
     ;
 
     val label: String get() = "${range}m"

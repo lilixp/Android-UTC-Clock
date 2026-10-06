@@ -102,6 +102,7 @@
     <string name="phase_day">Day</string>
     <string name="phase_twilight">Twilight</string>
     <string name="phase_night">Night</string>
+    <string name="cell_description" translatable="false">%1$s, %2$s: %3$s</string>
     <string name="estimate_no_data">SFI or the K index is missing, so there is no estimate.</string>
     <string name="estimate_source">Offline estimate, calculated on the phone from SFI, K and the Sun at the station.</string>
     <!-- The panel under the PROPAGATION card: it explains the box last tapped -->
@@ -112,8 +113,6 @@
     <string name="index_a_quiet">Quiet or unsettled</string>
     <string name="index_active">Active</string>
     <string name="index_storm">Storm</string>
-    <string name="group_day">By day</string>
-    <string name="group_night">At night</string>
 
     <string name="section_appearance">APPEARANCE</string>
     <string name="theme_system">System</string>
