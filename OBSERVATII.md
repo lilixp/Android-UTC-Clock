@@ -158,6 +158,15 @@ lucrul existent:
 - Testul instrumentat `dashboardShowsClocksAndPlaceholders` caută acum „Locația nu este disponibilă.”
   în conținutul ecranului Soare (noul ecran Soare îl pune într-un card, nu lângă titlu).
 
+Decizii ale lui Lilian în aceeași zi (notate de Claude Code):
+
+- **Grayline: renunțăm.** Bara „Ziua la stație” arată deja crepusculul (grayline).
+- **Calendarul de concursuri: renunțăm**, ca să nu încărcăm ecranul (și indicatorul de concurs).
+- **Tragerea în jos (Etapa 6): renunțăm.** Datele N0NBH rămân actualizate o dată pe oră (limita
+  cerută de N0NBH; SFI se schimbă orar, restul la 3 ore). Fără Internet se văd ultimele date salvate,
+  ca acum. Propunerea „Actualizare la cerere” de mai sus nu se mai face.
+- **Etapa 4 (Locație)** este următoarea.
+
 ## Faza A — corecții funcționale (1 octombrie 2026)
 
 Rezolvate (detalii în `PHASE_A_REPORT.md`):
