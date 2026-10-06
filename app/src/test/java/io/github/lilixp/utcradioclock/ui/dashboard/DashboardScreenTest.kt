@@ -141,11 +141,12 @@ class DashboardScreenTest {
         show(state.copy(sun = sunKn46dw, locator = "KN46dw"), tab = AppTab.SUN)
         assertSunLines(
             "SOARE",
-            "Răsărit: 07:04",
-            "Apus: 18:49",
-            "Amiază solară: 12:57",
-            "Durata zilei: 11h 44m",
-            "Crepuscul civil: 06:33 – 19:19",
+            "Răsărit", "07:04",
+            "Apus", "18:49",
+            "Amiază solară", "12:57",
+            "Durata zilei", "11h 44m",
+            "Crepuscul dimineața", "06:33–07:04",
+            "Crepuscul seara", "18:49–19:19",
         )
         compose.onNodeWithText("Locația nu este disponibilă.").assertDoesNotExist()
     }
@@ -199,16 +200,17 @@ class DashboardScreenTest {
     fun sunCardOnAPolarDay() {
         val sun = SunUiState(SunStatus.MIDNIGHT_SUN, solarNoon = "13:02", dayLength = "24h 00m", locator = "JQ78")
         show(state.copy(sun = sun), tab = AppTab.SUN)
-        assertSunLines("Soarele nu apune în această zi.", "Amiază solară: 13:02", "Durata zilei: 24h 00m")
-        compose.onNodeWithText("Răsărit", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Crepuscul", substring = true).assertDoesNotExist() // no twilight to show
+        assertSunLines("Soarele nu apune în această zi.", "Amiază solară", "13:02", "Durata zilei", "24h 00m")
+        compose.onNodeWithTag(SunTags.SUNRISE).assertIsDisplayed()
+        compose.onNodeWithText("00:00").assertDoesNotExist() // no invented event time
     }
 
     @Test
     fun sunCardOnAWhiteNight_twilightMissingIsADash() {
         show(state.copy(sun = sunKn46dw.copy(civilDawn = null, civilDusk = null)), tab = AppTab.SUN)
-        assertSunLines("Răsărit: 07:04")
-        compose.onNodeWithText("Crepuscul", substring = true).assertDoesNotExist()
+        assertSunLines("Răsărit", "07:04", "Crepuscul dimineața", "Crepuscul seara")
+        compose.onNodeWithText("06:33–07:04").assertDoesNotExist()
+        compose.onNodeWithText("18:49–19:19").assertDoesNotExist()
     }
 
     @Test
@@ -217,11 +219,12 @@ class DashboardScreenTest {
         show(state.copy(sun = sunKn46dw), tab = AppTab.SUN)
         assertSunLines(
             "SUN",
-            "Sunrise: 07:04",
-            "Sunset: 18:49",
-            "Solar noon: 12:57",
-            "Day length: 11h 44m",
-            "Civil twilight: 06:33 – 19:19",
+            "Sunrise", "07:04",
+            "Sunset", "18:49",
+            "Solar noon", "12:57",
+            "Day length", "11h 44m",
+            "Morning twilight", "06:33–07:04",
+            "Evening twilight", "18:49–19:19",
         )
     }
 
@@ -235,7 +238,7 @@ class DashboardScreenTest {
     @Test
     fun sunCardInTheDarkTheme() {
         show(state.copy(sun = sunKn46dw), dark = true, tab = AppTab.SUN)
-        assertSunLines("Răsărit: 07:04", "Durata zilei: 11h 44m")
+        assertSunLines("Răsărit", "07:04", "Durata zilei", "11h 44m")
         assertTrue(background.luminance() < 0.1f)
     }
 

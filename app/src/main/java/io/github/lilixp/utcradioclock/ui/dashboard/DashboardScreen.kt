@@ -109,7 +109,7 @@ fun DashboardScreen(
                     LocalCard(state)
                     ZoneTiles(state.zone)
                 }
-                AppTab.SUN -> SunCard(state.sun)
+                AppTab.SUN -> SunScreen(state.sun)
                 AppTab.LOCATION -> LocationCard(state.location, state.locator, locationPermissionBlocked, onLocationAction)
                 AppTab.PROPAGATION -> PropagationCard(state.propagation)
             }
@@ -137,57 +137,6 @@ private fun TabBar(selectedTab: AppTab, onSelectTab: (AppTab) -> Unit) {
                 },
                 modifier = Modifier.testTag(tab.testTag),
             )
-        }
-    }
-}
-
-/**
- * Sunrise, sunset, solar noon, day length and civil twilight in local time, or a message when there is
- * no position (no or no valid locator). On polar days a sentence replaces sunrise and sunset.
- */
-@Composable
-private fun SunCard(sun: SunUiState) {
-    InfoCard(R.string.section_sun) {
-        when (sun.status) {
-            SunStatus.NO_LOCATOR,
-            SunStatus.INVALID_LOCATOR,
-            SunStatus.GPS_NO_PERMISSION,
-            SunStatus.GPS_LOCATION_OFF,
-            SunStatus.GPS_SEARCHING,
-            SunStatus.GPS_UNAVAILABLE,
-            -> {
-                Text(stringResource(R.string.sun_no_location), style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = when (sun.status) {
-                        SunStatus.NO_LOCATOR -> stringResource(R.string.sun_enter_locator)
-                        SunStatus.GPS_NO_PERMISSION -> stringResource(R.string.sun_no_position)
-                        SunStatus.GPS_LOCATION_OFF -> stringResource(R.string.sun_location_off)
-                        SunStatus.GPS_SEARCHING -> stringResource(R.string.location_searching)
-                        SunStatus.GPS_UNAVAILABLE -> stringResource(R.string.sun_gps_unavailable)
-                        else -> stringResource(R.string.sun_invalid_locator, sun.locator.orEmpty())
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            SunStatus.NORMAL, SunStatus.MIDNIGHT_SUN, SunStatus.POLAR_NIGHT -> {
-                if (sun.status == SunStatus.NORMAL) {
-                    InfoLine(R.string.sunrise, sun.sunrise)
-                    InfoLine(R.string.sunset, sun.sunset)
-                } else {
-                    val polar = if (sun.status == SunStatus.MIDNIGHT_SUN) R.string.sun_midnight_sun else R.string.sun_polar_night
-                    Text(stringResource(polar), style = MaterialTheme.typography.bodyLarge)
-                }
-                InfoLine(R.string.solar_noon, sun.solarNoon)
-                InfoLine(R.string.day_length, sun.dayLength)
-                if (sun.civilDawn != null || sun.civilDusk != null) {
-                    val dash = stringResource(R.string.not_available)
-                    Text(
-                        text = stringResource(R.string.civil_twilight, sun.civilDawn ?: dash, sun.civilDusk ?: dash),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
         }
     }
 }

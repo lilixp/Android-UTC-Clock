@@ -165,4 +165,6 @@ data class SunUiState(
     val civilDusk: String? = null,
     /** The locator as entered, only to say which one is not valid ([SunStatus.INVALID_LOCATOR]). */
     val locator: String? = null,
+    /** Screen-only geometry and context, from the existing clock, effective position and solar days. */
+    val presentation: SunPresentation? = null,
 )

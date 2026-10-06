@@ -124,7 +124,7 @@ class MainActivityTest {
         compose.onNodeWithTag(AppTab.SUN.testTag).assertIsSelected() // back on the section Settings was opened from
 
         // 30 September 2026, KN46dw, the phone's zone (Chișinău, UTC+3)
-        for (line in listOf("Răsărit: 07:04", "Apus: 18:49", "Amiază solară: 12:57", "Durata zilei: 11h 45m")) {
+        for (line in listOf("Răsărit", "07:04", "Apus", "18:49", "Amiază solară", "12:57", "Durata zilei", "11 h 45 min")) {
             compose.onNode(hasScrollAction()).performScrollToNode(hasText(line))
             compose.onNodeWithText(line).assertIsDisplayed()
         }

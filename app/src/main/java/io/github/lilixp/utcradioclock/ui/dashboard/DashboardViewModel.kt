@@ -48,8 +48,8 @@ class DashboardViewModel(
 
     private var formatter = TimeFormatter(locale())
 
-    /** The last solar calculation, reused while the day, the time zone and the position stay the same. */
-    private var lastSolar: Pair<Pair<LocalDay, GeoPosition>, SolarDay>? = null
+    /** Bounded cache of solar days, including neighbours needed only by the Sun presentation. */
+    private val solarDays = SunSolarDays(solar)
 
     /** The SUN card and the solar day behind it (null without a position). */
     private data class Sun(val ui: SunUiState, val day: SolarDay?)
@@ -111,6 +111,12 @@ class DashboardViewModel(
         val format = formatterFor(locale())
         val utcDate = format.utcDate(instant)
         val localDate = format.localDate(instant, zone)
+        // Only the Sun presentation follows each existing clock tick. Reuse cached astronomy;
+        // read the effective station, including fallback provenance, without starting another GPS flow.
+        val displayedSun = sunState(LocalDay(instant.atZone(zone).toLocalDate(), zone), sunInput(position))
+        val sunPresentation = displayedSun.day?.let { today -> position.position?.let { coordinates ->
+            sunPresentation(instant, zone, position, today, solarDays.window(today.date, zone, coordinates), format)
+        } }
         return DashboardUiState(
             utcDate = utcDate,
             utcTime = format.utcTime(instant),
@@ -118,7 +124,7 @@ class DashboardViewModel(
             localDate = localDate.takeIf { it != utcDate },
             zone = zoneState(reading, format),
             callsign = station.callsign.ifEmpty { null },
-            sun = sun.ui,
+            sun = displayedSun.ui.copy(presentation = sunPresentation),
             propagation = propagationState(propagation, reading, sun.day, format),
             location = locationState(position, reading, format),
             // From GPS in automatic mode, otherwise as entered in Settings
@@ -264,9 +270,7 @@ class DashboardViewModel(
     }
 
     private fun solarDay(day: LocalDay, position: GeoPosition): SolarDay {
-        val key = day to position
-        lastSolar?.let { (lastKey, result) -> if (lastKey == key) return result }
-        return solar(day.date, day.zone, position).also { lastSolar = key to it }
+        return solarDays.day(day.date, day.zone, position)
     }
 
     private fun formatterFor(current: Locale): TimeFormatter {

@@ -24,6 +24,7 @@ class TimeFormatter(val locale: Locale) {
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss", locale)
     private val shortTimeFormat = DateTimeFormatter.ofPattern("HH:mm", locale)
     private val shortDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
+    private val solarDateFormat = DateTimeFormatter.ofPattern("d MMMM yyyy", locale)
 
     /**
      * Where the phone's own time zone data keeps the common abbreviations: Android has "EEST" and
@@ -65,6 +66,9 @@ class TimeFormatter(val locale: Locale) {
     /** A date without the day of the week, short: "25 oct. 2026" / "25 Oct 2026". */
     fun shortDate(date: LocalDate): String = shortDateFormat.format(date)
 
+    /** Date context on the Sun screen, without the day of the week. */
+    fun solarDate(date: LocalDate): String = solarDateFormat.format(date)
+
     /** A wall-clock time without seconds: "04:00". */
     fun hoursMinutes(time: LocalDateTime): String = shortTimeFormat.format(time)
 
@@ -77,6 +81,10 @@ class TimeFormatter(val locale: Locale) {
      */
     fun eventTime(instant: Instant?, zone: ZoneId): String? =
         instant?.let { shortTimeFormat.format(it.roundedToMinute().atZone(zone)) }
+
+    /** Calendar date of the displayed, minute-rounded event (including rounding across midnight). */
+    fun eventDate(instant: Instant?, zone: ZoneId): LocalDate? =
+        instant?.roundedToMinute()?.atZone(zone)?.toLocalDate()
 
     /** E.g. "11h 52m" (rounded to the nearest minute), or null when it is not known. */
     fun duration(duration: Duration?): String? = duration?.let {

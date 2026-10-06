@@ -142,7 +142,9 @@ class DashboardViewModelTest {
         assertEquals("11h 45m", sun.dayLength)
         assertEquals("06:34", sun.civilDawn)
         assertEquals("19:19", sun.civilDusk)
-        assertEquals(GeoPosition(46.9375, 28.291667).latitude, solarCalls.single().third.latitude, 1e-6)
+        assertEquals(GeoPosition(46.9375, 28.291667).latitude, solarCalls.first().third.latitude, 1e-6)
+        assertEquals(SunPositionSource.MANUAL, sun.presentation!!.source)
+        assertEquals("KN46dw", sun.presentation.locator)
     }
 
     @Test
@@ -187,7 +189,7 @@ class DashboardViewModelTest {
 
         advance(Duration.ofHours(2)) // 7200 clock ticks
         assertEquals("17:42:31", viewModel.uiState.value.utcTime)
-        assertEquals(1, solarCalls.size)
+        assertEquals("Centre day and four neighbours, reused over 7200 ticks", 5, solarCalls.size)
     }
 
     @Test
@@ -198,7 +200,8 @@ class DashboardViewModelTest {
         val before = viewModel.uiState.value.sun
 
         advance(Duration.ofHours(5).plusMinutes(18)) // 00:00:31 local on 1 October
-        assertEquals(listOf(LocalDate.parse("2026-09-30"), LocalDate.parse("2026-10-01")), solarCalls.map { it.first })
+        assertEquals("Only the next neighbour is calculated at midnight", 6, solarCalls.size)
+        assertEquals(LocalDate.parse("2026-10-03"), solarCalls.last().first)
         val after = viewModel.uiState.value.sun
         assertTrue("the days are getting shorter", after.sunrise!! > before.sunrise!!)
     }
@@ -213,7 +216,7 @@ class DashboardViewModelTest {
         zone.zone = ZoneId.of("UTC") // the user sets the phone to UTC: same place, times shown in UTC
         advance(Duration.ofMinutes(1)) // the day and zone are looked at once a minute
         assertEquals("04:04", viewModel.uiState.value.sun.sunrise)
-        assertEquals(2, solarCalls.size)
+        assertEquals("Five cached days per zone", 10, solarCalls.size)
         assertEquals(ZoneId.of("UTC"), solarCalls.last().second)
     }
 
@@ -592,6 +595,7 @@ class DashboardViewModelTest {
 
         assertEquals(LONDON, solarCalls.last().third) // the same solar calculation, fed by GPS
         assertEquals("08:59", viewModel.uiState.value.sun.sunrise) // London's sunrise, in the phone's zone
+        assertEquals(SunPositionSource.GPS, viewModel.uiState.value.sun.presentation!!.source)
     }
 
     @Test
@@ -622,6 +626,7 @@ class DashboardViewModelTest {
         assertEquals(PositionOrigin.LOCATOR, state.location.origin)
         assertEquals("46,9375° N", state.location.latitude)
         assertEquals("07:04", state.sun.sunrise) // the Sun of KN46dw
+        assertEquals(SunPositionSource.BACKUP_LOCATOR, state.sun.presentation!!.source)
         assertEquals("KN46dw", state.locator)
     }
 
@@ -655,6 +660,21 @@ class DashboardViewModelTest {
         assertEquals("IO91wm", state.locator)
         assertEquals("51,5074° N", state.location.latitude)
         assertEquals("19:12", state.location.fixTime)
+    }
+
+    @Test
+    fun sunSavedGpsContext_usesSavedCoordinatesAndDescribesTheirOrigin() = runTest(mainDispatcher.dispatcher.scheduler) {
+        settings.setLocator("KN46dw")
+        settings.setPositionSource(PositionSource.AUTOMATIC)
+        lastPosition.saved = fix(LONDON, START.minusSeconds(3600))
+        locations.enabled = false
+        val viewModel = createViewModel()
+        subscribe(viewModel)
+        val state = viewModel.uiState.value
+        assertEquals(SunPositionSource.LAST_GPS, state.sun.presentation!!.source)
+        assertEquals(state.locator, state.sun.presentation.locator)
+        assertEquals("08:59", state.sun.sunrise)
+        assertTrue(solarCalls.all { it.third == LONDON })
     }
 
     // ---- Phase A: invalid locators and the SUN card in automatic mode ----

@@ -73,6 +73,14 @@ class TimeFormatterTest {
         assertEquals("10:05", formatter.eventTime(winter, chisinau)) // 10:05:09
         assertEquals("10:06", formatter.eventTime(Instant.parse("2026-01-15T08:05:30Z"), chisinau))
         assertEquals("00:00", formatter.eventTime(Instant.parse("2026-01-15T21:59:45Z"), chisinau)) // into the next day
+        assertEquals(java.time.LocalDate.parse("2026-01-16"), formatter.eventDate(Instant.parse("2026-01-15T21:59:45Z"), chisinau))
+        assertNull(formatter.eventDate(null, chisinau))
+    }
+
+    @Test fun solarDateIsLocalizedWithoutAWeekday() {
+        val date = java.time.LocalDate.parse("2026-10-06")
+        assertEquals("6 octombrie 2026", formatter.solarDate(date))
+        assertEquals("6 October 2026", TimeFormatter(Locale.UK).solarDate(date))
     }
 
     @Test
