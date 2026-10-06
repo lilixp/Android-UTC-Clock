@@ -117,12 +117,39 @@ class PropagationCardTest {
         assertColor(colors.of(level).container, boxColor(PropagationTags.band(group)))
 
     @Test
+    fun summary_mixedReportsAllRecommendedGroupsAboveIndices() {
+        show(data.copy(bands = data.bands.mapIndexed { i, band -> band.copy(now = if (i < 2) GOOD else POOR) }))
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertTextEquals("Condiții HF mixte")
+        compose.onNodeWithTag(PropagationTags.SUMMARY_RECOMMENDATION)
+            .assertTextEquals("De încercat acum:", "80–40 m", "30–20 m")
+        val summary = compose.onNodeWithTag(PropagationTags.SUMMARY).fetchSemanticsNode().boundsInRoot
+        val indices = compose.onNodeWithTag(PropagationTags.SFI).fetchSemanticsNode().boundsInRoot
+        assertTrue(summary.bottom <= indices.top)
+    }
+
+    @Test
+    fun summary_staleRetainsResultsButNeverRecommendsNow() {
+        show(data.copy(status = PropagationState.Status.STALE))
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertTextEquals("Date HF neactualizate")
+        compose.onNodeWithTag(PropagationTags.SUMMARY_RECOMMENDATION).assertDoesNotExist()
+        compose.onNodeWithText("Ultimele rezultate raportate · actualizat 05:29 UTC.").assertExists()
+    }
+
+    @Test
+    fun summary_partialIsNeutralAndDoesNotUseOfflineFallback() {
+        show(withFallback)
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertTextEquals("Date HF incomplete")
+        compose.onNodeWithTag(PropagationTags.SUMMARY_RECOMMENDATION).assertDoesNotExist()
+        compose.onNodeWithText("Rezumat parțial", substring = true).assertExists()
+    }
+
+    @Test
     fun indicesAndTheFourBands() {
         show()
         compose.onNodeWithTag(PropagationTags.SFI).assertIsDisplayed()
-        compose.onNodeWithText("SFI 93").assertIsDisplayed()
-        compose.onNodeWithText("K 0").assertIsDisplayed()
-        compose.onNodeWithText("A 3").assertIsDisplayed()
+        compose.onNodeWithContentDescription("SFI 93").assertIsDisplayed()
+        compose.onNodeWithContentDescription("K 0").assertIsDisplayed()
+        compose.onNodeWithContentDescription("A 3").assertIsDisplayed()
         for (label in listOf("80-40m", "30-20m", "17-15m", "12-10m")) compose.onNodeWithText(label).assertIsDisplayed()
         compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
         // Under the bands only the update time: the source is in Settings → About the app
@@ -164,7 +191,7 @@ class PropagationCardTest {
     @Test
     fun missingValues_dashAndNeutralColour() {
         show(data.copy(kIndex = null, bands = data.bands.map { if (it.group == BandGroup.BANDS_12_10) it.copy(now = null) else it }))
-        compose.onNodeWithText("K —").assertIsDisplayed()
+        compose.onNodeWithContentDescription("K —").assertIsDisplayed()
         assertColor(colors.unknown.container, boxColor(PropagationTags.K))
         assertBand(BandGroup.BANDS_12_10, null)
     }
@@ -172,7 +199,7 @@ class PropagationCardTest {
     @Test
     fun staleData_saysSo() {
         show(data.copy(status = PropagationState.Status.STALE, updated = "30 sept. 21:00"))
-        compose.onNodeWithText("SFI 93").assertIsDisplayed() // the last valid values stay
+        compose.onNodeWithContentDescription("SFI 93").assertIsDisplayed() // the last valid values stay
         compose.onNodeWithText("Date neactualizate · ultima actualizare 30 sept. 21:00 UTC").assertIsDisplayed()
     }
 
@@ -195,7 +222,7 @@ class PropagationCardTest {
         show(dark = true)
         assertBand(BandGroup.BANDS_30_20, GOOD)
         assertBand(BandGroup.BANDS_12_10, POOR)
-        compose.onNodeWithText("SFI 93").assertIsDisplayed()
+        compose.onNodeWithContentDescription("SFI 93").assertIsDisplayed()
     }
 
     @Test
@@ -216,9 +243,9 @@ class PropagationCardTest {
     @Test
     fun valuesAreTheOnesGiven() {
         show(data.copy(solarFlux = IndexUi("152.4", GOOD), kIndex = IndexUi("5", POOR), aIndex = IndexUi("31", POOR)))
-        compose.onNodeWithText("SFI 152.4").assertIsDisplayed()
-        compose.onNodeWithText("K 5").assertIsDisplayed()
-        compose.onNodeWithText("A 31").assertIsDisplayed()
+        compose.onNodeWithContentDescription("SFI 152.4").assertIsDisplayed()
+        compose.onNodeWithContentDescription("K 5").assertIsDisplayed()
+        compose.onNodeWithContentDescription("A 31").assertIsDisplayed()
         assertColor(colors.poor.container, boxColor(PropagationTags.K))
         assertColor(colors.poor.container, boxColor(PropagationTags.A))
     }
@@ -438,7 +465,7 @@ class PropagationCardTest {
         compose.onNodeWithContentDescription("12-10m: —").assertIsDisplayed()
         select(PropagationTags.band(BandGroup.BANDS_12_10))
         panelValue().assertTextEquals("12-10m")
-        panelTitle().assertTextEquals("—")
+        panelTitle().assertTextEquals("Necunoscut")
         assertColor(colors.unknown.container, boxColor(PropagationTags.PANEL_VALUE))
         compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertIsDisplayed()
         for (text in listOf("Estimare offline", "Bandă", "Zi", "Noapte", "12 m", "10 m")) compose.onNodeWithText(text).assertIsDisplayed()
@@ -513,7 +540,7 @@ class PropagationCardTest {
         )
         assertBand(BandGroup.BANDS_17_15, null)
         select(PropagationTags.band(BandGroup.BANDS_17_15))
-        panelTitle().assertTextEquals("—")
+        panelTitle().assertTextEquals("Necunoscut")
         compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
         compose.onNodeWithText("Lipsesc SFI sau indicele K, deci nu există estimare.").assertIsDisplayed()
     }
@@ -661,7 +688,7 @@ class PropagationCardTest {
         panelTitle().assertTextEquals("Fair")
         compose.onNodeWithText("Offline estimate").assertDoesNotExist() // N0NBH has this group
         select(PropagationTags.band(BandGroup.BANDS_30_20))
-        panelTitle().assertTextEquals("—")
+        panelTitle().assertTextEquals("Unknown")
         for (text in listOf("Offline estimate", "Band", "Day", "Night", "30 m", "20 m")) {
             compose.onNodeWithText(text).assertIsDisplayed()
         }
@@ -733,16 +760,17 @@ class PropagationCardTest {
     }
 
     @Test
-    fun cells_colourOnly_noWordsNorInitials() {
+    fun cells_haveReadableLevelsAndAccessibleDescriptions() {
         show(withFallback)
         for (group in listOf(BandGroup.BANDS_30_20, BandGroup.BANDS_12_10)) {
             select(PropagationTags.band(group))
             val inTable = androidx.compose.ui.test.hasAnyAncestor(hasTestTag(PropagationTags.BAND_TABLE))
-            for (word in listOf("Bun", "Mediu", "Slab", "Necunoscut", "B", "M", "S", "ACUM", "Acum")) {
+            for (word in listOf("Necunoscut", "ACUM", "Acum")) {
                 assertEquals(word, 0, compose.onAllNodes(hasText(word, substring = word.length > 1) and inTable).fetchSemanticsNodes().size)
             }
+            assertTrue(compose.onAllNodes(hasText("Bun").or(hasText("Mediu")).or(hasText("Slab")) and inTable)
+                .fetchSemanticsNodes().isNotEmpty())
         }
-        compose.onNodeWithText("Acum", substring = true, ignoreCase = true).assertDoesNotExist()
     }
 
     @Test
@@ -781,7 +809,7 @@ class PropagationCardTest {
     private fun assertCell(band: HfBand, phase: DayPhase, level: String) {
         cell(band, phase)
             .assertContentDescriptionEquals("${band.meters} m, ${phaseRo.getValue(phase)}: $level")
-            .assert(androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(androidx.compose.ui.semantics.SemanticsProperties.Text))
+            .assertTextEquals(if (level == "Necunoscut") "—" else level)
     }
 
     /** The colour at the top of a phase's column, above its title: the stripe of now or the panel's own. */

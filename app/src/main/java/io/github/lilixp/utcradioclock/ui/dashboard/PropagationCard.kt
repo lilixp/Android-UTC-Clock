@@ -5,18 +5,25 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,8 +38,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -42,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.lilixp.utcradioclock.R
 import io.github.lilixp.utcradioclock.data.propagation.PropagationState
 import io.github.lilixp.utcradioclock.domain.model.BandGroup
@@ -53,6 +66,9 @@ import io.github.lilixp.utcradioclock.ui.theme.LocalConditionColors
 
 /** Test tags of the PROPAGATION card and of the details panel under it. */
 object PropagationTags {
+    const val SUMMARY = "hf_summary"
+    const val SUMMARY_TITLE = "hf_summary_title"
+    const val SUMMARY_RECOMMENDATION = "hf_summary_recommendation"
     const val SFI = "propagation_sfi"
     const val K = "propagation_k"
     const val A = "propagation_a"
@@ -96,10 +112,8 @@ private val SELECTION_RING_GAP = 1.5.dp
 
 private val BoxShape = RoundedCornerShape(BOX_CORNER)
 
-/** The bands table: the band column is a little narrower than the three level columns. */
-private const val BAND_COLUMN = 0.8f
 private val TABLE_GAP = 6.dp
-private val CELL_GAP = 3.dp
+private val CELL_GAP = 2.dp
 private val CELL_CORNER = 5.dp
 private val CellShape = RoundedCornerShape(CELL_CORNER)
 
@@ -117,7 +131,8 @@ internal fun PropagationCard(propagation: PropagationUiState) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     val hasData = propagation.status == PropagationState.Status.CURRENT ||
         propagation.status == PropagationState.Status.STALE
-    InfoCard(R.string.section_propagation) {
+    HfSummaryCard(summarizeHf(propagation), propagation.updated)
+    PropagationInfoCard {
         when (propagation.status) {
             PropagationState.Status.LOADING ->
                 Text(stringResource(R.string.propagation_loading), style = MaterialTheme.typography.bodyLarge)
@@ -140,22 +155,153 @@ internal fun PropagationCard(propagation: PropagationUiState) {
     if (hasData) DetailsPanel(propagation, selected)
 }
 
+/** Compact padding belongs only to Propagation; the shared cards and dashboard bars stay unchanged. */
+@Composable
+private fun PropagationInfoCard(content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.section_propagation), style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+            content()
+        }
+    }
+}
+
+/** Measures at the actual font scale; rearranges boxes instead of shrinking their text. */
+@Composable
+private fun AdaptiveBoxes(labels: List<String>, box: @Composable (Int, Modifier) -> Unit) {
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val available = constraints.maxWidth
+        val density = LocalDensity.current
+        val gap = with(density) { 6.dp.roundToPx() }
+        val required = (labels.maxOfOrNull {
+            measurer.measure(AnnotatedString(it), style, softWrap = false).size.width
+        } ?: 0) + with(density) { 4.dp.roundToPx() }
+        val columns = when {
+            labels.isEmpty() -> 1
+            required * labels.size + gap * (labels.size - 1) <= available -> labels.size
+            required * 2 + gap <= available -> 2
+            else -> 1
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            labels.indices.toList().chunked(columns).forEach { chunk ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    chunk.forEach { box(it, Modifier.weight(1f)) }
+                    repeat(columns - chunk.size) { Box(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HfSummaryCard(summary: HfSummary, updated: String?) {
+    val colors = LocalConditionColors.current.of(summary.level)
+    val title = stringResource(when (summary.status) {
+        HfSummary.Status.FAVORABLE -> R.string.hf_favorable
+        HfSummary.Status.MIXED -> R.string.hf_mixed
+        HfSummary.Status.POOR -> R.string.hf_poor
+        HfSummary.Status.INCOMPLETE -> R.string.hf_incomplete
+        HfSummary.Status.STALE -> R.string.hf_stale
+        HfSummary.Status.LOADING -> R.string.hf_loading
+        HfSummary.Status.UNAVAILABLE -> R.string.hf_unavailable
+    })
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = colors.container.copy(alpha = 0.14f).compositeOver(MaterialTheme.colorScheme.surface),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, colors.container.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth().testTag(PropagationTags.SUMMARY),
+    ) {
+        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(50), color = colors.container, contentColor = colors.content) {
+                    Icon(painterResource(R.drawable.ic_antenna), contentDescription = null,
+                        modifier = Modifier.padding(5.dp).size(20.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag(PropagationTags.SUMMARY_TITLE))
+                    Text(stringResource(R.string.hf_guidance), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (summary.recommended.isNotEmpty()) {
+                val recommendationColors = LocalConditionColors.current.of(summary.recommendationLevel)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(3.dp),
+                    modifier = Modifier.testTag(PropagationTags.SUMMARY_RECOMMENDATION).semantics(mergeDescendants = true) {}) {
+                    Text(stringResource(if (summary.recommendationLevel == ConditionLevel.GOOD)
+                        R.string.hf_try_now_label else R.string.hf_try_cautiously_label),
+                        style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.CenterVertically))
+                    summary.recommended.forEach { group ->
+                        Surface(shape = RoundedCornerShape(6.dp), color = recommendationColors.container,
+                            contentColor = recommendationColors.content, modifier = Modifier.align(Alignment.CenterVertically)) {
+                            Text(group.displayRange(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                        }
+                    }
+                }
+            }
+            summary.results.forEach { (level, groups) ->
+                val others = groups.filterNot { it in summary.recommended }
+                if (others.isNotEmpty()) {
+                    Text(stringResource(R.string.hf_group_result, others.joinToString(", ") { it.displayRange() }, levelName(level)),
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            when (summary.status) {
+                HfSummary.Status.POOR -> Text(stringResource(R.string.hf_poor_hint), style = MaterialTheme.typography.bodyMedium)
+                HfSummary.Status.INCOMPLETE -> Text(stringResource(R.string.hf_partial), style = MaterialTheme.typography.bodyMedium)
+                HfSummary.Status.STALE -> Text(
+                    if (updated == null) stringResource(R.string.hf_stale_hint)
+                    else stringResource(R.string.hf_stale_time, updated), style = MaterialTheme.typography.bodyMedium)
+                HfSummary.Status.LOADING -> Text(stringResource(R.string.hf_loading_hint), style = MaterialTheme.typography.bodyMedium)
+                HfSummary.Status.UNAVAILABLE -> Text(stringResource(R.string.hf_unavailable_hint), style = MaterialTheme.typography.bodyMedium)
+                else -> Unit
+            }
+            Text(stringResource(R.string.hf_disclaimer), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+private fun BandGroup.displayRange() = range.replace('-', '–') + " m"
+
+@Composable
+private fun ResponsiveHeader(badge: @Composable () -> Unit, text: @Composable (Modifier) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (LocalDensity.current.fontScale >= 1.5f || maxWidth < 280.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                badge()
+                text(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                badge()
+                text(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 @Composable
 private fun PropagationData(propagation: PropagationUiState, selected: String?, onSelect: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((key, format, index, tag) in listOf(
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val indices = listOf(
                 IndexBoxData(SELECTED_SFI, R.string.index_sfi, propagation.solarFlux, PropagationTags.SFI),
                 IndexBoxData(SELECTED_K, R.string.index_k, propagation.kIndex, PropagationTags.K),
                 IndexBoxData(SELECTED_A, R.string.index_a, propagation.aIndex, PropagationTags.A),
-            )) {
-                IndexBox(format, index, tag, selected == key, Modifier.weight(1f)) { onSelect(key) }
-            }
+        )
+        AdaptiveBoxes(indices.map { stringResource(it.format, it.index?.value ?: "—") }) { i, modifier ->
+            val box = indices[i]
+            IndexBox(box.format, box.index, box.tag, selected == box.key, modifier) { onSelect(box.key) }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (band in propagation.bands) {
-                BandBox(band, selected == band.group.name, Modifier.weight(1f)) { onSelect(band.group.name) }
-            }
+        AdaptiveBoxes(propagation.bands.map { it.group.label }) { i, modifier ->
+            val band = propagation.bands[i]
+            BandBox(band, selected == band.group.name, modifier) { onSelect(band.group.name) }
         }
         // Only when N0NBH last updated the data (UTC); the source is named in Settings → About the app
         val updated = propagation.updated
@@ -206,23 +352,27 @@ private fun IndexBox(
     onClick: () -> Unit,
 ) {
     val colors = LocalConditionColors.current.of(index?.level)
+    val description = stringResource(format, index?.value ?: stringResource(R.string.not_available))
+    // Match the unchanged band's single text line, 4 dp vertical padding and 48 dp minimum.
+    val density = LocalDensity.current
+    val bandTextHeight = rememberTextMeasurer().measure(AnnotatedString("80-40m"),
+        MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), softWrap = false).size.height
+    val buttonHeight = maxOf(48.dp, with(density) { (bandTextHeight + 2 * 4.dp.roundToPx()).toDp() })
     Surface(
         shape = BoxShape,
         color = colors.container,
         contentColor = colors.content,
         modifier = modifier
+            .height(buttonHeight)
             .selectionRing(selected, MaterialTheme.colorScheme.onSurface)
             .testTag(tag)
-            .selectable(selected = selected, role = Role.Button, onClick = onClick),
+            .selectable(selected = selected, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
     ) {
-        Text(
-            text = stringResource(format, index?.value ?: stringResource(R.string.not_available)),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
+        Box(Modifier.padding(horizontal = 2.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
+            Text(description, style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = TABULAR_DIGITS),
+                fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
+        }
     }
 }
 
@@ -236,19 +386,21 @@ private fun BandBox(band: BandUi, selected: Boolean, modifier: Modifier, onClick
         color = colors.container,
         contentColor = colors.content,
         modifier = modifier
+            .heightIn(min = 48.dp)
             .selectionRing(selected, MaterialTheme.colorScheme.onSurface)
             .testTag(PropagationTags.band(band.group))
             .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
     ) {
-        Text(
-            text = band.group.label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
+        Box(Modifier.padding(horizontal = 2.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = band.group.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -259,8 +411,9 @@ private fun BandBox(band: BandUi, selected: Boolean, modifier: Modifier, onClick
  */
 @Composable
 private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
+    val indexSelected = selected == SELECTED_SFI || selected == SELECTED_K || selected == SELECTED_A
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
@@ -269,7 +422,9 @@ private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
             // TalkBack reads the new explanation after a tap
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = if (indexSelected) 4.dp else 6.dp,
+                vertical = if (indexSelected) 2.dp else 6.dp),
+            verticalArrangement = Arrangement.spacedBy(if (indexSelected) 2.dp else 4.dp)) {
             val group = propagation.bands.firstOrNull { it.group.name == selected }
             when {
                 selected == SELECTED_SFI -> IndexDetails(IndexKind.SFI, propagation.solarFlux)
@@ -283,7 +438,7 @@ private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp)
+                        .padding(vertical = 4.dp)
                         .testTag(PropagationTags.PANEL_HINT),
                 )
             }
@@ -298,11 +453,11 @@ private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
 @Composable
 private fun PanelHeader(value: String, level: ConditionLevel?, title: String, subtitle: String?, numeric: Boolean) {
     val colors = LocalConditionColors.current.of(level)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    ResponsiveHeader(badge = {
         Surface(shape = RoundedCornerShape(10.dp), color = colors.container, contentColor = colors.content) {
             Text(
                 text = value,
-                style = (if (numeric) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge)
+                style = MaterialTheme.typography.titleMedium
                     .copy(fontFeatureSettings = TABULAR_DIGITS),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -311,23 +466,36 @@ private fun PanelHeader(value: String, level: ConditionLevel?, title: String, su
                 modifier = Modifier
                     .testTag(PropagationTags.PANEL_VALUE)
                     .widthIn(min = 56.dp)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.testTag(PropagationTags.PANEL_TITLE),
-            )
-            subtitle?.let {
+    }) { modifier ->
+        if (numeric) {
+            // Short index interpretation stays beside the title when it fits; large text can wrap.
+            FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.CenterVertically).testTag(PropagationTags.PANEL_TITLE))
+                subtitle?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterVertically).testTag(PropagationTags.PANEL_SUBTITLE))
+                }
+            }
+        } else {
+            Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.testTag(PropagationTags.PANEL_SUBTITLE),
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag(PropagationTags.PANEL_TITLE),
                 )
+                subtitle?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag(PropagationTags.PANEL_SUBTITLE),
+                    )
+                }
             }
         }
     }
@@ -388,10 +556,10 @@ private fun IndexDetails(kind: IndexKind, index: IndexUi?) {
         subtitle = index?.level?.let { stringResource(kind.meaning(it)) },
         numeric = true,
     )
-    Text(stringResource(kind.explanation), style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(kind.explanation), style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp))
     Column(
         modifier = Modifier.testTag(PropagationTags.REFERENCE_VALUES),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             text = stringResource(R.string.reference_values),
@@ -399,10 +567,15 @@ private fun IndexDetails(kind: IndexKind, index: IndexUi?) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // Side by side, low to high: the three steps fit under the explanation even with large text
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (step in kind.scale) {
-                ReferenceStep(step, current = step.level == index?.level, modifier = Modifier.weight(1f))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (LocalDensity.current.fontScale >= 1.5f || maxWidth < 280.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    kind.scale.forEach { ReferenceStep(it, it.level == index?.level, Modifier.fillMaxWidth()) }
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    kind.scale.forEach { ReferenceStep(it, it.level == index?.level, Modifier.weight(1f)) }
+                }
             }
         }
     }
@@ -412,7 +585,7 @@ private fun IndexDetails(kind: IndexKind, index: IndexUi?) {
 @Composable
 private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modifier) {
     val weight = if (current) FontWeight.Bold else FontWeight.Normal
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(1.dp)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -421,7 +594,7 @@ private fun ReferenceStep(step: ReferenceValue, current: Boolean, modifier: Modi
         )
         Text(
             text = step.values,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
+            style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = TABULAR_DIGITS),
             fontWeight = weight,
         )
         Text(text = stringResource(step.meaning), style = MaterialTheme.typography.bodySmall, fontWeight = weight)
@@ -440,7 +613,7 @@ private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
     PanelHeader(
         value = band.group.label,
         level = band.now,
-        title = levelName(band.now),
+        title = estimateLevelName(band.now),
         subtitle = null,
         numeric = false,
     )
@@ -474,7 +647,11 @@ private fun GroupDetails(band: BandUi, propagation: PropagationUiState) {
             )
         }
         // N0NBH's level is for the whole group: each band of it shows that level
-        band.day != null || band.night != null -> BandTable(band.group.bands.map { BandRow(it, band.day, band.night) }, now)
+        band.day != null || band.night != null -> {
+            BandTable(band.group.bands.map { BandRow(it, band.day, band.night) }, now)
+            Text(stringResource(R.string.hf_group_evaluation), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         // Nothing from N0NBH for this group, and not both SFI and K for an estimate
         else -> Text(
             text = stringResource(R.string.estimate_no_data),
@@ -505,45 +682,51 @@ private val PHASES = listOf(DayPhase.DAY, DayPhase.NIGHT)
  */
 @Composable
 private fun BandTable(rows: List<BandRow>, now: DayPhase) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).testTag(PropagationTags.BAND_TABLE),
-        horizontalArrangement = Arrangement.spacedBy(TABLE_GAP),
-    ) {
-        TableColumn(stringResource(R.string.estimate_band), current = false, TextAlign.Start, Modifier.weight(BAND_COLUMN)) {
-            for (row in rows) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth().testTag(PropagationTags.bandRow(row.band)),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    Text(
-                        text = stringResource(R.string.band_meters, row.band.meters),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
+    val density = LocalDensity.current
+    val heading = stringResource(R.string.estimate_band)
+    val gap = if (density.fontScale >= 1.5f) 2.dp else TABLE_GAP
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Fixed 0.8 : 1 : 1 proportions. Both phases use the same integer pixel width;
+        // any rounding remainder stays in the band column, regardless of group or level text.
+        val phaseWidth = with(density) { ((constraints.maxWidth - 2 * gap.roundToPx()) / 2.8f).toInt().toDp() }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).testTag(PropagationTags.BAND_TABLE),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            TableColumn(heading, current = false, TextAlign.Start, Modifier.weight(1f)) {
+                for (row in rows) {
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxWidth().testTag(PropagationTags.bandRow(row.band)),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.band_meters, row.band.meters),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
-        }
-        for (phase in PHASES) {
-            TableColumn(
-                phaseName(phase),
-                current = phase == now,
-                TextAlign.Center,
-                Modifier.weight(1f).testTag(PropagationTags.phaseColumn(phase)),
-            ) {
-                for (row in rows) {
-                    LevelCell(
-                        level = row.at(phase),
-                        description = stringResource(
-                            R.string.cell_description,
-                            stringResource(R.string.band_meters, row.band.meters),
-                            phaseName(phase),
-                            estimateLevelName(row.at(phase)),
-                        ),
-                        tag = PropagationTags.bandCell(row.band, phase),
-                        modifier = Modifier.weight(1f),
-                    )
+            for (phase in PHASES) {
+                TableColumn(
+                    phaseName(phase),
+                    current = phase == now,
+                    TextAlign.Center,
+                    Modifier.width(phaseWidth).testTag(PropagationTags.phaseColumn(phase)),
+                ) {
+                    for (row in rows) {
+                        LevelCell(
+                            level = row.at(phase),
+                            description = stringResource(
+                                R.string.cell_description,
+                                stringResource(R.string.band_meters, row.band.meters),
+                                phaseName(phase),
+                                estimateLevelName(row.at(phase)),
+                            ),
+                            tag = PropagationTags.bandCell(row.band, phase),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -563,7 +746,7 @@ private fun TableColumn(
         modifier = modifier
             .fillMaxHeight()
             .background(if (current) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(6.dp))
-            .padding(3.dp),
+            .padding(2.dp),
         verticalArrangement = Arrangement.spacedBy(CELL_GAP),
     ) {
         Text(
@@ -572,24 +755,27 @@ private fun TableColumn(
             fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
             color = if (current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = align,
-            maxLines = 1,
             modifier = Modifier.fillMaxWidth(),
         )
         Column(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CELL_GAP), content = cells)
     }
 }
 
-/** A level as its colour only, like the boxes; unknown in the neutral one. TalkBack reads [description]. */
+/** Colour and readable text together; the accessible description also identifies the band and phase. */
 @Composable
 private fun LevelCell(level: ConditionLevel?, description: String, tag: String, modifier: Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .heightIn(min = 28.dp)
             .background(LocalConditionColors.current.of(level).container, CellShape)
             .testTag(tag)
-            .semantics { contentDescription = description },
-    )
+            .semantics(mergeDescendants = true) { contentDescription = description },
+    ) {
+        Text(levelName(level), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+            color = LocalConditionColors.current.of(level).content, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp))
+    }
 }
 
 @Composable

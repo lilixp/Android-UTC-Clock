@@ -64,6 +64,25 @@
     <string name="location_turn_on">Pornește locația</string>
 
     <string name="section_propagation">PROPAGARE</string>
+    <string name="hf_favorable">Condiții HF favorabile</string>
+    <string name="hf_mixed">Condiții HF mixte</string>
+    <string name="hf_poor">Condiții HF slabe</string>
+    <string name="hf_incomplete">Date HF incomplete</string>
+    <string name="hf_stale">Date HF neactualizate</string>
+    <string name="hf_loading">Se încarcă datele HF</string>
+    <string name="hf_unavailable">Date HF indisponibile</string>
+    <string name="hf_guidance">Orientare pentru benzile HF</string>
+    <string name="hf_try_now_label">De încercat acum:</string>
+    <string name="hf_try_cautiously_label">De încercat cu rezerve:</string>
+    <string name="hf_group_result">%1$s: %2$s</string>
+    <string name="hf_poor_hint">Condiții slabe pe grupele afișate. Verifică semnalele din bandă.</string>
+    <string name="hf_partial">Rezumat parțial: sunt afișate numai nivelurile raportate disponibile.</string>
+    <string name="hf_stale_hint">Ultimele rezultate raportate; este necesară o nouă actualizare.</string>
+    <string name="hf_stale_time">Ultimele rezultate raportate · actualizat %1$s UTC.</string>
+    <string name="hf_loading_hint">Se așteaptă condițiile raportate pentru grupele de benzi.</string>
+    <string name="hf_unavailable_hint">Nu sunt disponibile condiții raportate pentru grupele de benzi. Conectează telefonul la Internet pentru a primi date.</string>
+    <string name="hf_disclaimer">Condiții orientative, nu o garanție.</string>
+    <string name="hf_group_evaluation">Evaluarea sursei este pentru întreaga grupă de benzi.</string>
     <string name="propagation_loading">Se încarcă datele…</string>
     <string name="propagation_unavailable">Date indisponibile</string>
     <string name="propagation_unavailable_hint">Fără conexiune la Internet și fără date salvate. Datele apar când telefonul e online.</string>

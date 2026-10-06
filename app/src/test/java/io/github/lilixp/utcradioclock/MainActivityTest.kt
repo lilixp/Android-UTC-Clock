@@ -145,8 +145,8 @@ class MainActivityTest {
     @Test
     fun propagationCardShowsTheN0nbhData() {
         waitForText("SFI 93") // the real feed of 1 October 2026, served by the fake Internet
-        compose.onNodeWithText("K 0").assertIsDisplayed()
-        compose.onNodeWithText("A 3").assertIsDisplayed()
+        compose.onNodeWithContentDescription("K 0").assertIsDisplayed()
+        compose.onNodeWithContentDescription("A 3").assertIsDisplayed()
         val updated = "Actualizat 1 oct. 05:29 UTC" // the feed's "updated" (UTC), another UTC day than now
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(updated))
         compose.onNodeWithText(updated).assertIsDisplayed()
@@ -171,7 +171,7 @@ class MainActivityTest {
 
         // The feed of 1 October 2026 has all four groups: N0NBH's data only, no offline estimate beside it
         for (group in BandGroup.entries) {
-            compose.onNodeWithTag(PropagationTags.band(group)).performClick()
+            compose.onNodeWithTag(PropagationTags.band(group)).performScrollTo().performClick()
             compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
             compose.onNodeWithTag(PropagationTags.BAND_TABLE).assertIsDisplayed()
             compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
@@ -184,7 +184,7 @@ class MainActivityTest {
 
         // 18:42 local, before sunset: day at the station; still N0NBH's own data for the groups
         waitForText("SFI 93")
-        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_17_15)).performClick()
+        compose.onNodeWithTag(PropagationTags.band(BandGroup.BANDS_17_15)).performScrollTo().performClick()
         compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
         compose.onNodeWithTag(PropagationTags.PANEL_TITLE).assertTextEquals("Mediu")
         compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
@@ -342,7 +342,7 @@ class MainActivityTest {
         openTab(AppTab.PROPAGATION)
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -358,7 +358,7 @@ class MainActivityTest {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() } // the phone's button
         compose.waitForIdle()
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -383,7 +383,7 @@ class MainActivityTest {
         assertSame(viewModel, dashboardViewModel()) // the same clock, GPS and N0NBH behind every section
         assertEquals(downloads, app().httpRequests.get()) // no new download because of the sections
         openTab(AppTab.PROPAGATION)
-        compose.onNodeWithText("SFI 93").assertIsDisplayed() // its data still there, not downloaded again
+        compose.onNodeWithContentDescription("SFI 93").performScrollTo().assertIsDisplayed() // its data still there, not downloaded again
     }
 
     @Test
@@ -407,7 +407,7 @@ class MainActivityTest {
         compose.onNodeWithTag(DashboardTags.LOCATOR).assertDoesNotExist() // no locator until entered
         compose.onNodeWithTag(AppTab.CLOCK.testTag).assertIsSelected() // the Clock is the start section
         openTab(AppTab.PROPAGATION)
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("ASPECT").assertDoesNotExist()
     }
 

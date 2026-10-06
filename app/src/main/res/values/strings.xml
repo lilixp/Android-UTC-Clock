@@ -71,6 +71,25 @@
     <string name="location_turn_on">Turn on location</string>
 
     <string name="section_propagation">PROPAGATION</string>
+    <string name="hf_favorable">Favorable HF conditions</string>
+    <string name="hf_mixed">Mixed HF conditions</string>
+    <string name="hf_poor">Poor HF conditions</string>
+    <string name="hf_incomplete">Incomplete HF data</string>
+    <string name="hf_stale">HF data not updated</string>
+    <string name="hf_loading">Loading HF data</string>
+    <string name="hf_unavailable">HF data unavailable</string>
+    <string name="hf_guidance">Guidance for the HF bands</string>
+    <string name="hf_try_now_label">Try now:</string>
+    <string name="hf_try_cautiously_label">Try cautiously:</string>
+    <string name="hf_group_result">%1$s: %2$s</string>
+    <string name="hf_poor_hint">Poor conditions on the displayed groups. Check signals on the bands.</string>
+    <string name="hf_partial">Partial summary: only available reported levels are shown.</string>
+    <string name="hf_stale_hint">Last reported results; a new update is needed.</string>
+    <string name="hf_stale_time">Last reported results · updated %1$s UTC.</string>
+    <string name="hf_loading_hint">Waiting for reported band conditions.</string>
+    <string name="hf_unavailable_hint">No reported band conditions are available. Connect to the Internet to receive data.</string>
+    <string name="hf_disclaimer">Indicative conditions, not a guarantee.</string>
+    <string name="hf_group_evaluation">The source evaluates the whole band group.</string>
     <string name="index_sfi" translatable="false">SFI %1$s</string>
     <string name="index_k" translatable="false">K %1$s</string>
     <string name="index_a" translatable="false">A %1$s</string>
