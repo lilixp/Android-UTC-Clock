@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock.ui.dashboard
 
 import androidx.annotation.StringRes
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -199,25 +201,53 @@ private fun TopBarTitle(callsign: String?, locator: String?) {
 private fun UtcCard(state: DashboardUiState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            CardLabel(R.drawable.ic_globe, stringResource(R.string.label_utc))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.label_utc),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_globe),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Text(
                 text = state.utcTime,
-                style = TextStyle(fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = TABULAR_DIGITS),
+                style = TextStyle(
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFeatureSettings = TABULAR_DIGITS,
+                    letterSpacing = (-1).sp,
+                ),
                 maxLines = 1,
-                modifier = Modifier.testTag(DashboardTags.UTC_TIME),
+                autoSize = TextAutoSize.StepBased(minFontSize = 42.sp, maxFontSize = 64.sp),
+                modifier = Modifier.fillMaxWidth().testTag(DashboardTags.UTC_TIME),
+                textAlign = TextAlign.Center,
             )
             Text(
                 text = state.utcDate,
                 style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.testTag(DashboardTags.DATE),
             )
@@ -232,25 +262,45 @@ private fun UtcCard(state: DashboardUiState) {
  */
 @Composable
 private fun LocalCard(state: DashboardUiState) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            CardLabel(
-                R.drawable.ic_clock,
-                stringResource(R.string.label_local),
-                Modifier.testTag(DashboardTags.LOCAL_LABEL),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.label_local),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(DashboardTags.LOCAL_LABEL),
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_clock),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             Text(
                 text = state.localTime,
                 style = TextStyle(
-                    fontSize = 40.sp,
+                    fontSize = 42.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFeatureSettings = TABULAR_DIGITS,
                 ),
                 maxLines = 1,
-                modifier = Modifier.testTag(DashboardTags.LOCAL_TIME),
+                autoSize = TextAutoSize.StepBased(minFontSize = 30.sp, maxFontSize = 42.sp),
+                modifier = Modifier.fillMaxWidth().testTag(DashboardTags.LOCAL_TIME),
             )
             state.localDate?.let {
                 Text(
@@ -318,7 +368,12 @@ private fun ZoneTiles(zone: ZoneUi) {
  */
 @Composable
 internal fun Tile(title: String, value: String, details: List<String>, modifier: Modifier, valueModifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxHeight()) {
+    Card(
+        modifier = modifier.fillMaxHeight(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
