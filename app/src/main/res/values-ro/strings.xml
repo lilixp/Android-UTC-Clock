@@ -30,6 +30,9 @@
     <string name="tile_time_zone">Fus orar</string>
     <string name="tile_clock_change">Schimbarea orei</string>
     <string name="clock_change_to_winter">(iarnă)</string>
+    <string name="clock_change_winter_title">Ora de iarnă</string>
+    <string name="clock_change_summer_title">Ora de vară</string>
+    <string name="clock_change_minimal_detail">%1$s · %2$s → %3$s</string>
     <string name="clock_change_to_summer">(vară)</string>
     <string name="no_clock_change">Fără schimbarea orei</string>
     <string name="no_clock_change_detail">Nu este prevăzută în acest fus orar.</string>
