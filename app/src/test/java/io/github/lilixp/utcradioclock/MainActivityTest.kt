@@ -93,11 +93,9 @@ class MainActivityTest {
         compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL").assertIsDisplayed()
         // The phone's zone and its next clock change, from java.time (here the JVM's tz database)
         compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo() // under the clocks
-        compose.onNodeWithText("EEST · UTC+03:00").assertIsDisplayed()
-        compose.onNodeWithText("Europe/Chisinau").assertIsDisplayed()
-        compose.onNodeWithText("25 oct. 2026").assertIsDisplayed()
-        compose.onNodeWithText("04:00 → 03:00").assertIsDisplayed()
-        compose.onNodeWithText("(iarnă)").assertIsDisplayed()
+        compose.onNodeWithText("Europe/Chisinau · UTC+03:00").assertIsDisplayed()
+        compose.onNodeWithText("Ora de iarnă").assertIsDisplayed()
+        compose.onNodeWithText("25 oct. 2026 · 04:00 → 03:00").assertIsDisplayed()
     }
 
     @Test
