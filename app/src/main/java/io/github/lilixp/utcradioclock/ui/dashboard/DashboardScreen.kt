@@ -28,7 +28,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,7 +97,7 @@ fun DashboardScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { TopBarTitle(state.callsign, state.locator) },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
@@ -121,7 +121,7 @@ fun DashboardScreen(
                 AppTab.CLOCK -> {
                     UtcCard(state)
                     LocalCard(state)
-                    ZoneTiles(state.zone)
+                    ClockChangeCard(state.zone)
                 }
                 AppTab.SUN -> SunScreen(state.sun)
                 AppTab.LOCATION -> LocationCard(
@@ -167,15 +167,25 @@ private fun TabBar(selectedTab: AppTab, onSelectTab: (AppTab) -> Unit) {
  */
 @Composable
 private fun TopBarTitle(callsign: String?, locator: String?) {
-    Column {
-        Text(stringResource(R.string.app_name), maxLines = 1)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.product_name),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
         if (callsign != null || locator != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 callsign?.let {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         modifier = Modifier.testTag(DashboardTags.CALLSIGN),
@@ -184,7 +194,7 @@ private fun TopBarTitle(callsign: String?, locator: String?) {
                 locator?.let {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         modifier = Modifier.testTag(DashboardTags.LOCATOR),
@@ -263,14 +273,14 @@ private fun UtcCard(state: DashboardUiState) {
 @Composable
 private fun LocalCard(state: DashboardUiState) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(DashboardTags.ZONE_TILE),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -302,11 +312,23 @@ private fun LocalCard(state: DashboardUiState) {
                 autoSize = TextAutoSize.StepBased(minFontSize = 30.sp, maxFontSize = 42.sp),
                 modifier = Modifier.fillMaxWidth().testTag(DashboardTags.LOCAL_TIME),
             )
+            Text(
+                text = listOfNotNull(state.zone.name, state.zone.offset).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 11.sp,
+                    maxFontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                ),
+                modifier = Modifier.testTag(DashboardTags.ZONE_VALUE),
+            )
             state.localDate?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag(DashboardTags.LOCAL_DATE),
                 )
             }
@@ -331,36 +353,67 @@ internal fun CardLabel(@DrawableRes icon: Int, text: String, modifier: Modifier 
     }
 }
 
-/** Two small tiles under the clocks: the time zone, and the next summer/winter time change. */
+/** Compact card for the next daylight-saving clock change, as in the Minimal concept. */
 @Composable
-private fun ZoneTiles(zone: ZoneUi) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+private fun ClockChangeCard(zone: ZoneUi) {
+    val change = zone.nextChange
+    Card(
+        modifier = Modifier.fillMaxWidth().testTag(DashboardTags.CLOCK_CHANGE_TILE),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Tile(
-            title = stringResource(R.string.tile_time_zone),
-            value = listOfNotNull(zone.abbreviation, zone.offset).joinToString(" · "),
-            details = listOfNotNull(zone.name),
-            modifier = Modifier.weight(1f).testTag(DashboardTags.ZONE_TILE),
-            valueModifier = Modifier.testTag(DashboardTags.ZONE_VALUE),
-        )
-        val change = zone.nextChange
-        Tile(
-            title = stringResource(R.string.tile_clock_change),
-            value = change?.date ?: stringResource(R.string.no_clock_change),
-            details = if (change != null) {
-                listOf(
-                    stringResource(R.string.clock_change_times, change.from, change.to),
-                    stringResource(if (change.toWinter) R.string.clock_change_to_winter else R.string.clock_change_to_summer),
-                )
-            } else {
-                listOf(stringResource(R.string.no_clock_change_detail))
-            },
-            modifier = Modifier.weight(1f).testTag(DashboardTags.CLOCK_CHANGE_TILE),
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_clock),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (change != null) {
+                    Text(
+                        text = stringResource(
+                            if (change.toWinter) R.string.clock_change_winter_title
+                            else R.string.clock_change_summer_title,
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.clock_change_minimal_detail,
+                            change.date,
+                            change.from,
+                            change.to,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.no_clock_change),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(R.string.no_clock_change_detail),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
+
 
 /**
  * A small card: a title, one value, and smaller lines under it. The value stays on one line (e.g.
