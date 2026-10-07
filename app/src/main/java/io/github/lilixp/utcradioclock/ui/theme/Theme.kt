@@ -14,24 +14,24 @@ import io.github.lilixp.utcradioclock.domain.model.ThemeMode
 // A fixed palette (no wallpaper-based dynamic color): the clock looks the same on every phone.
 // Deep teal like a transceiver panel, with amber section labels, readable in daylight and at night.
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF0B5563),
+    primary = Color(0xFF2F7FC1),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFCDEBF1),
-    onPrimaryContainer = Color(0xFF002B33),
-    secondary = Color(0xFF8A5A00),
+    primaryContainer = Color(0xFFEAF4FC),
+    onPrimaryContainer = Color(0xFF0D2B45),
+    secondary = Color(0xFF5F7690),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFFFE0A8),
-    onSecondaryContainer = Color(0xFF2B1A00),
-    background = Color(0xFFF8FAFA),
-    onBackground = Color(0xFF171D1E),
-    surface = Color(0xFFF8FAFA),
-    onSurface = Color(0xFF171D1E),
-    surfaceContainer = Color(0xFFECF1F2),
-    surfaceContainerHigh = Color(0xFFE6EBEC),
-    surfaceContainerHighest = Color(0xFFE0E6E7), // cards
-    outline = Color(0xFF6F797A),
-    outlineVariant = Color(0xFFBFC8CA),
-    onSurfaceVariant = Color(0xFF3F484A),
+    secondaryContainer = Color(0xFFEEF4F8),
+    onSecondaryContainer = Color(0xFF1C2A36),
+    background = Color(0xFFF8FAFD),
+    onBackground = Color(0xFF10233A),
+    surface = Color(0xFFF8FAFD),
+    onSurface = Color(0xFF10233A),
+    surfaceContainer = Color(0xFFF6F8FB),
+    surfaceContainerHigh = Color(0xFFF0F4F8),
+    surfaceContainerHighest = Color(0xFFFFFFFF),
+    outline = Color(0xFF9AAABC),
+    outlineVariant = Color(0xFFDDE5EC),
+    onSurfaceVariant = Color(0xFF5B718A),
 )
 
 private val DarkColors = darkColorScheme(
