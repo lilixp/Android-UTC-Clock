@@ -316,7 +316,7 @@ class MainActivityTest {
         compose.onNodeWithText("Deschide setările aplicației").performClick()
         val opened = shadowOf(compose.activity).nextStartedActivity
         assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, opened.action)
-        assertEquals("package:io.github.lilixp.utcradioclock", opened.dataString)
+        assertEquals("package:io.github.lilixp.utcradioclock.minimal", opened.dataString)
     }
 
     @Test
