@@ -12,6 +12,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -261,7 +263,11 @@ private val SunOutline = Color(0xFF3B2A00)
 @Composable
 private fun DayBand(data: SunPresentation) {
     // Local colours, readable in both themes. Text legend and semantics identify every phase.
-    val night = MaterialTheme.colorScheme.onSurfaceVariant
+    // Night stays dark in both themes (the theme's secondary text colour turned it light grey in Dark);
+    // in Dark a thin grey outline keeps the band apart from the dark card
+    val darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val night = if (darkTheme) Color(0xFF121819) else Color(0xFF2C3436)
+    val outline = Color(0xFF4A5355)
     val twilight = Color(0xFFF0B53C)
     val day = Color(0xFF2796A3)
     val unknown = MaterialTheme.colorScheme.outlineVariant
@@ -295,6 +301,7 @@ private fun DayBand(data: SunPresentation) {
             .semantics { contentDescription = description }) {
             data.segments.forEach { drawRect(color(it.phase), Offset(it.start * size.width, 0f),
                 Size((it.end - it.start) * size.width, size.height)) }
+            if (darkTheme) drawRoundRect(outline, cornerRadius = CornerRadius(4.dp.toPx()), style = Stroke(1.dp.toPx()))
             if (data.markerPhase == DayPhase.DAY) {
                 // By day, now is a small stylised sun inside the band; at twilight and at night the white line
                 val radius = SUN_RAY_OUTER.toPx()
