@@ -5,7 +5,9 @@ Maidenhead), activitatea solară și geomagnetică și condițiile de propagare 
 
 Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e pe branch-ul `main`).
 
-## Stare (1 octombrie 2026)
+> README revizuit tehnic cu **ChatGPT** la 7 octombrie 2026, după verificarea codului din branch-ul `versiunea-2.0` și testarea aplicației pe telefon. Revizia documentației nu modifică logica aplicației.
+
+## Stare (7 octombrie 2026)
 
 | Faza | Ce | Commit |
 |------|----|--------|
@@ -20,7 +22,9 @@ Autor: Lilian Putină, ER1PL. Versiunea 2.0, scrisă de la zero (versiunea 1 e p
 | 5 | GPS și locație: poziția automată, locatorul calculat, cardul LOCAȚIE (verificată pe S24+) | `38e55a4` |
 | A | Corecții după testarea autonomă: locator 4/6/8, ordinea GPS, aproximativ ↔ exact, mesajul SOARE | `3da0318` |
 | – | Estimare offline pe 10 benzi HF (din SFI/K N0NBH), explicații SFI/K/A și benzi | `bbf372a` |
-| R1 | Redesign, etapa 1: 4 tab-uri (Ceas → Propagare → Soare → Locație), stația în bara de sus | (acest commit) |
+| R1 | Redesign, etapa 1: 4 tab-uri (Ceas → Propagare → Soare → Locație), stația în bara de sus | — |
+| – | Setări redesenate în stilul aplicației (STAȚIE / ASPECT / DESPRE) | `ba42a84` |
+| – | README sincronizat cu implementarea actuală, după audit tehnic și testare pe telefon | ChatGPT |
 
 Următoarele faze, observațiile și ce mai e de verificat sunt în [OBSERVATII.md](OBSERVATII.md).
 Fiecare fază e un singur commit, verificat pe PC (build Debug și Release, toate testele, lint)
@@ -108,31 +112,23 @@ Actualizat 05:29 UTC
 - **Explicații:** apăsarea pe SFI, K sau A deschide ce înseamnă. Textul pentru K urmează aceeași
   scală ca și culoarea lui: K 0–3 liniștit, K 4 activ, K ≥ 5 furtună (NOAA).
 
-### Estimarea offline pe 10 benzi
+### Detalii pe cele 4 grupuri HF
 
-Sub datele N0NBH, separat și cu titlul **„Estimare offline · 10 benzi”** („Offline estimate · 10
-bands”), cardul arată benzile 160, 80, 60, 40, 30, 20, 17, 15, 12 și 10 m:
+Interfața versiunii 2.0 păstrează cele **4 grupuri publicate de N0NBH**:
+**80–40 m**, **30–20 m**, **17–15 m** și **12–10 m**. Nu există pe ecran o listă separată cu
+10 butoane și nu se afișează 160 m.
 
-```
-Actualizat 05:29 UTC                      ← până aici: date N0NBH
-Estimare offline · 10 benzi               ← de aici: calculat pe telefon
-[160m] [80m] [60m] [40m] [30m]
-[20m]  [17m] [15m] [12m] [10m]
-```
-
-- **Ce e:** o regulă simplă pe fiecare bandă (`OfflinePropagationCalculator`), calculată pe telefon
-  din: ziua, crepusculul sau noaptea la stație, plus **SFI și K publicate de N0NBH** (date proaspete
-  sau salvate). Benzile joase sunt deschise noaptea și la crepuscul, iar cele înalte ziua, cu
-  praguri SFI (90–140). K 4–6 coboară fiecare bandă cu o treaptă; K ≥ 7 face toate benzile Slab.
-- **Nu e N0NBH:** N0NBH publică doar cele 4 grupe de mai sus. Estimarea are titlul ei, iar dialogul
-  fiecărei benzi spune „Nu este o valoare publicată de N0NBH.”
-- **Nimic inventat:** fără K sau fără poziție (locator / GPS), toate benzile sunt **Necunoscut**.
-  Fără SFI sunt Necunoscut doar benzile care au nevoie de SFI la ora aceea. Fără niciun fel de date
-  N0NBH, estimarea nu apare deloc.
-- **Apăsarea unei benzi** arată: „20 m · 14.0–14.35 MHz”, „Estimare: Bun”, dacă acum e zi, crepuscul
-  sau noapte la stație, ce fel de bandă e și de unde vine estimarea (sau de ce lipsește).
-- **Zi / crepuscul / noapte** se decid într-un singur loc, `SolarDay.phaseAt()`. Aceeași funcție dă și
-  ziua și noaptea pentru cele 4 grupe N0NBH (ca înainte: zi de la răsărit la apus).
+- La apăsarea unui grup se deschide panoul de detalii, cu benzile componente și coloanele
+  **Zi** / **Noapte**.
+- Când N0NBH publică nivelul grupului, acel nivel este folosit ca evaluare pentru întregul grup;
+  în tabel este repetat pentru benzile componente pentru a face prezentarea mai ușor de citit.
+- `OfflinePropagationCalculator` rămâne în aplicație doar ca **fallback**: dacă N0NBH nu publică
+  deloc condiția unui grup, iar SFI și K sunt disponibile, aplicația poate calcula local o estimare
+  pentru benzile acelui grup.
+- Estimarea locală nu este prezentată drept valoare N0NBH și nu înlocuiește datele publicate când
+  acestea există.
+- Ziua/noaptea pentru grupurile N0NBH se stabilește din poziția stației și din `SolarDay.phaseAt()`;
+  fără poziție se folosește intervalul 06:00–18:00 după ora locală.
 
 ## Faza 5: GPS și locație
 
@@ -155,8 +151,9 @@ GPS · 18:41 · ±12 m             (sau: Locator din Setări (centrul pătratulu
 
 - **Coordonatele** au 4 zecimale (circa 10 m), cu virgulă în română și punct în engleză; în modul
   Manual sunt cele ale centrului locatorului.
-- **Locatorul** e calculat din coordonate cu 6 caractere, scris ca în restul aplicației (`KN46dx`),
-  și apare și sus, sub indicativ.
+- **Locatorul GPS:** bara de sus folosește locatorul stației calculat din poziție, iar ecranul
+  **LOCAȚIE** afișează suplimentar locatorul extins cu **8 caractere**, util pentru o poziție GPS
+  mai precisă.
 - **Stările GPS**, fiecare cu un mesaj și, unde se poate face ceva, un buton:
   fără permisiune („Permite accesul la locație”, dialogul Android), refuzată definitiv („Deschide
   setările aplicației”, pagina aplicației din sistem), locația telefonului oprită („Pornește
@@ -265,7 +262,7 @@ app/src/main/java/io/github/lilixp/utcradioclock/
 │   ├── location/                Maidenhead (locator ↔ latitudine/longitudine)
 │   ├── solar/                   SolarCalculator (NOAA: răsărit, apus, amiază solară, crepuscul civil)
 │   └── propagation/             HamQslParser (XML N0NBH), IndexScales (culorile SFI/K/A),
-│                                OfflinePropagationCalculator (estimarea pe 10 benzi)
+│                                OfflinePropagationCalculator (fallback local pentru benzile grupurilor HF)
 ├── ui/
 │   ├── dashboard/               DashboardScreen, LocationCard, PropagationCard, DashboardViewModel, DashboardUiState
 │   ├── settings/                SettingsScreen, SettingsViewModel
@@ -299,8 +296,9 @@ app/src/main/java/io/github/lilixp/utcradioclock/
   **PropagationRepository** îl păstrează în SharedPreferences (`propagation_cache`, în afara
   backup-ului) și dă un `Flow<PropagationState>` (se încarcă / curent / neactualizat / indisponibil),
   pe care **DashboardViewModel** îl transformă în texte și culori. Nimic din rețea nu e în ecran.
-  Tot din `PropagationState` (SFI și K) și din același `SolarDay.phaseAt()`, ViewModel-ul cere
-  `OfflinePropagationCalculator` (cod pur) estimarea pe 10 benzi; nu există o a doua sursă de SFI/K.
+  Tot din `PropagationState` (SFI și K) și din același `SolarDay.phaseAt()`, ViewModel-ul poate cere
+  `OfflinePropagationCalculator` (cod pur) doar ca fallback pentru un grup pe care N0NBH nu l-a
+  raportat; nu există o a doua sursă de SFI/K și nu există o secțiune separată cu 10 benzi în UI.
 - **Poziția:** `AndroidLocationProvider` (LocationManager din Android, prin `LocationManagerCompat`;
   fără Google Play Services) dă o singură poziție când e cerută. **PositionRepository** alege între
   GPS și locator, ține minte ultima poziție (`position.xml`, în afara backup-ului) și o cere din nou
@@ -450,9 +448,9 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
   (`app/src/test/resources/hamqsl`), zi și noapte, zecimale, „No Report” și valori goale (rămân
   lipsă, nu zero), benzi incomplete, răspunsuri invalide (HTML, XML tăiat, JSON, gol);
 - `IndexScalesTest`: pragurile K, A și SFI;
-- `OfflinePropagationCalculatorTest`: cele 10 benzi ziua, la crepuscul și noaptea, cu SFI mare și
-  mic, SFI lipsă (doar benzile care au nevoie de el sunt Necunoscut), K lipsă sau fără poziție (toate
-  Necunoscut), K 3 / 4 / 6 / 7, fiecare prag SFI la limită, o zi reală la KN46dw cu datele din 1 oct.;
+- `OfflinePropagationCalculatorTest`: calculatorul intern este verificat ziua, la crepuscul și noaptea,
+  cu SFI mare și mic, SFI/K lipsă, pragurile K și SFI și o zi reală la KN46dw; în interfața actuală
+  rezultatul lui este folosit numai ca fallback pentru un grup HF fără condiție N0NBH;
 - `SolarDayPhaseTest`: zi, crepuscul dimineața și seara, noapte, noapte albă, zi polară, noapte
   polară cu și fără crepuscul, zile reale din `SolarCalculator`;
 - `UrlConnectionHttpClientTest`: clientul HTTP real față de un mic server pe PC (nu Internetul):
@@ -462,14 +460,13 @@ Teste pe PC (`gradlew testDebugUnitTest`, fără telefon). Niciunul nu foloseșt
 - `PropagationRepositoryTest` (ceas virtual): prima pornire, cache recent fără descărcare, cache vechi
   apoi date noi, fără Internet cu și fără cache, timeout, răspuns invalid (cache-ul rămâne),
   reîncercare la 15 minute, fără pâlpâire între stări, actualizare orară;
-- `PropagationCardTest` (Robolectric, desen real): SFI/K/A, cele 4 benzi, culorile (verificate pe
-  pixeli), valori lipsă, dialogul unei benzi, zi/noapte după ceas fără locator, date neactualizate,
-  indisponibil, se încarcă, tema întunecată, engleza; estimarea pe 10 benzi sub datele N0NBH, cu
-  titlul ei, culori, Necunoscut, explicația fiecărei benzi, explicațiile SFI/K/A (K pe scala NOAA);
+- `PropagationCardTest` (Robolectric, desen real): SFI/K/A, cele 4 grupuri HF, culorile (verificate pe
+  pixeli), valori lipsă, panoul de detalii, zi/noapte după ceas fără locator, date neactualizate,
+  indisponibil, încărcare, tema întunecată și engleza; verifică și fallback-ul local când un grup
+  N0NBH nu are date, plus explicațiile SFI/K/A (K pe scala NOAA);
 - `DashboardViewModelTest` și `MainActivityTest` acoperă și propagarea: stări, valori, zi/noapte după
-  Soare la stație, aplicația reală cu răspunsul N0NBH și fără Internet; estimarea din SFI/K N0NBH
-  (și din cache), fără date fără estimare, K / SFI lipsă, fără poziție, zi → crepuscul → noapte,
-  poziția GPS, aplicația reală (Necunoscut fără locator, valori după KN46dw).
+  Soare la stație, aplicația reală cu răspunsul N0NBH și fără Internet; fallback-ul din SFI/K N0NBH
+  (și din cache) atunci când un grup nu este raportat, lipsa datelor, lipsa poziției și poziția GPS.
 
 Teste care au nevoie de telefon sau emulator (`gradlew connectedDebugAndroidTest`), în
 `DashboardInstrumentedTest.kt`:
