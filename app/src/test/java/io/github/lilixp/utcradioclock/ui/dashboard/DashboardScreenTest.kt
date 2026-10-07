@@ -82,8 +82,7 @@ class DashboardScreenTest {
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertTextEquals("15:42:31").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL").assertIsDisplayed()
         compose.onNodeWithTag(DashboardTags.LOCAL_TIME).assertTextEquals("18:42:31")
-        compose.onNodeWithText("EEST · UTC+03:00").assertExists()
-        compose.onNodeWithText("Europe/Chisinau").assertExists()
+        compose.onNodeWithText("Europe/Chisinau · UTC+03:00").assertExists()
     }
 
     @Test
@@ -366,7 +365,7 @@ class DashboardScreenTest {
         compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Miercuri, 30 septembrie 2026")
         compose.onNodeWithTag(DashboardTags.LOCAL_LABEL).assertTextEquals("LOCAL")
         compose.onNodeWithText("LOCAL · EEST").assertDoesNotExist()
-        compose.onNodeWithTag(DashboardTags.ZONE_VALUE, useUnmergedTree = true).assertTextEquals("EEST · UTC+03:00")
+        compose.onNodeWithTag(DashboardTags.ZONE_VALUE, useUnmergedTree = true).assertTextEquals("Europe/Chisinau · UTC+03:00")
     }
 
     @Test
@@ -386,7 +385,7 @@ class DashboardScreenTest {
     fun clock_tiles_timeZoneAndNextClockChange() {
         show()
         compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
-        for (text in listOf("Fus orar", "EEST · UTC+03:00", "Europe/Chisinau", "Schimbarea orei", "25 oct. 2026", "04:00 → 03:00", "(iarnă)")) {
+        for (text in listOf("Europe/Chisinau · UTC+03:00", "Ora de iarnă", "25 oct. 2026 · 04:00 → 03:00")) {
             compose.onNodeWithText(text).assertIsDisplayed()
         }
     }
@@ -395,8 +394,8 @@ class DashboardScreenTest {
     fun clock_changeToSummerTime() {
         show(state.copy(zone = state.zone.copy(nextChange = ClockChangeUi("28 mar. 2027", "03:00", "04:00", toWinter = false))))
         compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
-        compose.onNodeWithText("03:00 → 04:00").assertIsDisplayed()
-        compose.onNodeWithText("(vară)").assertIsDisplayed()
+        compose.onNodeWithText("Ora de vară").assertIsDisplayed()
+        compose.onNodeWithText("28 mar. 2027 · 03:00 → 04:00").assertIsDisplayed()
     }
 
     @Test
@@ -429,7 +428,7 @@ class DashboardScreenTest {
             zone = state.zone.copy(nextChange = ClockChangeUi("25 Oct 2026", "04:00", "03:00", toWinter = true))))
         compose.onNodeWithTag(DashboardTags.DATE).assertTextEquals("Wednesday, 30 September 2026")
         compose.onNodeWithTag(DashboardTags.CLOCK_CHANGE_TILE).performScrollTo()
-        for (text in listOf("Time zone", "Clock change", "25 Oct 2026", "(winter time)")) compose.onNodeWithText(text).assertIsDisplayed()
+        for (text in listOf("Europe/Chisinau · UTC+03:00", "Winter time", "25 Oct 2026 · 04:00 → 03:00")) compose.onNodeWithText(text).assertIsDisplayed()
     }
 
     @Test
