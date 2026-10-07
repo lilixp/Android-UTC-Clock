@@ -167,6 +167,12 @@ Decizii ale lui Lilian în aceeași zi (notate de Claude Code):
   ca acum. Propunerea „Actualizare la cerere” de mai sus nu se mai face.
 - **Etapa 4 (Locație)** este următoarea.
 
+## Setările în stilul aplicației (7 octombrie 2026, făcut de Claude Code)
+
+Varianta A aleasă de Lilian: aceeași structură (STAȚIE, ASPECT, DESPRE), etichete cu iconiță ca pe
+ecrane (iconiță nouă `ic_palette`), „Poziția stației” ca etichetă mică, DESPRE scurtat (versiune,
+autor, o linie despre N0NBH), „Modificările se salvează automat” jos, mic. Fără funcții noi.
+
 ## Design unitar pentru cele 4 ecrane (7 octombrie 2026, făcut de Claude Code)
 
 Varianta (a) aprobată de Lilian după comparația ecranelor, implementată de **Claude Code** pe ramura

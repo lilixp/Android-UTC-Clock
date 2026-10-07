@@ -1,6 +1,10 @@
 package io.github.lilixp.utcradioclock.ui.settings
 
 import androidx.annotation.StringRes
+import io.github.lilixp.utcradioclock.ui.dashboard.CardLabel
+import io.github.lilixp.utcradioclock.ui.dashboard.CARD_PADDING
+import androidx.compose.ui.text.style.TextAlign
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,7 +90,7 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SettingsCard(R.string.section_station) {
+            SettingsCard(R.drawable.ic_antenna, R.string.section_station) {
                 OutlinedTextField(
                     value = station.callsign,
                     onValueChange = onCallsignChange,
@@ -120,44 +124,43 @@ fun SettingsScreen(
                 )
                 PositionSourceSelector(positionSource, onPositionSourceChange)
             }
-            SettingsCard(R.string.section_appearance) {
+            SettingsCard(R.drawable.ic_palette, R.string.section_appearance) {
                 ThemeSelector(themeMode, onThemeModeChange)
             }
-            Text(
-                text = stringResource(R.string.settings_saved_automatically),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            SettingsCard(R.string.section_about) {
+            SettingsCard(R.drawable.ic_info, R.string.section_about) {
                 Text(
                     text = "${stringResource(R.string.app_name)} · ${stringResource(R.string.about_version, appVersion)}",
                     style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Text(stringResource(R.string.about_author), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = stringResource(R.string.about_propagation),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag(SettingsTags.ABOUT_PROPAGATION),
                 )
             }
+            Text(
+                text = stringResource(R.string.settings_saved_automatically),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
 
+/** A Settings card: its label with an icon, as on the app's screens (same card, same padding). */
 @Composable
-private fun SettingsCard(@StringRes title: Int, content: @Composable () -> Unit) {
+private fun SettingsCard(@DrawableRes icon: Int, @StringRes title: Int, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(CARD_PADDING),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = stringResource(title),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
-            )
+            CardLabel(icon, stringResource(title))
             content()
         }
     }
@@ -190,7 +193,12 @@ private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
 /** Manual (the locator) / Automatic (GPS), with a line on what the choice means. */
 @Composable
 private fun PositionSourceSelector(selected: PositionSource, onSelect: (PositionSource) -> Unit) {
-    Text(stringResource(R.string.position_source), style = MaterialTheme.typography.bodyLarge)
+    // A small label over the choice, like the tiles' titles on the app's screens
+    Text(
+        text = stringResource(R.string.position_source),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     val options = listOf(
         PositionSource.MANUAL to R.string.position_manual,
         PositionSource.AUTOMATIC to R.string.position_automatic,

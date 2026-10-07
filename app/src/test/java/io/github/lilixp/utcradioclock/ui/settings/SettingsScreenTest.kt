@@ -67,20 +67,20 @@ class SettingsScreenTest {
     @Test
     fun aboutTheApp_versionAuthorAndTheN0nbhSource() {
         show()
-        compose.onNodeWithText("DESPRE APLICAȚIE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("DESPRE").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("UTC Radio Clock · Versiunea 2.0.0").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Autor: Lilian Putină, ER1PL").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(SettingsTags.ABOUT_PROPAGATION).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("N0NBH, pe hamqsl.com", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("N0NBH (hamqsl.com)", substring = true).assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "en")
     fun aboutTheAppInEnglish() {
         show()
-        compose.onNodeWithText("ABOUT THE APP").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("ABOUT").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("UTC Radio Clock · Version 2.0.0").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("N0NBH, at hamqsl.com", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("N0NBH (hamqsl.com)", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test

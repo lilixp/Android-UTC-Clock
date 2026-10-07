@@ -24,10 +24,10 @@
     <string name="position_manual_hint">The centre of the locator above.</string>
     <string name="position_automatic_hint">The location of the phone, checked when the app is opened and every 30 minutes. The locator above is used while there is no position. The position stays on the phone.</string>
     <string name="settings_saved_automatically">Changes are saved automatically.</string>
-    <string name="section_about">ABOUT THE APP</string>
+    <string name="section_about">ABOUT</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_author">Author: Lilian Putină, ER1PL</string>
-    <string name="about_propagation">Propagation data (SFI, K, A and the HF band conditions by day and by night) are calculated and published by Paul Herrman, N0NBH, at hamqsl.com. The app downloads them at most once an hour, as the author asks, and shows the time of the last N0NBH update in UTC.</string>
+    <string name="about_propagation">Propagation: N0NBH (hamqsl.com), downloaded at most once an hour.</string>
 
     <string name="label_utc" translatable="false">UTC</string>
     <string name="label_local" translatable="false">LOCAL</string>
