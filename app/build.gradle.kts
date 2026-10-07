@@ -10,11 +10,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.lilixp.utcradioclock"
+        applicationId = "io.github.lilixp.utcradioclock.minimal"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "2.0.0"
+        versionName = "2.0.0-minimal"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
