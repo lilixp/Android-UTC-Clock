@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">UTC Clock Minimal</string>
+    <string name="product_name" translatable="false">UTC Radio Clock</string>
 
     <string name="open_settings">Settings</string>
     <string name="back">Back</string>
@@ -35,6 +36,9 @@
     <string name="tile_clock_change">Clock change</string>
     <string name="clock_change_times" translatable="false">%1$s → %2$s</string>
     <string name="clock_change_to_winter">(winter time)</string>
+    <string name="clock_change_winter_title">Winter time</string>
+    <string name="clock_change_summer_title">Summer time</string>
+    <string name="clock_change_minimal_detail">%1$s · %2$s → %3$s</string>
     <string name="clock_change_to_summer">(summer time)</string>
     <string name="no_clock_change">No clock change</string>
     <string name="no_clock_change_detail">None planned in this time zone.</string>
