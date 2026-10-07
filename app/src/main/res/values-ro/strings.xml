@@ -34,14 +34,13 @@
     <string name="no_clock_change">Fără schimbarea orei</string>
     <string name="no_clock_change_detail">Nu este prevăzută în acest fus orar.</string>
 
-    <string name="section_sun">SOARE</string>
     <string name="sun_source_manual">Locator manual</string>
     <string name="sun_source_backup">Locator de rezervă</string>
     <string name="sun_source_gps">Poziție din GPS</string>
     <string name="sun_source_last_gps">Ultima poziție GPS disponibilă</string>
     <string name="sun_sunrise_label">Răsărit</string>
     <string name="sun_sunset_label">Apus</string>
-    <string name="sun_station_day">Ziua la stație</string>
+    <string name="sun_station_day">ZIUA LA STAȚIE</string>
     <string name="sun_details">DETALII</string>
     <string name="sun_day_length_label">Durata zilei</string>
     <string name="sun_noon_label">Amiază solară</string>
@@ -66,7 +65,6 @@
     <string name="sun_midnight_sun">Soarele nu apune în această zi.</string>
     <string name="sun_polar_night">Soarele nu răsare în această zi.</string>
 
-    <string name="section_location">LOCAȚIE</string>
     <!-- Ecranul LOCAȚIE -->
     <string name="location_square_centre">%1$s · centrul pătratului</string>
     <string name="location_home">La %1$s de %2$s · azimut spre casă %3$s</string>
@@ -88,7 +86,6 @@
     <string name="location_open_app_settings">Deschide setările aplicației</string>
     <string name="location_turn_on">Pornește locația</string>
 
-    <string name="section_propagation">PROPAGARE</string>
     <string name="hf_favorable">Condiții HF favorabile</string>
     <string name="hf_mixed">Condiții HF mixte</string>
     <string name="hf_poor">Condiții HF slabe</string>
@@ -96,7 +93,6 @@
     <string name="hf_stale">Date HF neactualizate</string>
     <string name="hf_loading">Se încarcă datele HF</string>
     <string name="hf_unavailable">Date HF indisponibile</string>
-    <string name="hf_guidance">Orientare pentru benzile HF</string>
     <string name="hf_try_now_label">De încercat acum:</string>
     <string name="hf_try_cautiously_label">De încercat cu rezerve:</string>
     <string name="hf_group_result">%1$s: %2$s</string>
@@ -108,9 +104,6 @@
     <string name="hf_unavailable_hint">Nu sunt disponibile condiții raportate pentru grupele de benzi. Conectează telefonul la Internet pentru a primi date.</string>
     <string name="hf_disclaimer">Condiții orientative, nu o garanție.</string>
     <string name="hf_group_evaluation">Evaluarea sursei este pentru întreaga grupă de benzi.</string>
-    <string name="propagation_loading">Se încarcă datele…</string>
-    <string name="propagation_unavailable">Date indisponibile</string>
-    <string name="propagation_unavailable_hint">Fără conexiune la Internet și fără date salvate. Datele apar când telefonul e online.</string>
     <string name="propagation_updated">Actualizat %1$s UTC</string>
     <string name="propagation_stale">Date neactualizate · ultima actualizare %1$s UTC</string>
     <string name="propagation_stale_no_time">Date neactualizate</string>

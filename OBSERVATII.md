@@ -167,6 +167,26 @@ Decizii ale lui Lilian în aceeași zi (notate de Claude Code):
   ca acum. Propunerea „Actualizare la cerere” de mai sus nu se mai face.
 - **Etapa 4 (Locație)** este următoarea.
 
+## Design unitar pentru cele 4 ecrane (7 octombrie 2026, făcut de Claude Code)
+
+Varianta (a) aprobată de Lilian după comparația ecranelor, implementată de **Claude Code** pe ramura
+`design-unitar`. Designul de dinainte e păstrat la eticheta git `design-inainte-de-unificare`
+(commitul `a16c870`), pentru revenire.
+
+- **Fără titluri de ecran** (PROPAGARE, SOARE, LOCAȚIE): tabul activ din bara de jos le spune.
+  Propagare începe cu „Condiții HF …”, Soare cu data, Locație cu locatorul. Ceasul nu avea titlu.
+- **Etichetele din interior rămân**, toate în același stil: iconiță + majuscule chihlimbar (UTC,
+  LOCAL, ZIUA LA STAȚIE, DETALII). Iconiță nouă `ic_info` pentru DETALII.
+- **Aceleași carduri** (gri, colțuri și margine interioară comune; `ScreenCard`). Pe Propagare
+  rezumatul HF și căsuțele sunt într-un singur card, fără fundalul galben (galbenul, verdele și
+  roșul rămân doar pentru niveluri); panoul de jos e un card obișnuit cu eticheta DETALII.
+- **Soare:** sursa poziției e aceeași etichetă colorată ca pe Locație; Răsărit/Apus și DETALII sunt
+  plăci interioare aliniate la stânga, cu valorile în culoarea textului (nu verde-albastru); nota
+  „Ora locală a telefonului” e în cardul DETALII. Cu text foarte mare, detaliile stau câte una pe rând.
+- Fâșia coloanei curente din tabelul benzilor are nuanța plăcilor interioare de pe Soare.
+- Texte scoase: titlurile de ecran, „Orientare pentru benzile HF”, vechile „Se încarcă datele…” /
+  „Date indisponibile” (le înlocuiesc mesajele rezumatului HF).
+
 ## Etapa 4: ecranul Locație (6 octombrie 2026, făcută de Claude Code)
 
 Varianta A aleasă de Lilian, implementată de **Claude Code**:

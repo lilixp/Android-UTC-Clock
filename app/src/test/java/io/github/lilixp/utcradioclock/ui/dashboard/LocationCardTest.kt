@@ -82,7 +82,7 @@ class LocationCardTest {
     @Test
     fun gpsPosition_locatorSourceSwitchHomeAndTiles() {
         show(gps, locator = "KN46dx")
-        compose.onNodeWithText("LOCAȚIE").assertIsDisplayed()
+        compose.onNodeWithText("LOCAȚIE").assertDoesNotExist() // no screen title: the tab says it
         compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertTextEquals("KN46dx")
         compose.onNodeWithTag(DashboardTags.LOCATION_EXTENDED_LOCATOR).assertTextEquals("KN46dx53")
         compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals("Poziție din GPS · 15:41 UTC")
@@ -222,7 +222,7 @@ class LocationCardTest {
     fun english() {
         show(gps.copy(latitude = "46.9612° N", approximate = true, declination = "6.4° E",
             home = HomeUi("KN46dw", "2.8 km", "200°")))
-        compose.onNodeWithText("LOCATION").assertIsDisplayed()
+        compose.onNodeWithText("LOCATION").assertDoesNotExist()
         compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals("Position from GPS · 15:41 UTC")
         compose.onNodeWithTag(DashboardTags.LOCATION_HOME).assertTextEquals("2.8 km from KN46dw · bearing home 200°")
         for (text in listOf("Latitude", "46.9612° N", "Altitude", "From GPS", "Accuracy", "Approximate GPS",

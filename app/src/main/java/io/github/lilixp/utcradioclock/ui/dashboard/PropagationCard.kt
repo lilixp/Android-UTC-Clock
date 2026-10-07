@@ -23,6 +23,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Card
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -131,40 +132,12 @@ internal fun PropagationCard(propagation: PropagationUiState) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     val hasData = propagation.status == PropagationState.Status.CURRENT ||
         propagation.status == PropagationState.Status.STALE
-    HfSummaryCard(summarizeHf(propagation), propagation.updated)
-    PropagationInfoCard {
-        when (propagation.status) {
-            PropagationState.Status.LOADING ->
-                Text(stringResource(R.string.propagation_loading), style = MaterialTheme.typography.bodyLarge)
-            PropagationState.Status.UNAVAILABLE -> {
-                Text(
-                    text = stringResource(R.string.propagation_unavailable),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = stringResource(R.string.propagation_unavailable_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            PropagationState.Status.CURRENT, PropagationState.Status.STALE ->
-                PropagationData(propagation, selected) { selected = it }
-        }
+    // One card, no screen title (the tab says it): the HF summary first, then N0NBH's boxes
+    ScreenCard {
+        HfSummaryBlock(summarizeHf(propagation), propagation.updated)
+        if (hasData) PropagationData(propagation, selected) { selected = it }
     }
     if (hasData) DetailsPanel(propagation, selected)
-}
-
-/** Compact padding belongs only to Propagation; the shared cards and dashboard bars stay unchanged. */
-@Composable
-private fun PropagationInfoCard(content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.section_propagation), style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-            content()
-        }
-    }
 }
 
 /** Measures at the actual font scale; rearranges boxes instead of shrinking their text. */
@@ -196,9 +169,12 @@ private fun AdaptiveBoxes(labels: List<String>, box: @Composable (Int, Modifier)
     }
 }
 
+/**
+ * "Condiții HF mixte", what to try now and the other groups, or why there is nothing to say; inside the
+ * screen's card, in the text colours (yellow, green and red stay for the levels only).
+ */
 @Composable
-private fun HfSummaryCard(summary: HfSummary, updated: String?) {
-    val colors = LocalConditionColors.current.of(summary.level)
+private fun HfSummaryBlock(summary: HfSummary, updated: String?) {
     val title = stringResource(when (summary.status) {
         HfSummary.Status.FAVORABLE -> R.string.hf_favorable
         HfSummary.Status.MIXED -> R.string.hf_mixed
@@ -208,63 +184,43 @@ private fun HfSummaryCard(summary: HfSummary, updated: String?) {
         HfSummary.Status.LOADING -> R.string.hf_loading
         HfSummary.Status.UNAVAILABLE -> R.string.hf_unavailable
     })
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = colors.container.copy(alpha = 0.14f).compositeOver(MaterialTheme.colorScheme.surface),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, colors.container.copy(alpha = 0.35f)),
-        modifier = Modifier.fillMaxWidth().testTag(PropagationTags.SUMMARY),
-    ) {
-        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(50), color = colors.container, contentColor = colors.content) {
-                    Icon(painterResource(R.drawable.ic_antenna), contentDescription = null,
-                        modifier = Modifier.padding(5.dp).size(20.dp))
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.testTag(PropagationTags.SUMMARY_TITLE))
-                    Text(stringResource(R.string.hf_guidance), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (summary.recommended.isNotEmpty()) {
-                val recommendationColors = LocalConditionColors.current.of(summary.recommendationLevel)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier.testTag(PropagationTags.SUMMARY_RECOMMENDATION).semantics(mergeDescendants = true) {}) {
-                    Text(stringResource(if (summary.recommendationLevel == ConditionLevel.GOOD)
-                        R.string.hf_try_now_label else R.string.hf_try_cautiously_label),
-                        style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.CenterVertically))
-                    summary.recommended.forEach { group ->
-                        Surface(shape = RoundedCornerShape(6.dp), color = recommendationColors.container,
-                            contentColor = recommendationColors.content, modifier = Modifier.align(Alignment.CenterVertically)) {
-                            Text(group.displayRange(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
-                        }
+    Column(Modifier.fillMaxWidth().testTag(PropagationTags.SUMMARY), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            modifier = Modifier.testTag(PropagationTags.SUMMARY_TITLE))
+        if (summary.recommended.isNotEmpty()) {
+            val recommendationColors = LocalConditionColors.current.of(summary.recommendationLevel)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(3.dp),
+                modifier = Modifier.testTag(PropagationTags.SUMMARY_RECOMMENDATION).semantics(mergeDescendants = true) {}) {
+                Text(stringResource(if (summary.recommendationLevel == ConditionLevel.GOOD)
+                    R.string.hf_try_now_label else R.string.hf_try_cautiously_label),
+                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                summary.recommended.forEach { group ->
+                    Surface(shape = RoundedCornerShape(6.dp), color = recommendationColors.container,
+                        contentColor = recommendationColors.content, modifier = Modifier.align(Alignment.CenterVertically)) {
+                        Text(group.displayRange(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                 }
             }
-            summary.results.forEach { (level, groups) ->
-                val others = groups.filterNot { it in summary.recommended }
-                if (others.isNotEmpty()) {
-                    Text(stringResource(R.string.hf_group_result, others.joinToString(", ") { it.displayRange() }, levelName(level)),
-                        style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            when (summary.status) {
-                HfSummary.Status.POOR -> Text(stringResource(R.string.hf_poor_hint), style = MaterialTheme.typography.bodyMedium)
-                HfSummary.Status.INCOMPLETE -> Text(stringResource(R.string.hf_partial), style = MaterialTheme.typography.bodyMedium)
-                HfSummary.Status.STALE -> Text(
-                    if (updated == null) stringResource(R.string.hf_stale_hint)
-                    else stringResource(R.string.hf_stale_time, updated), style = MaterialTheme.typography.bodyMedium)
-                HfSummary.Status.LOADING -> Text(stringResource(R.string.hf_loading_hint), style = MaterialTheme.typography.bodyMedium)
-                HfSummary.Status.UNAVAILABLE -> Text(stringResource(R.string.hf_unavailable_hint), style = MaterialTheme.typography.bodyMedium)
-                else -> Unit
-            }
-            Text(stringResource(R.string.hf_disclaimer), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        summary.results.forEach { (level, groups) ->
+            val others = groups.filterNot { it in summary.recommended }
+            if (others.isNotEmpty()) {
+                Text(stringResource(R.string.hf_group_result, others.joinToString(", ") { it.displayRange() }, levelName(level)),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        val hint = when (summary.status) {
+            HfSummary.Status.POOR -> stringResource(R.string.hf_poor_hint)
+            HfSummary.Status.INCOMPLETE -> stringResource(R.string.hf_partial)
+            HfSummary.Status.STALE ->
+                if (updated == null) stringResource(R.string.hf_stale_hint) else stringResource(R.string.hf_stale_time, updated)
+            HfSummary.Status.LOADING -> stringResource(R.string.hf_loading_hint)
+            HfSummary.Status.UNAVAILABLE -> stringResource(R.string.hf_unavailable_hint)
+            else -> null
+        }
+        hint?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 
@@ -312,13 +268,15 @@ private fun PropagationData(propagation: PropagationUiState, selected: String?, 
             updated != null -> stringResource(R.string.propagation_updated, updated)
             else -> null
         }
-        footer?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (stale) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        val disclaimer = stringResource(R.string.hf_disclaimer)
+        if (footer != null && stale) {
+            Text(text = footer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
+        Text(
+            text = if (footer != null && !stale) "$footer · $disclaimer" else disclaimer,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -412,19 +370,17 @@ private fun BandBox(band: BandUi, selected: Boolean, modifier: Modifier, onClick
 @Composable
 private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
     val indexSelected = selected == SELECTED_SFI || selected == SELECTED_K || selected == SELECTED_A
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(PropagationTags.PANEL)
             // TalkBack reads the new explanation after a tap
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
-        Column(modifier = Modifier.padding(horizontal = if (indexSelected) 4.dp else 6.dp,
-                vertical = if (indexSelected) 2.dp else 6.dp),
+        Column(modifier = Modifier.padding(horizontal = CARD_PADDING, vertical = if (indexSelected) 6.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(if (indexSelected) 2.dp else 4.dp)) {
+            // DETALII, as on the Sun screen (the same word)
+            CardLabel(R.drawable.ic_info, stringResource(R.string.sun_details))
             val group = propagation.bands.firstOrNull { it.group.name == selected }
             when {
                 selected == SELECTED_SFI -> IndexDetails(IndexKind.SFI, propagation.solarFlux)
@@ -435,10 +391,8 @@ private fun DetailsPanel(propagation: PropagationUiState, selected: String?) {
                     text = stringResource(R.string.propagation_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
                         .testTag(PropagationTags.PANEL_HINT),
                 )
             }
@@ -745,7 +699,7 @@ private fun TableColumn(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .background(if (current) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(6.dp))
+            .background(if (current) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent, RoundedCornerShape(6.dp))
             .padding(2.dp),
         verticalArrangement = Arrangement.spacedBy(CELL_GAP),
     ) {
@@ -755,6 +709,10 @@ private fun TableColumn(
             fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
             color = if (current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = align,
+            // One line: "Bandă" shrinks a little in a narrow column with large text rather than breaking in two
+            maxLines = 1,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = MaterialTheme.typography.labelMedium.fontSize),
             modifier = Modifier.fillMaxWidth(),
         )
         Column(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CELL_GAP), content = cells)

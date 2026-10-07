@@ -92,13 +92,13 @@ class PropagationCardTest {
         compose.setContent {
             UTCRadioClockTheme(darkTheme = dark) {
                 colors = LocalConditionColors.current
-                stripe = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
-                panelColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                stripe = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
+                panelColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHighest // the card
                 DashboardScreen(state, selectedTab = AppTab.PROPAGATION) {}
             }
         }
         // The card is the last one: scrolling to its title brings all of it on the (tall) test screen
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE").or(hasText("PROPAGATION")))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(PropagationTags.SUMMARY_TITLE))
     }
 
     /** The colour of a box, taken from its left edge, half-way down (away from the centred text). */
@@ -151,7 +151,7 @@ class PropagationCardTest {
         compose.onNodeWithContentDescription("K 0").assertIsDisplayed()
         compose.onNodeWithContentDescription("A 3").assertIsDisplayed()
         for (label in listOf("80-40m", "30-20m", "17-15m", "12-10m")) compose.onNodeWithText(label).assertIsDisplayed()
-        compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("Actualizat 05:29 UTC", substring = true).assertIsDisplayed()
         // Under the bands only the update time: the source is in Settings → About the app
         compose.onNodeWithText("hamqsl.com", substring = true).assertDoesNotExist()
     }
@@ -206,7 +206,7 @@ class PropagationCardTest {
     @Test
     fun unavailable_noInventedValues() {
         show(PropagationUiState(status = PropagationState.Status.UNAVAILABLE))
-        compose.onNodeWithText("Date indisponibile").assertIsDisplayed()
+        compose.onNodeWithText("Date HF indisponibile").assertIsDisplayed()
         compose.onNodeWithText("SFI", substring = true).assertDoesNotExist()
         compose.onNodeWithText("80-40m").assertDoesNotExist()
     }
@@ -214,7 +214,7 @@ class PropagationCardTest {
     @Test
     fun loading() {
         show(PropagationUiState(status = PropagationState.Status.LOADING))
-        compose.onNodeWithText("Se încarcă datele…").assertIsDisplayed()
+        compose.onNodeWithText("Se încarcă datele HF").assertIsDisplayed()
     }
 
     @Test
@@ -229,15 +229,15 @@ class PropagationCardTest {
     @Config(qualifiers = "en-w411dp-h891dp")
     fun inEnglish() {
         show()
-        compose.onNodeWithText("PROPAGATION").assertIsDisplayed()
-        compose.onNodeWithText("Updated 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGATION").assertDoesNotExist() // no screen title: the tab says it
+        compose.onNodeWithText("Updated 05:29 UTC", substring = true).assertIsDisplayed()
     }
 
     @Test
     @Config(qualifiers = "en-w411dp-h891dp")
     fun unavailableInEnglish() {
         show(PropagationUiState(status = PropagationState.Status.UNAVAILABLE))
-        compose.onNodeWithText("Data unavailable").assertIsDisplayed()
+        compose.onNodeWithText("HF data unavailable").assertIsDisplayed()
     }
 
     @Test
@@ -428,7 +428,7 @@ class PropagationCardTest {
         show(withFallback)
         for (tag in listOf(PropagationTags.SFI, PropagationTags.K, PropagationTags.A)) compose.onNodeWithTag(tag).assertIsDisplayed()
         for (group in BandGroup.entries) compose.onNodeWithTag(PropagationTags.band(group)).assertIsDisplayed()
-        compose.onNodeWithText("Actualizat 05:29 UTC").assertIsDisplayed()
+        compose.onNodeWithText("Actualizat 05:29 UTC", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Estimare offline · 10 benzi").assertDoesNotExist()
         compose.onNodeWithText("Estimare offline").assertDoesNotExist() // only in a group's panel
         for (band in HfBand.entries) {
@@ -643,7 +643,7 @@ class PropagationCardTest {
     @Test
     fun noN0nbhNorHfInTheTitle() {
         show(withFallback)
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithText("PROPAGARE").assertDoesNotExist() // no screen title: the tab says it
         compose.onNodeWithText("Propagare HF", substring = true, ignoreCase = true).assertDoesNotExist()
         for (tag in listOf(PropagationTags.SFI, PropagationTags.band(BandGroup.BANDS_30_20), PropagationTags.band(BandGroup.BANDS_12_10))) {
             select(tag)

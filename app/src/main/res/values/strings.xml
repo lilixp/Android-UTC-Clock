@@ -39,14 +39,13 @@
     <string name="no_clock_change">No clock change</string>
     <string name="no_clock_change_detail">None planned in this time zone.</string>
 
-    <string name="section_sun">SUN</string>
     <string name="sun_source_manual">Manual locator</string>
     <string name="sun_source_backup">Fallback locator</string>
     <string name="sun_source_gps">Position from GPS</string>
     <string name="sun_source_last_gps">Last available GPS position</string>
     <string name="sun_sunrise_label">Sunrise</string>
     <string name="sun_sunset_label">Sunset</string>
-    <string name="sun_station_day">Day at the station</string>
+    <string name="sun_station_day">DAY AT THE STATION</string>
     <string name="sun_details">DETAILS</string>
     <string name="sun_day_length_label">Day length</string>
     <string name="sun_noon_label">Solar noon</string>
@@ -71,7 +70,6 @@
     <string name="sun_midnight_sun">The Sun does not set on this day.</string>
     <string name="sun_polar_night">The Sun does not rise on this day.</string>
 
-    <string name="section_location">LOCATION</string>
     <!-- The LOCATION screen -->
     <string name="location_source_time" translatable="false">%1$s · %2$s UTC</string>
     <string name="location_square_centre">%1$s · centre of the square</string>
@@ -94,7 +92,6 @@
     <string name="location_open_app_settings">Open app settings</string>
     <string name="location_turn_on">Turn on location</string>
 
-    <string name="section_propagation">PROPAGATION</string>
     <string name="hf_favorable">Favorable HF conditions</string>
     <string name="hf_mixed">Mixed HF conditions</string>
     <string name="hf_poor">Poor HF conditions</string>
@@ -102,7 +99,6 @@
     <string name="hf_stale">HF data not updated</string>
     <string name="hf_loading">Loading HF data</string>
     <string name="hf_unavailable">HF data unavailable</string>
-    <string name="hf_guidance">Guidance for the HF bands</string>
     <string name="hf_try_now_label">Try now:</string>
     <string name="hf_try_cautiously_label">Try cautiously:</string>
     <string name="hf_group_result">%1$s: %2$s</string>
@@ -117,9 +113,6 @@
     <string name="index_sfi" translatable="false">SFI %1$s</string>
     <string name="index_k" translatable="false">K %1$s</string>
     <string name="index_a" translatable="false">A %1$s</string>
-    <string name="propagation_loading">Loading data…</string>
-    <string name="propagation_unavailable">Data unavailable</string>
-    <string name="propagation_unavailable_hint">No Internet connection and no saved data. The data will appear once the phone is online.</string>
     <string name="propagation_updated">Updated %1$s UTC</string>
     <string name="propagation_stale">Data not updated · last update %1$s UTC</string>
     <string name="propagation_stale_no_time">Data not updated</string>

@@ -55,24 +55,11 @@ object SunTags {
 @Composable
 internal fun SunScreen(sun: SunUiState) {
     val presentation = sun.presentation
+    // No screen title (the tab says it): the first card starts with the date, as the Location screen
+    // starts with the locator; the cards, labels, tiles and colours are the other screens' own
     Column(Modifier.fillMaxWidth().testTag(SunTags.CONTENT), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            SunTitle(R.string.section_sun)
-            presentation?.let {
-                Text(listOfNotNull(it.locator, it.date).joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.testTag(SunTags.CONTEXT))
-                Text(stringResource(when (it.source) {
-                    SunPositionSource.MANUAL -> R.string.sun_source_manual
-                    SunPositionSource.BACKUP_LOCATOR -> R.string.sun_source_backup
-                    SunPositionSource.GPS -> R.string.sun_source_gps
-                    SunPositionSource.LAST_GPS -> R.string.sun_source_last_gps
-                }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.testTag(SunTags.SOURCE))
-            }
-        }
         if (sun.status !in listOf(SunStatus.NORMAL, SunStatus.MIDNIGHT_SUN, SunStatus.POLAR_NIGHT)) {
-            SunSurface {
+            ScreenCard {
                 Text(stringResource(R.string.sun_no_location), style = MaterialTheme.typography.bodyLarge)
                 Text(stringResource(when (sun.status) {
                     SunStatus.NO_LOCATOR -> R.string.sun_enter_locator
@@ -86,9 +73,27 @@ internal fun SunScreen(sun: SunUiState) {
             }
             return@Column
         }
-        SunEventPair(sun)
-        SunSurface {
-            SunTitle(R.string.sun_station_day)
+        ScreenCard {
+            presentation?.let {
+                Text(it.date, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag(SunTags.CONTEXT))
+                val name = stringResource(when (it.source) {
+                    SunPositionSource.MANUAL -> R.string.sun_source_manual
+                    SunPositionSource.BACKUP_LOCATOR -> R.string.sun_source_backup
+                    SunPositionSource.GPS -> R.string.sun_source_gps
+                    SunPositionSource.LAST_GPS -> R.string.sun_source_last_gps
+                })
+                val locatorCentre = it.source == SunPositionSource.MANUAL || it.source == SunPositionSource.BACKUP_LOCATOR
+                SourceChip(
+                    text = if (locatorCentre) stringResource(R.string.location_square_centre, name) else name,
+                    old = it.source == SunPositionSource.LAST_GPS,
+                    textModifier = Modifier.testTag(SunTags.SOURCE),
+                )
+            }
+            SunEventPair(sun)
+        }
+        ScreenCard {
+            CardLabel(R.drawable.ic_sun, stringResource(R.string.sun_station_day))
             presentation?.let { DayBand(it) }
             val polarText = when (sun.status) {
                 SunStatus.MIDNIGHT_SUN -> R.string.sun_midnight_sun
@@ -103,12 +108,11 @@ internal fun SunScreen(sun: SunUiState) {
                 else -> stringResource(R.string.sun_next_unavailable)
             }
             Text(message, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().testTag(SunTags.COUNTDOWN))
         }
-        SunSurface(Modifier.testTag(SunTags.DETAILS)) {
-            SunTitle(R.string.sun_details)
-            val rows = listOf(
+        ScreenCard(Modifier.testTag(SunTags.DETAILS)) {
+            CardLabel(R.drawable.ic_info, stringResource(R.string.sun_details))
+            val details = listOf(
                 R.string.sun_day_length_label to (presentation?.let { sunDuration(it.dayLength, false) } ?: sun.dayLength),
                 R.string.sun_noon_label to (presentation?.noon ?: sun.solarNoon),
                 R.string.sun_morning_twilight to (presentation?.morningTwilight ?: if (sun.civilDawn != null && sun.sunrise != null)
@@ -116,43 +120,49 @@ internal fun SunScreen(sun: SunUiState) {
                 R.string.sun_evening_twilight to (presentation?.eveningTwilight ?: if (sun.sunset != null && sun.civilDusk != null)
                     "${sun.sunset}–${sun.civilDusk}" else null),
             )
-            rows.forEachIndexed { index, (label, value) ->
-                SunDetail(label, value)
-                if (index < rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // Two per row; one per row with very large text, so long words ("dimineața") are not broken
+            val perRow = if (LocalDensity.current.fontScale >= 1.5f) 1 else 2
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (pair in details.chunked(perRow)) {
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((label, value) in pair) SunDetail(label, value, Modifier.weight(1f).fillMaxHeight())
+                    }
+                }
+            }
+            presentation?.let {
+                Text(stringResource(R.string.sun_zone_note, it.zone), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().testTag(SunTags.ZONE))
             }
         }
-        presentation?.let {
-            Text(stringResource(R.string.sun_zone_note, it.zone), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().testTag(SunTags.ZONE))
-        }
     }
 }
 
+/** A small tile inside a card, a shade apart from it: Răsărit / Apus and the details. */
 @Composable
-private fun SunSurface(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+private fun InnerTile(
+    modifier: Modifier,
+    centered: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
     }
-}
-
-@Composable
-private fun SunTitle(@StringRes label: Int) {
-    Text(stringResource(label), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.secondary)
 }
 
 @Composable
 private fun SunEventPair(sun: SunUiState) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val contentWidth = with(LocalDensity.current) { ((maxWidth - 8.dp) / 2 - 16.dp).roundToPx() }
+        val contentWidth = with(LocalDensity.current) { ((maxWidth - 8.dp) / 2 - 20.dp).roundToPx() }
         val measurer = rememberTextMeasurer()
         val values = listOf(sun.sunrise, sun.sunset).map { it ?: stringResource(R.string.not_available) }
-        val base = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold,
+        val base = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold,
             fontFeatureSettings = TABULAR_DIGITS)
         // Measure both values at the actual font scale and use one shared size. Explicit line height
-        // avoids intrinsic-height ambiguities of automatic text sizing inside equal-height cards.
-        val font = (34 downTo 16).firstOrNull { size -> values.all {
+        // avoids intrinsic-height ambiguities of automatic text sizing inside equal-height tiles.
+        val font = (26 downTo 16).firstOrNull { size -> values.all {
             measurer.measure(AnnotatedString(it), base.copy(fontSize = size.sp, lineHeight = (size + 4).sp),
                 softWrap = false).size.width <= contentWidth
         } } ?: 16
@@ -166,19 +176,19 @@ private fun SunEventPair(sun: SunUiState) {
 
 @Composable
 private fun SunEventCard(rising: Boolean, value: String?, date: String?, timeStyle: TextStyle, modifier: Modifier) {
-    Card(modifier.testTag(if (rising) SunTags.SUNRISE else SunTags.SUNSET), shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.fillMaxWidth().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                SunEventIcon(rising, Modifier.size(24.dp).align(Alignment.CenterVertically))
-                Text(stringResource(if (rising) R.string.sun_sunrise_label else R.string.sun_sunset_label),
-                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary, modifier = Modifier.align(Alignment.CenterVertically))
-            }
-            Text(value ?: stringResource(R.string.not_available), style = timeStyle,
-                color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth())
-            date?.let { Text(it, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center) }
+    // Centred, Lilian's choice: the two times read as a pair
+    InnerTile(modifier.testTag(if (rising) SunTags.SUNRISE else SunTags.SUNSET), centered = true) {
+        // The name goes under the icon when both do not fit (very large text), never broken in two
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
+            SunEventIcon(rising, Modifier.size(18.dp).align(Alignment.CenterVertically))
+            Text(stringResource(if (rising) R.string.sun_sunrise_label else R.string.sun_sunset_label),
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterVertically))
+        }
+        Text(value ?: stringResource(R.string.not_available), style = timeStyle, textAlign = TextAlign.Center)
+        date?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center)
         }
     }
 }
@@ -205,19 +215,13 @@ private fun SunEventIcon(rising: Boolean, modifier: Modifier) {
     }
 }
 
+/** One detail as a tile: its name, small, then its value; a long value (another day's date) wraps. */
 @Composable
-private fun SunDetail(@StringRes label: Int, value: String?) {
-    val text = value ?: stringResource(R.string.not_available)
-    val stacked = LocalDensity.current.fontScale >= 1.5f || text.length > 18
-    val style = MaterialTheme.typography.bodyMedium
-    if (stacked) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(stringResource(label), style = style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text, style = style.copy(fontFeatureSettings = TABULAR_DIGITS), modifier = Modifier.align(Alignment.End))
-        }
-    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(label), style = style, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Text(text, style = style.copy(fontFeatureSettings = TABULAR_DIGITS), textAlign = TextAlign.End)
+private fun SunDetail(@StringRes label: Int, value: String?, modifier: Modifier) {
+    InnerTile(modifier) {
+        Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value ?: stringResource(R.string.not_available),
+            style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = TABULAR_DIGITS), fontWeight = FontWeight.SemiBold)
     }
 }
 

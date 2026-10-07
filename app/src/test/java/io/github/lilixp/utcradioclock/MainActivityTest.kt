@@ -137,7 +137,7 @@ class MainActivityTest {
      */
     private fun waitForText(text: String) {
         openTab(AppTab.PROPAGATION)
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(PropagationTags.SUMMARY_TITLE))
         compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
     }
@@ -148,8 +148,8 @@ class MainActivityTest {
         compose.onNodeWithContentDescription("K 0").assertIsDisplayed()
         compose.onNodeWithContentDescription("A 3").assertIsDisplayed()
         val updated = "Actualizat 1 oct. 05:29 UTC" // the feed's "updated" (UTC), another UTC day than now
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(updated))
-        compose.onNodeWithText(updated).assertIsDisplayed()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(updated, substring = true))
+        compose.onNodeWithText(updated, substring = true).assertIsDisplayed()
 
         // No locator: 18:42 local is night by the clock; the feed has the same values day and night
         compose.onNodeWithContentDescription("17-15m: Mediu").performClick()
@@ -175,7 +175,7 @@ class MainActivityTest {
             compose.onNodeWithTag(PropagationTags.PANEL).performScrollTo()
             compose.onNodeWithTag(PropagationTags.BAND_TABLE).assertIsDisplayed()
             compose.onNodeWithTag(PropagationTags.ESTIMATE_TABLE).assertDoesNotExist()
-            compose.onNode(hasScrollAction()).performScrollToNode(hasText("PROPAGARE"))
+            compose.onNode(hasScrollAction()).performScrollToNode(hasTestTag(PropagationTags.SUMMARY_TITLE))
         }
 
         openSettings()
@@ -193,7 +193,7 @@ class MainActivityTest {
     @Test
     @Config(qualifiers = "ro", application = OfflineFixedTimeApplication::class)
     fun noInternetAndNothingSaved_dataUnavailable() {
-        waitForText("Date indisponibile")
+        waitForText("Date HF indisponibile")
         compose.onNodeWithText("SFI", substring = true).assertDoesNotExist()
         onDashboardStillWorks()
     }
@@ -364,7 +364,7 @@ class MainActivityTest {
         openTab(AppTab.PROPAGATION)
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
-        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -373,14 +373,14 @@ class MainActivityTest {
         openSettings()
         compose.onNodeWithContentDescription("Înapoi").performClick() // the arrow
         compose.onNodeWithTag(AppTab.LOCATION.testTag).assertIsSelected()
-        compose.onNodeWithText("LOCAȚIE").assertIsDisplayed()
+        compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertIsDisplayed() // no screen title: the tab says it
 
         openTab(AppTab.PROPAGATION)
         openSettings()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() } // the phone's button
         compose.waitForIdle()
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
-        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -429,7 +429,7 @@ class MainActivityTest {
         compose.onNodeWithTag(DashboardTags.LOCATOR).assertDoesNotExist() // no locator until entered
         compose.onNodeWithTag(AppTab.CLOCK.testTag).assertIsSelected() // the Clock is the start section
         openTab(AppTab.PROPAGATION)
-        compose.onNodeWithText("PROPAGARE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("ASPECT").assertDoesNotExist()
     }
 

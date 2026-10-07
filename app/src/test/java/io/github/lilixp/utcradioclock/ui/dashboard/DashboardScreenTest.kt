@@ -137,8 +137,8 @@ class DashboardScreenTest {
     @Test
     fun sunCardWithData() {
         show(state.copy(sun = sunKn46dw, locator = "KN46dw"), tab = AppTab.SUN)
+        compose.onNodeWithText("SOARE").assertDoesNotExist() // no screen title: the tab says it
         assertSunLines(
-            "SOARE",
             "Răsărit", "07:04",
             "Apus", "18:49",
             "Amiază solară", "12:57",
@@ -215,8 +215,8 @@ class DashboardScreenTest {
     @Config(qualifiers = "en")
     fun sunCardInEnglish() {
         show(state.copy(sun = sunKn46dw), tab = AppTab.SUN)
+        compose.onNodeWithText("SUN").assertDoesNotExist() // no screen title: the tab says it
         assertSunLines(
-            "SUN",
             "Sunrise", "07:04",
             "Sunset", "18:49",
             "Solar noon", "12:57",
@@ -243,9 +243,8 @@ class DashboardScreenTest {
     @Test
     fun propagationTab_loadingAtFirst() {
         show(tab = AppTab.PROPAGATION)
-        scrollTo("PROPAGARE")
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
-        compose.onNodeWithText("Se încarcă datele…").assertExists()
+        compose.onNodeWithText("PROPAGARE").assertDoesNotExist() // no screen title: the tab says it
+        compose.onNodeWithText("Se încarcă datele HF").assertExists()
     }
 
     @Test
@@ -306,16 +305,16 @@ class DashboardScreenTest {
     fun tapOnATab_showsItsCard_andMarksIt() {
         showWithTabs()
         compose.onNodeWithTag(AppTab.SUN.testTag).performClick()
-        compose.onNodeWithText("SOARE").assertIsDisplayed()
+        compose.onNodeWithTag(SunTags.CONTENT).assertIsDisplayed()
         compose.onNodeWithTag(AppTab.SUN.testTag).assertIsSelected()
         compose.onNodeWithTag(DashboardTags.UTC_TIME).assertDoesNotExist() // one section at a time
 
         compose.onNodeWithTag(AppTab.LOCATION.testTag).performClick()
-        compose.onNodeWithText("LOCAȚIE").assertIsDisplayed()
-        compose.onNodeWithText("SOARE").assertDoesNotExist()
+        compose.onNodeWithTag(DashboardTags.LOCATION_LOCATOR).assertIsDisplayed()
+        compose.onNodeWithTag(SunTags.CONTENT).assertDoesNotExist()
 
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).performClick()
-        compose.onNodeWithText("PROPAGARE").assertIsDisplayed()
+        compose.onNodeWithTag(PropagationTags.SUMMARY_TITLE).assertIsDisplayed()
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).assertIsSelected()
 
         compose.onNodeWithTag(AppTab.CLOCK.testTag).performClick()

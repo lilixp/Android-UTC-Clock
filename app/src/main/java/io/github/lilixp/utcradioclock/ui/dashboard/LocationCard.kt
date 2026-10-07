@@ -2,6 +2,7 @@ package io.github.lilixp.utcradioclock.ui.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -57,7 +59,8 @@ internal fun LocationCard(
     onPositionSourceChange: (PositionSource) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        InfoCard(R.string.section_location) {
+        // No screen title: the selected tab already says which screen this is
+        ScreenCard {
             Text(
                 text = locator ?: stringResource(R.string.not_available),
                 style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = TABULAR_DIGITS),
@@ -123,20 +126,43 @@ private fun Source(location: LocationUiState) {
         SunPositionSource.MANUAL, SunPositionSource.BACKUP_LOCATOR -> stringResource(R.string.location_square_centre, name)
     }
     // The last GPS position (location off, GPS silent, too old) is marked, so it is not taken for a new one
-    val old = source == SunPositionSource.LAST_GPS
+    SourceChip(text, old = source == SunPositionSource.LAST_GPS, textModifier = Modifier.testTag(DashboardTags.LOCATION_SOURCE))
+}
+
+/**
+ * Where a position comes from, as a small tinted label, the same on the Location and Sun screens; [old]
+ * (the last GPS position) in the warning tint.
+ */
+@Composable
+internal fun SourceChip(text: String, old: Boolean, modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = if (old) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
         contentColor = if (old) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.padding(top = 2.dp),
+        modifier = modifier.padding(top = 2.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp).testTag(DashboardTags.LOCATION_SOURCE),
+            modifier = textModifier.padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }
 }
+
+/** A screen's card without a title (the tab says which screen it is): the same card and padding everywhere. */
+@Composable
+internal fun ScreenCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(CARD_PADDING),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            content = content,
+        )
+    }
+}
+
+/** The inside margin of every card. */
+internal val CARD_PADDING = 12.dp
 
 /** Manual | Automatic (GPS): the same setting as in Settings. */
 @Composable

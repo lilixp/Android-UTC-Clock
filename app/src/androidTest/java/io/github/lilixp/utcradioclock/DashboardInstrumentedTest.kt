@@ -28,6 +28,7 @@ import io.github.lilixp.utcradioclock.ui.dashboard.AppTab
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardScreen
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardTags
 import io.github.lilixp.utcradioclock.ui.dashboard.DashboardUiState
+import io.github.lilixp.utcradioclock.ui.dashboard.PropagationTags
 import io.github.lilixp.utcradioclock.ui.dashboard.SunTags
 import io.github.lilixp.utcradioclock.ui.dashboard.ZoneUi
 import io.github.lilixp.utcradioclock.ui.settings.SettingsTags
@@ -84,7 +85,7 @@ class DashboardInstrumentedTest {
         compose.onNodeWithTag(AppTab.LOCATION.testTag).performClick()
         compose.onNodeWithTag(DashboardTags.LOCATION_SOURCE).assertTextEquals(context.getString(R.string.sun_no_location))
         compose.onNodeWithTag(DashboardTags.LOCATION_SWITCH).assertIsDisplayed()
-        val propagation = context.getString(R.string.propagation_loading) // no data in this state yet
+        val propagation = context.getString(R.string.hf_loading) // no data in this state yet
         compose.onNodeWithTag(AppTab.PROPAGATION.testTag).performClick()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(propagation))
         compose.onNodeWithText(propagation).assertIsDisplayed()
@@ -118,15 +119,15 @@ class AppInstrumentedTest {
 
     @Test
     fun theFourSections_andBackToTheClock() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        for ((section, title) in listOf(
-            AppTab.SUN to R.string.section_sun,
-            AppTab.LOCATION to R.string.section_location,
-            AppTab.PROPAGATION to R.string.section_propagation,
+        // No screen titles (the tab says which screen it is): each screen's own first element instead
+        for ((section, content) in listOf(
+            AppTab.SUN to SunTags.CONTENT,
+            AppTab.LOCATION to DashboardTags.LOCATION_LOCATOR,
+            AppTab.PROPAGATION to PropagationTags.SUMMARY_TITLE,
         )) {
             compose.onNodeWithTag(section.testTag).performClick()
             compose.onNodeWithTag(section.testTag).assertIsSelected()
-            compose.onNodeWithText(context.getString(title)).assertIsDisplayed()
+            compose.onNodeWithTag(content).assertIsDisplayed()
             compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
             compose.onNodeWithTag(AppTab.CLOCK.testTag).assertIsSelected()
             compose.onNodeWithTag(DashboardTags.UTC_TIME).assertIsDisplayed()

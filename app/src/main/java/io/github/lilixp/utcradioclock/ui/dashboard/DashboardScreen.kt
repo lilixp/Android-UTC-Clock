@@ -208,7 +208,7 @@ private fun UtcCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ClockLabel(R.drawable.ic_globe, stringResource(R.string.label_utc))
+            CardLabel(R.drawable.ic_globe, stringResource(R.string.label_utc))
             Text(
                 text = state.utcTime,
                 style = TextStyle(fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = TABULAR_DIGITS),
@@ -237,7 +237,7 @@ private fun LocalCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ClockLabel(
+            CardLabel(
                 R.drawable.ic_clock,
                 stringResource(R.string.label_local),
                 Modifier.testTag(DashboardTags.LOCAL_LABEL),
@@ -266,7 +266,7 @@ private fun LocalCard(state: DashboardUiState) {
 
 /** "UTC" or "LOCAL" with its icon, in the section label style; [modifier] goes on the text, not on the row. */
 @Composable
-private fun ClockLabel(@DrawableRes icon: Int, text: String, modifier: Modifier = Modifier) {
+internal fun CardLabel(@DrawableRes icon: Int, text: String, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
